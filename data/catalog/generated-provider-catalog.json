@@ -1,0 +1,162 @@
+{
+  "generatedAt": "2026-09-13T04:24:59.605Z",
+  "mode": "partner-production-staging",
+  "categories": [
+    {
+      "id": "category-shop-painel-ripado",
+      "slug": "painel-ripado",
+      "name": "Painéis Ripados",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/4_42bf285b-4bbb-43fe-86ef-ec52f1a1b2ab.jpg?v=1786363792",
+      "subtitle": "Painéis decorativos e acústicos para paredes e tetos.",
+      "sortOrder": 1
+    },
+    {
+      "id": "category-shop-revestimento-exterior-wpc",
+      "slug": "revestimento-exterior-wpc",
+      "name": "Revestimento Exterior WPC",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/6_5e76a2ac-ba48-4293-8149-733cbe679bba.jpg?v=1786372098",
+      "subtitle": "Painéis e acessórios WPC para fachadas e zonas exteriores.",
+      "sortOrder": 2
+    },
+    {
+      "id": "category-shop-revestimento-spc",
+      "slug": "revestimento-spc",
+      "name": "Revestimento SPC",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/sy25-foto_web.jpg?v=1767806462",
+      "subtitle": "Revestimentos decorativos de parede em Stone Plastic Composite.",
+      "sortOrder": 3
+    },
+    {
+      "id": "category-shop-rodapes",
+      "slug": "rodapes",
+      "name": "Rodapés",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/D314W_D315W.png?v=1788167986",
+      "subtitle": "Rodapés e perfis de acabamento para interiores.",
+      "sortOrder": 4
+    },
+    {
+      "id": "category-shop-sancas",
+      "slug": "sancas",
+      "name": "Sancas",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/sancas-poliestireno-fl50-homestar-0.png?v=1762795317",
+      "subtitle": "Sancas e elementos decorativos de acabamento.",
+      "sortOrder": 5
+    },
+    {
+      "id": "category-shop-paineis-exterior",
+      "slug": "paineis-exterior",
+      "name": "Painéis de Exterior",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0956/1561/5323/files/Aluwood_RAL7039_Wetterschutzfarbe_01.jpg?v=1787314450",
+      "subtitle": "Sistemas WoodUpp para aplicação exterior.",
+      "sortOrder": 7
+    },
+    {
+      "id": "category-shop-paineis-acusticos",
+      "slug": "paineis-acusticos",
+      "name": "Painéis Acústicos",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0956/1561/5323/files/akupixel_carolinaoak_darkbeige_01.jpg?v=1786982590",
+      "subtitle": "Akupanel, Akupixel e sistemas acústicos WoodUpp.",
+      "sortOrder": 8
+    },
+    {
+      "id": "category-shop-divisorias",
+      "slug": "divisorias",
+      "name": "Divisórias de Ambiente",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0956/1561/5323/files/3703_embrace_bm2_2360-2520mm_01.jpg?v=1777062261",
+      "subtitle": "Sistemas modulares WoodUpp Embrace.",
+      "sortOrder": 11
+    },
+    {
+      "id": "category-shop-acessorios-instalacao",
+      "slug": "acessorios-instalacao",
+      "name": "Acessórios e instalação",
+      "type": "shop",
+      "image": "https://cdn.shopify.com/s/files/1/0332/1711/8340/files/OUTDOORLIVING-mofidify-11_web.jpg?v=1772099071",
+      "subtitle": "Complementos e produtos de instalação",
+      "sortOrder": 20
+    },
+    {
+      "id": "category-shop-woodupp-outros",
+      "slug": "woodupp-outros",
+      "name": "Outros WoodUpp",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Outros produtos do catálogo público WoodUpp.",
+      "sortOrder": 112
+    },
+    {
+      "id": "category-shop-lighting",
+      "slug": "lighting",
+      "name": "Iluminação",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 113
+    },
+    {
+      "id": "category-shop-garden",
+      "slug": "garden",
+      "name": "Jardim",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 114
+    },
+    {
+      "id": "category-shop-outdoor",
+      "slug": "outdoor",
+      "name": "Exterior",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 115
+    },
+    {
+      "id": "category-shop-decoration",
+      "slug": "decoration",
+      "name": "Decoração",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 116
+    },
+    {
+      "id": "category-shop-organisation",
+      "slug": "organisation",
+      "name": "Organização",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 117
+    },
+    {
+      "id": "category-shop-interior",
+      "slug": "interior",
+      "name": "Interior",
+      "type": "shop",
+      "image": null,
+      "subtitle": "Categoria preparada; ainda sem produtos de fornecedor aprovados.",
+      "sortOrder": 118
+    }
+  ],
+  "subcategories": [],
+  "sourceCounts": {
+    "nuralta:painel-ripado": 1,
+    "nuralta:acessorios": 2,
+    "odem:painel-ripado": 16,
+    "odem:revestimento-exterior-wpc": 10,
+    "odem:revestimento-spc": 8,
+    "odem:rodape": 13,
+    "odem:sancas": 6,
+    "woodupp:products": 363
+  },
+  "note": "Real Nuralta/ODEM/WoodUpp partner catalogue snapshot. Historic mock products and samples are not mixed into this snapshot. Direct-manufacture products use unlimited stock; merchant release is explicit and does not invent unpublished certification."
+}

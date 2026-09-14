@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Catalogue
+
+model Product {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  sku         String  @unique
+  name        String
+  subtitle    String?
+  shortDescription String @default("")
+  description String
+
+  price        String
+  priceCents   Int
+  comparePrice String?
+  currency     String  @default("EUR")
+
+  categorySlug String
+  subcategorySlugs String @default("")
+  spaceSlugs   String @default("")
+  styleSlugs   String @default("")
+  collectionSlugs String @default("")
+
+  image       String
+  hoverImage  String?
+  gallery     String @default("")
+  imageStatus String @default("PLACEHOLDER")
+
+  badge            String?
+  rating           Float   @default(4.5)
+  reviewCount      Int     @default(0)
+  stock            Int     @default(0)
+  stockKnown       Boolean @default(false)
+  stockUnlimited   Boolean @default(false)
+  brand            String?
+  manufacturer     String?
+  supplierKey      String?
+  supplierProductId String?
+  mediaRights      String?
+
+  availability String @default("inStock")
+  isBestSeller Boolean @default(false)
+  isNew        Boolean @default(false)
+  featured     Boolean @default(false)
+  published    Boolean @default(false)
+
+  materials  String?
+  dimensions String?
+  weight     String?
+  care       String?
+  color      String?
+
+  shippingClass String @default("STANDARD")
+  variantsJson  String @default("[]")
+
+  electrical                Boolean @default(false)
+  battery                   Boolean @default(false)
+  complianceStatus          String  @default("PENDING_REVIEW")
+  reviewMode                String  @default("live")
+  documentationStatus       String  @default("PENDING")
+  safetyJson                String?
+  requiresComplianceReview  Boolean @default(true)
+
+  // Legacy source fields are kept for traceability only.
+  isDemo           Boolean @default(false)
+  sourceResearchId String?
+  sourceDomain     String?
+  sourceUrl        String?
+
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categorySlug])
+  @@index([priceCents])
+  @@index([published])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  productSlug String
+  author      String
+  country     String   @default("")
+  rating      Int
+  title       String   @default("")
+  body        String
+  email       String?
+  verified    Boolean  @default(false)
+  status      String   @default("APPROVED")
+  createdAt   DateTime @default(now())
+
+  @@index([productSlug, status])
+}
+
+model Category {
+  id        String @id @default(cuid())
+  slug      String
+  name      String
+  type      String
+  image     String?
+  subtitle  String?
+  sortOrder Int    @default(0)
+
+  @@unique([type, slug])
+  @@index([slug])
+}
+
+// Orders, checkout and fulfilment
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  email      String
+  firstName  String
+  lastName   String
+  address    String
+  address2   String?
+  city       String
+  postalCode String
+  country    String
+  phone      String?
+
+  shippingMethod String @default("standard")
+  paymentMethod  String?
+
+  subtotal  String
+  shipping  String
+  tax       String
+  discount  String @default("0.00")
+  total     String
+  promoCode String?
+
+  itemsJson String
+  giftWrap  Boolean @default(false)
+  notes     String?
+
+  status String @default("PENDING")
+
+  paymentStatus       String @default("PENDING_PAYMENT")
+  paymentProvider     String?
+  paymentIntentId     String?
+  paymentMethodType   String?
+  paymentFailureReason String?
+  currency            String @default("EUR")
+  paidAt              DateTime?
+
+  accessToken   String  @unique
+  checkoutToken String? @unique
+  pricingHash    String?
+
+  trackingNumber      String? @unique
+  carrier             String?
+  originWarehouse     String?
+  estimatedDeliveryAt DateTime?
+  trackingEvents      TrackingEvent[]
+
+  stockApplied Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments    Payment[]
+  invoices    Invoice[]
+  creditNotes CreditNote[]
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+  orderId               String   @unique
+  order                 Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider              String   @default("xpayments_stripe")
+  providerAccount       String?
+  paymentIntentId       String   @unique
+  paymentMethodType     String?
+  amount                String
+  amountMinor           Int?
+  currency              String
+  status                String   @default("CREATED")
+  clientSecretCreatedAt DateTime?
+  paidAt                DateTime?
+  failedAt              DateTime?
+  failureCode           String?
+  failureMessage        String?
+  lastEventId           String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  attempts PaymentAttempt[]
+  refunds  Refund[]
+}
+
+model PaymentAttempt {
+  id                String   @id @default(cuid())
+  paymentId         String
+  payment           Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  provider          String
+  paymentMethodType String?
+  providerReference String?
+  status            String
+  amount            String
+  currency          String
+  errorCode         String?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+
+  @@index([paymentId])
+}
+
+model Refund {
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  refundId  String  @unique
+  amount    String
+  currency  String
+  reason    String?
+  status    String @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model Invoice {
+  id                   String   @id @default(cuid())
+  orderId              String   @unique
+  order                Order    @relation(fields: [orderId], references: [id])
+  invoiceNumber        String   @unique
+  country              String
+  currency             String
+  subtotal             String
+  shipping             String
+  tax                  String
+  discount             String
+  total                String
+  status               String   @default("ISSUED")
+  pdfUrl               String?
+  externalAccountingId String?
+  issuedAt             DateTime @default(now())
+}
+
+model CreditNote {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  invoiceId String?
+  refundId  String?
+  number    String   @unique
+  amount    String
+  currency  String
+  reason    String?
+  status    String   @default("ISSUED")
+  issuedAt  DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String
+  description String
+  location    String?
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([orderId, status])
+  @@index([orderId, occurredAt])
+}
+
+model WebhookEvent {
+  id          String   @id
+  provider    String   @default("xpayments_stripe")
+  type        String
+  payloadJson String
+  processedAt DateTime @default(now())
+}
+
+// Marketing and customer contact
+
+model NewsletterSubscriber {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  source           String   @default("footer")
+  country          String   @default("")
+  locale           String   @default("")
+  marketingConsent Boolean  @default(false)
+  consentAt        DateTime @default(now())
+  consentVersion   String   @default("1.0")
+  privacyVersion   String   @default("1.0")
+  createdAt        DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  orderRef  String?
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+// Funnels and campaign pricing
+
+model ProductOffer {
+  productSlug     String @id
+  slug            String @unique
+  enabled         Boolean @default(false)
+  discountPct     Int?
+  fixedPriceCents Int?
+  startsAt        DateTime
+  endsAt          DateTime
+  version         Int @default(1)
+  updatedAt       DateTime @updatedAt
+}
+
+model ProductOfferAudit {
+  id          String   @id @default(cuid())
+  productSlug String
+  actor       String
+  beforeJson  String
+  afterJson   String
+  createdAt   DateTime @default(now())
+
+  @@index([productSlug, createdAt])
+}

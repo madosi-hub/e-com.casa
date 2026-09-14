@@ -1,0 +1,102 @@
+[
+  {
+    "productSlug": "odem-painel-ripado-acustico-carvalho-negro",
+    "slug": "odem-painel-ripado-acustico-carvalho-negro",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "odem-painel-ripado-acustico-carvalho-rustico",
+    "slug": "odem-painel-ripado-acustico-carvalho-rustico",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "odem-painel-ripado-acustico-carvalho",
+    "slug": "odem-painel-ripado-acustico-carvalho",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "odem-painel-ripado-acustico-odem-decowall-60x60cm",
+    "slug": "odem-painel-ripado-acustico-odem-decowall-60x60cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "odem-painel-ripado-acustico-odem-decowall-branco-60x240cm",
+    "slug": "odem-painel-ripado-acustico-odem-decowall-branco-60x240cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-grey-oak-black-felt-300-x-60-cm",
+    "slug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-grey-oak-black-felt-300-x-60-cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "woodupp-akupanel-acoustic-panel-natural-wood-smoked-larch-black-felt-300-x-60-cm",
+    "slug": "woodupp-akupanel-acoustic-panel-natural-wood-smoked-larch-black-felt-300-x-60-cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-smoked-oak-black-felt-300-x-60-cm",
+    "slug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-smoked-oak-black-felt-300-x-60-cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-brown-oak-black-felt-300-x-60-cm",
+    "slug": "woodupp-akupanel-acoustic-panel-natural-wood-rustic-brown-oak-black-felt-300-x-60-cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  },
+  {
+    "productSlug": "woodupp-akupanel-acoustic-panel-natural-wood-black-ash-black-felt-300-x-60-cm",
+    "slug": "woodupp-akupanel-acoustic-panel-natural-wood-black-ash-black-felt-300-x-60-cm",
+    "enabled": true,
+    "discountPct": 75,
+    "fixedPriceCents": null,
+    "startsAt": "2026-09-12T14:35:50.301540+00:00",
+    "endsAt": "2026-09-15T14:35:50.301540+00:00",
+    "version": 1
+  }
+]

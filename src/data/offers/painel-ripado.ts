@@ -1,0 +1,168 @@
+import type { OfferConfig } from '@/lib/offers/types';
+
+export const painelRipadoOffer: OfferConfig = {
+  slug: 'painel-ripado',
+  productSlug: 'warm-oak-slatted-wall-panel',
+  markets: ['PT', 'ES', 'FR', 'DE', 'IT', 'NL', 'BE', 'AT', 'IE', 'FI', 'HR', 'SI', 'SK', 'EE', 'LV', 'LT', 'LU', 'CY', 'MT', 'GR', 'PL', 'CZ', 'HU', 'RO', 'BG', 'DK', 'SE'],
+  announcement: 'Transforme uma parede sem transformar a casa numa obra.',
+  eyebrow: 'E-com.casa · Wall Makeover',
+  headline: 'Uma parede com ritmo, textura e muito mais presença.',
+  subheadline:
+    'Painéis ripados de acabamento quente para criar uma parede de destaque com instalação simples e um resultado visual arquitetónico.',
+  valueProposition: {
+    title: 'Do “falta qualquer coisa” ao espaço que parece finalmente terminado.',
+    body:
+      'O efeito ripado acrescenta profundidade sem pesar a divisão. Funciona atrás do sofá, da cama, da televisão ou da secretária — e combina especialmente bem com madeira, pedra, tecidos naturais e luz quente.',
+  },
+  transformation: {
+    title: 'Textura que muda a leitura da divisão.',
+    body:
+      'As linhas verticais alongam visualmente a parede, criam sombra e dão um enquadramento mais intencional ao mobiliário. O resultado é mais editorial, sem exigir uma remodelação completa.',
+    image: '/images/gallery-wood-slat-panel-lifestyle.jpg',
+  },
+  media: [
+    {
+      type: 'video',
+      src: 'https://videos.pexels.com/video-files/5217314/5217314-hd_1080_1920_30fps.mp4',
+      poster: '/images/gallery-wood-slat-panel-detail.jpg',
+      label: 'Textura em movimento',
+      attribution: 'Pexels · Pavel Danilyuk · free-to-use editorial stock footage',
+      disclaimer: 'Referência editorial de textura; não representa necessariamente o SKU exato.',
+    },
+    {
+      type: 'video',
+      src: 'https://videos.pexels.com/video-files/5644324/5644324-hd_1080_1920_25fps.mp4',
+      poster: '/images/gallery-wood-slat-panel-lifestyle.jpg',
+      label: 'Ambiente e decoração',
+      attribution: 'Pexels · Polina · free-to-use editorial stock footage',
+      disclaimer: 'Referência editorial de ambiente; não representa necessariamente o SKU exato.',
+    },
+  ],
+  translations: {
+    en: {
+      announcement: 'Transform one wall without turning the whole home into a renovation site.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Give one wall rhythm, texture and a stronger sense of place.',
+      subheadline: 'Warm slatted wall panels designed to create an architectural focal point with a straightforward installation process.',
+      valueProposition: {
+        title: 'From “something is missing” to a room that finally feels finished.',
+        body: 'Vertical rhythm adds depth without making the room feel heavy. It works behind a sofa, bed, TV or desk and pairs naturally with wood, stone, textiles and warm light.',
+      },
+      transformation: {
+        title: 'Texture changes how the whole room reads.',
+        body: 'Vertical lines visually stretch the wall, cast subtle shadows and give furniture a more intentional frame — a more editorial result without a full renovation.',
+      },
+      finalCta: {
+        title: 'Give structure to the wall that currently disappears into the background.',
+        body: 'Choose your finish, confirm the measurements and use the same E-com.casa cart and secure checkout once the catalogue product is commercially approved.',
+        button: 'Check availability',
+      },
+      seo: {
+        title: 'Slatted Wall Panels — Interior Transformation',
+        description: 'Explore the E-com.casa slatted-wall concept with catalogue-linked specifications, installation guidance, videos and secure checkout integration.',
+      },
+    },
+    es: {
+      announcement: 'Transforma una pared sin convertir toda la casa en una obra.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Una pared con ritmo, textura y mucha más presencia.',
+      subheadline: 'Paneles de acabado cálido para crear una pared protagonista con una instalación sencilla y un resultado arquitectónico.',
+      valueProposition: {
+        title: 'De “falta algo” a un espacio que por fin se siente terminado.',
+        body: 'El efecto de lamas aporta profundidad sin cargar la estancia. Funciona detrás del sofá, la cama, la televisión o el escritorio y combina con madera, piedra, textiles y luz cálida.',
+      },
+      transformation: {
+        title: 'La textura cambia la lectura de toda la estancia.',
+        body: 'Las líneas verticales alargan visualmente la pared, crean sombra y dan un marco más intencional al mobiliario sin exigir una reforma completa.',
+      },
+      finalCta: { title: 'Da estructura a esa pared que hoy pasa desapercibida.', body: 'Elige el acabado, confirma las medidas y utiliza el carrito y checkout seguro de E-com.casa cuando el producto esté aprobado para venta.', button: 'Ver disponibilidad' },
+      seo: { title: 'Panel de Lamas para Pared — Transformación Interior', description: 'Descubre la propuesta E-com.casa para una pared de lamas con especificaciones, instalación, vídeos e integración con el catálogo.' },
+    },
+    fr: {
+      announcement: 'Transformez un mur sans transformer toute la maison en chantier.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Un mur avec du rythme, de la texture et beaucoup plus de présence.',
+      subheadline: 'Des panneaux à lattes aux tons chaleureux pour créer un mur fort avec une installation accessible et un rendu architectural.',
+      valueProposition: { title: 'Du “il manque quelque chose” à une pièce qui paraît enfin aboutie.', body: 'Le rythme vertical apporte de la profondeur sans alourdir la pièce. Il fonctionne derrière un canapé, un lit, une télévision ou un bureau et s’associe naturellement au bois, à la pierre, aux textiles et à la lumière chaude.' },
+      transformation: { title: 'La texture change la lecture de toute la pièce.', body: 'Les lignes verticales étirent visuellement le mur, créent des ombres et encadrent le mobilier de manière plus intentionnelle sans rénovation complète.' },
+      finalCta: { title: 'Donnez de la structure au mur qui passe aujourd’hui inaperçu.', body: 'Choisissez la finition, confirmez les mesures et utilisez le panier et le paiement sécurisé E-com.casa lorsque le produit est validé à la vente.', button: 'Voir la disponibilité' },
+      seo: { title: 'Panneaux Muraux à Lattes — Transformation Intérieure', description: 'Découvrez l’offre E-com.casa pour un mur à lattes avec spécifications, installation, vidéos et catalogue intégré.' },
+    },
+    de: {
+      announcement: 'Verwandeln Sie eine Wand, ohne das ganze Zuhause zur Baustelle zu machen.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Mehr Rhythmus, Struktur und Präsenz für eine einzige Wand.',
+      subheadline: 'Warme Lamellenpaneele für eine architektonische Akzentwand mit unkomplizierter Montage.',
+      valueProposition: { title: 'Von „da fehlt noch etwas“ zu einem Raum, der endlich fertig wirkt.', body: 'Der vertikale Rhythmus schafft Tiefe, ohne den Raum zu beschweren. Ideal hinter Sofa, Bett, TV oder Schreibtisch und harmonisch mit Holz, Stein, Textilien und warmem Licht.' },
+      transformation: { title: 'Struktur verändert die Wirkung des gesamten Raums.', body: 'Vertikale Linien strecken die Wand optisch, erzeugen Schatten und rahmen Möbel bewusster ein — ohne komplette Renovierung.' },
+      finalCta: { title: 'Geben Sie der bisher unauffälligen Wand Struktur.', body: 'Finish auswählen, Maße prüfen und nach kommerzieller Freigabe denselben E-com.casa Warenkorb und sicheren Checkout verwenden.', button: 'Verfügbarkeit prüfen' },
+      seo: { title: 'Lamellen-Wandpaneele — Interior Transformation', description: 'E-com.casa Lamellenwand-Konzept mit Katalogdaten, Montagehinweisen, Videos und sicherem Checkout.' },
+    },
+    it: {
+      announcement: 'Trasforma una parete senza trasformare tutta la casa in un cantiere.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Una parete con ritmo, texture e molta più presenza.',
+      subheadline: 'Pannelli a listelli dal tono caldo per creare una parete d’accento con installazione semplice e risultato architettonico.',
+      valueProposition: { title: 'Da “manca qualcosa” a uno spazio che finalmente sembra completo.', body: 'Il ritmo verticale aggiunge profondità senza appesantire l’ambiente. Funziona dietro divano, letto, TV o scrivania e si abbina naturalmente a legno, pietra, tessuti e luce calda.' },
+      transformation: { title: 'La texture cambia la percezione dell’intero ambiente.', body: 'Le linee verticali slanciano visivamente la parete, creano ombre e incorniciano gli arredi in modo più intenzionale senza una ristrutturazione completa.' },
+      finalCta: { title: 'Dai struttura alla parete che oggi passa inosservata.', body: 'Scegli la finitura, conferma le misure e usa il carrello e checkout sicuro E-com.casa quando il prodotto sarà approvato per la vendita.', button: 'Verifica disponibilità' },
+      seo: { title: 'Pannelli a Listelli per Parete — Trasformazione Interni', description: 'Scopri la proposta E-com.casa con specifiche, installazione, video e integrazione al catalogo.' },
+    },
+    nl: {
+      announcement: 'Transformeer één wand zonder van het hele huis een verbouwing te maken.',
+      eyebrow: 'E-com.casa · Wall Makeover',
+      headline: 'Geef één wand ritme, textuur en veel meer aanwezigheid.',
+      subheadline: 'Warme lattenpanelen voor een architectonische accentwand met een toegankelijke installatie.',
+      valueProposition: { title: 'Van “er ontbreekt iets” naar een ruimte die eindelijk af voelt.', body: 'Het verticale ritme voegt diepte toe zonder de kamer zwaar te maken. Het werkt achter bank, bed, tv of bureau en combineert natuurlijk met hout, steen, textiel en warm licht.' },
+      transformation: { title: 'Textuur verandert hoe de hele ruimte aanvoelt.', body: 'Verticale lijnen verlengen de wand visueel, creëren schaduw en geven meubels een bewust kader zonder een volledige renovatie.' },
+      finalCta: { title: 'Geef structuur aan de wand die nu nog wegvalt.', body: 'Kies de afwerking, controleer de maten en gebruik dezelfde E-com.casa winkelwagen en veilige checkout zodra het product commercieel is goedgekeurd.', button: 'Beschikbaarheid bekijken' },
+      seo: { title: 'Lattenwand Panelen — Interieurtransformatie', description: 'Ontdek het E-com.casa lattenwand-concept met catalogusspecificaties, installatie, video en veilige checkout.' },
+    },
+  },
+  benefits: [
+    { title: 'Impacto imediato', body: 'Uma única parede de destaque pode redefinir a sala, quarto ou escritório sem substituir o restante mobiliário.' },
+    { title: 'Visual quente e contemporâneo', body: 'A repetição das ripas introduz detalhe e profundidade mantendo uma linguagem calma, natural e fácil de combinar.' },
+    { title: 'Instalação acessível', body: 'Os painéis foram pensados para alinhar lado a lado e podem ser cortados à medida por um instalador ou DIY experiente.' },
+    { title: 'Conforto acústico', body: 'A base em feltro ajuda a suavizar reflexões sonoras em espaços com muitas superfícies duras.' },
+  ],
+  why: {
+    title: 'Porque este tipo de parede funciona tão bem',
+    body: 'Não depende de uma tendência isolada. É uma combinação de proporção, material e sombra: três elementos que continuam a funcionar mesmo quando muda o sofá, a iluminação ou a decoração.',
+    points: ['Cria um ponto focal sem ocupar área útil.', 'Ajuda a integrar TV, cabeceira, secretária ou aparador.', 'Pode ser aplicado numa parede completa ou apenas numa faixa.', 'Permite repetir a mesma linguagem em diferentes divisões.'],
+  },
+  installation: [
+    { title: 'Medir e planear', body: 'Confirme largura, altura, tomadas e remates antes do primeiro corte. Faça uma composição a seco sempre que possível.' },
+    { title: 'Cortar à medida', body: 'Ajuste os painéis à altura e aos obstáculos usando ferramenta adequada ao suporte e ao acabamento.' },
+    { title: 'Fixar e alinhar', body: 'Instale a partir de uma referência perfeitamente vertical e mantenha o espaçamento entre painéis consistente.' },
+    { title: 'Rematar', body: 'Finalize cantos, rodapés, tomadas e transições para que o conjunto pareça parte integrante da arquitetura.' },
+  ],
+  inspirationImages: ['/images/product-wood-slat-panel.jpg', '/images/gallery-wood-slat-panel-lifestyle.jpg', '/images/gallery-wood-slat-panel-detail.jpg'],
+  reviews: {
+    mode: 'demo',
+    rating: 4.8,
+    count: 220,
+    satisfactionCopy: 'O motor suporta rating, distribuição e reviews verificadas. Os números desta configuração são apenas uma pré-visualização de layout e não são publicados como dados estruturados.',
+    reviews: [],
+  },
+  faqs: [
+    { question: 'Como é aplicado o desconto?', answer: 'O desconto ativo é aplicado automaticamente ao produto e ao carrinho durante o prazo indicado. O preço de referência é o catálogo do fornecedor. Ao terminar a campanha, o produto regressa ao preço regular.' },
+    { question: 'Posso instalar apenas numa parte da parede?', answer: 'Sim. Uma faixa vertical atrás de uma TV, cama, aparador ou secretária pode funcionar como elemento de enquadramento sem revestir a parede inteira.' },
+    { question: 'Os painéis podem ser cortados?', answer: 'Sim, desde que utilize ferramentas adequadas aos materiais do painel e faça o corte com suporte suficiente. Meça duas vezes antes de cortar.' },
+    { question: 'É indicado para zonas molhadas?', answer: 'Não assumimos resistência à água sem documentação específica do produto. Evite contacto direto com água e confirme a ficha técnica antes de usar em cozinhas húmidas ou casas de banho.' },
+    { question: 'Como calculo a quantidade necessária?', answer: 'Use o calculador desta página como estimativa inicial e confirme as medidas, orientação dos painéis e margem para cortes antes de encomendar.' },
+    { question: 'Que medidas estão disponíveis?', answer: 'As medidas vendáveis são sempre as variantes publicadas no catálogo. A Offer não cria tamanhos ou preços paralelos.' },
+    { question: 'O painel melhora a acústica?', answer: 'Pode ajudar a suavizar reflexões sonoras, mas qualquer classificação acústica específica só será apresentada quando existir documentação técnica verificável do fornecedor.' },
+    { question: 'Quanto tempo demora a entrega?', answer: 'O prazo final depende do país, stock e método de envio. A estimativa aplicável é apresentada no checkout para o destino selecionado.' },
+    { question: 'E se o produto chegar danificado?', answer: 'Contacte o suporte E-com.casa com fotografias da embalagem e do dano. A ocorrência será tratada segundo a política de entrega, garantia e direitos do consumidor aplicável ao seu país.' },
+    { question: 'Posso devolver se mudar de opinião?', answer: 'Nos mercados da UE existe, em regra, direito de livre resolução de 14 dias para compras à distância, sujeito às exceções legais e às condições publicadas na política de devoluções.' },
+  ],
+  finalCta: {
+    title: 'Dê estrutura à parede que hoje passa despercebida.',
+    body: 'Escolha o acabamento, confirme as medidas e use o mesmo carrinho e checkout seguro da E-com.casa para concluir a encomenda.',
+    button: 'Ver disponibilidade',
+  },
+  seo: {
+    title: 'Painel Ripado para Parede — Transformação Interior',
+    description: 'Descubra a proposta E-com.casa para uma parede ripada de visual quente e contemporâneo, com especificações, instalação, vídeo e integração com o catálogo real.',
+  },
+};
