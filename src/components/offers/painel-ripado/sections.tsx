@@ -25,23 +25,6 @@ export function PanelCampaignStory({ product }: { product: CatalogProduct }) {
   };
 
   return <>
-    <section id="preco-fabrica" className="bg-[#201a17] px-4 py-14 text-[#f7f3ef] sm:px-6 sm:py-20">
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="max-w-2xl">
-          <p className="mb-5 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#c79a68]"><Factory className="h-4 w-4" />{product.manufacturer} · fabrico direto</p>
-          <h2 className="font-display text-4xl font-normal leading-[1.08] sm:text-6xl">Do fabricante.<span className="block text-[#d4aa7b]">Para a sua casa.</span></h2>
-          <p className="mt-5 text-[15px] leading-7 text-[#cbbbaf]"><strong className="text-white">Um produto real, ligado ao catálogo do fabricante.</strong> Cor, medida, inspiração, carrinho e checkout reunidos num único percurso de compra.</p>
-          <div className="relative mt-5 aspect-video max-w-[520px] overflow-hidden rounded-[22px] bg-[#15110f]">
-            <video ref={video} src={`${PANEL_ASSET_ROOT}/videos/nuralta-hist.mp4`} poster={`${PANEL_ASSET_ROOT}/videos/nuralta-hist-poster.webp`} loop playsInline preload="metadata" className="h-full w-full object-cover" onClick={toggle} />
-            <button type="button" onClick={toggle} aria-label={playing ? 'Pausar vídeo' : 'Reproduzir vídeo'} className="absolute left-1/2 top-1/2 grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/40 bg-[#201a17]/70 text-white"><Play className="h-5 w-5" fill="currentColor" /></button>
-          </div>
-          <p className="mt-2 max-w-[520px] text-[10px] leading-4 text-[#9f8f82]">Vídeo histórico do conceito Nuralta usado como referência visual do funil. O produto comercializado nesta página é o produto {product.name}, fabricado por {product.manufacturer}.</p>
-          <p className="mt-5 text-[15px] leading-7 text-[#f7f3ef]">O preço e as opções apresentados correspondem ao catálogo {product.brand ?? product.manufacturer}. Quando existir uma promoção, o prazo e as condições são indicados junto ao preço.</p>
-        </div>
-        <a href="#configurar-painel" className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#c79a68] px-5 text-sm font-bold text-[#201a17]">Escolher cor e tamanho<ArrowRight className="h-4 w-4" /></a>
-      </div>
-    </section>
-
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
         <div><p className="mb-3 text-[11px] uppercase tracking-[.18em] text-[#8a5a2b]">Textura, ritmo, calor</p><h2 className="font-display text-4xl leading-tight">Um detalhe que muda a forma de sentir o espaço.</h2><p className="mt-5 leading-relaxed text-[#5c5049]">{product.description}</p><ul className="mt-6 space-y-2 text-sm text-[#3d342e]"><li>Transforma o ambiente rapidamente</li><li>Ritmo visual moderno e acolhedor</li><li>Instalação simples e acabamento elegante</li><li>Manutenção fácil no dia a dia</li></ul></div>
