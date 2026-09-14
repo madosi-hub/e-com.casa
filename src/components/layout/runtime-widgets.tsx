@@ -9,12 +9,13 @@ import { LanguageBoot } from '@/hooks/use-t';
 
 export function RuntimeWidgets() {
   const pathname = usePathname();
+  const chatEnabled = process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false';
   if (pathname.startsWith('/admin')) return null;
 
   return (
     <>
       <CookieConsent />
-      <ChatWidget />
+      {chatEnabled && <ChatWidget />}
       <CartDrawer />
       <CartPriceSync />
       <LanguageBoot />
