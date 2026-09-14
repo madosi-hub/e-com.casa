@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         hostname: "www.nuraltainteriores.online",
         pathname: "/pt/**",
       },
+      {
+        protocol: "https",
+        hostname: "raw.githubusercontent.com",
+        pathname: "/nexflowx-hub/nuraltainteriores/main/public/pt/**",
+      },
     ],
   },
   async rewrites() {

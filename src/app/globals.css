@@ -246,11 +246,11 @@
   .belmonte-product-section {
     gap: 1.25rem;
     padding-top: 0;
-    padding-bottom: 1.75rem;
+    padding-bottom: 0;
   }
   .belmonte-product-info,
   .belmonte-configurator {
-    gap: 1rem;
+    gap: 0.9rem;
   }
   .belmonte-product-image {
     aspect-ratio: 4 / 3;
@@ -259,9 +259,6 @@
     border-left: 0;
     border-right: 0;
     border-radius: 0;
-  }
-  .belmonte-product-thumbnails {
-    display: none;
   }
   .belmonte-color-option .belmonte-color-selector {
     padding: 0.35rem 0.5rem;
@@ -281,7 +278,7 @@
   }
   .belmonte-option-card {
     min-height: 0;
-    padding: 0.65rem;
+    padding: 0.7rem;
   }
   .belmonte-mobile-buy-bar {
     display: flex;
@@ -355,154 +352,6 @@
   .belmonte-details-layout {
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
     gap: 72px;
-  }
-}
-
-/* Factory price section */
-.factory-price {
-  padding: 56px 16px;
-  background: #201a17;
-  color: #f7f3ef;
-  scroll-margin-top: 72px;
-}
-.factory-price__layout {
-  display: grid;
-  grid-template-areas: "content" "link";
-  align-items: center;
-  gap: 28px;
-  max-width: 1152px;
-  margin: 0 auto;
-}
-.factory-price__content {
-  grid-area: content;
-  min-width: 0;
-}
-.factory-price__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-bottom: 20px;
-  color: #c79a68;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.factory-price__content h2 {
-  font-size: clamp(38px, 4.5vw, 56px);
-  line-height: 1.08;
-  font-weight: 400;
-  letter-spacing: -0.025em;
-}
-.factory-price__content h2 span {
-  display: block;
-  color: #d4aa7b;
-}
-.factory-price__description {
-  margin-top: 22px;
-  color: #cbbbaf;
-  font-size: 15px;
-  line-height: 1.8;
-}
-.factory-price__description + .factory-price__description {
-  margin-top: 14px;
-}
-.factory-price__description strong {
-  color: #f7f3ef;
-  font-weight: 600;
-}
-.factory-price__benefit {
-  color: #f7f3ef;
-}
-.factory-price__video-wrap {
-  position: relative;
-  width: 100%;
-  max-width: 520px;
-  margin: 20px 0 0;
-  overflow: hidden;
-  border-radius: 22px;
-  background: #15110f;
-  aspect-ratio: 16 / 9;
-  touch-action: manipulation;
-}
-.factory-price__video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  touch-action: manipulation;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-}
-.factory-price__video-control {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 50%;
-  background: rgba(32, 26, 23, 0.72);
-  color: #fff;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  touch-action: manipulation;
-  transition: background 0.2s ease;
-}
-.factory-price__video-control.is-playing {
-  top: auto;
-  right: 14px;
-  bottom: 14px;
-  left: auto;
-  transform: none;
-}
-.factory-price__video-control:focus-visible {
-  outline: 3px solid #f7f3ef;
-  outline-offset: 3px;
-}
-.factory-price__link {
-  grid-area: link;
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 14px 20px;
-  border-radius: 999px;
-  background: #c79a68;
-  color: #201a17;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background 0.2s ease;
-}
-.factory-price__link svg {
-  flex-shrink: 0;
-}
-.factory-price__link:hover {
-  background: #dfb98e;
-}
-.factory-price__link:focus-visible {
-  outline: 3px solid #f7f3ef;
-  outline-offset: 4px;
-}
-@media (min-width: 640px) {
-  .factory-price {
-    padding: 72px 24px;
-  }
-  .factory-price__layout {
-    max-width: 760px;
-    gap: 24px;
-  }
-  .factory-price__link {
-    align-self: start;
   }
 }
 

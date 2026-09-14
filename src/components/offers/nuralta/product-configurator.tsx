@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { type TouchEvent, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  Play,
   Ruler,
   Minus,
   Plus,
@@ -28,9 +27,28 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
   const [size, setSize] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
   const [selectionError, setSelectionError] = useState("");
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const go = (dir: number) => {
     setActiveIndex((i) => (i + dir + GALLERY.length) % GALLERY.length);
+  };
+
+  const handleGalleryTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleGalleryTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 45 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+
+    go(deltaX < 0 ? 1 : -1);
   };
 
   const active = GALLERY[activeIndex];
@@ -70,18 +88,19 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
   return (
     <section
       id="product"
-      className="belmonte-product-section mx-auto max-w-6xl px-4 py-7 sm:px-6 lg:py-11"
+      className="belmonte-product-section mx-auto max-w-6xl px-4 sm:px-6"
     >
       <div className="grid gap-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
         {/* Gallery */}
         <div id="product-gallery" className="lg:sticky lg:top-24 lg:self-start">
-          <div className="belmonte-product-image relative aspect-[4/5] overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] sm:aspect-square">
+          <div className="belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
             {active.type === "video" ? (
               <video
                 src={active.src}
                 poster={active.poster}
                 aria-label={active.alt}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-top"
+                style={{ objectPosition: "50% 0%", transform: "translateY(-8%) scale(1.08)", transformOrigin: "top center" }}
                 controls
                 playsInline
                 preload="metadata"
@@ -91,7 +110,8 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
               <img
                 src={active.src}
                 alt={active.alt}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-top"
+                style={{ objectPosition: "50% 0%", transform: "translateY(-8%) scale(1.08)", transformOrigin: "top center" }}
               />
             )}
 
@@ -129,36 +149,13 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
             </button>
           </div>
 
-          <div className="belmonte-product-thumbnails no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-1">
-            {GALLERY.map((item, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={item.ariaLabel}
-                onClick={() => setActiveIndex(i)}
-                className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md border-2 transition ${
-                  i === activeIndex
-                    ? "border-[#8a5a2b] opacity-100"
-                    : "border-transparent opacity-60 hover:opacity-100"
-                }`}
-              >
-                { }
-                <img src={item.poster ?? item.src} alt={item.alt} className="h-full w-full object-cover" />
-                {item.type === "video" && (
-                  <span className="absolute inset-0 grid place-items-center bg-black/20">
-                    <Play className="h-4 w-4 text-white" />
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Info */}
-        <div className="belmonte-product-info flex flex-col gap-6">
+        <div className="belmonte-product-info flex min-w-0 flex-col gap-6 pt-3 sm:pt-0">
           <div id="product-intro">
             <h1 className="belmonte-serif text-3xl leading-none sm:text-5xl">
-              Painel Ripado Decorativo
+              Painel Ripado Acústico
             </h1>
             <p className="mt-3 text-base leading-relaxed text-[#5c5049]">
               Design que transforma. Instalação que simplifica.
@@ -166,11 +163,11 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
           </div>
 
           <div id="product-rating" className="flex items-center gap-2">
-            <StarRow fill="#b8860b" size={14} value={4.7} />
-            <strong className="text-sm">4,7</strong>
+            <StarRow fill="#b8860b" size={16} value={4.7} />
+            <strong className="text-base">4,7</strong>
             <a
               href="#avaliacoes"
-              className="text-sm text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4"
+              className="text-base text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4"
             >
               220 avaliações
             </a>
@@ -185,19 +182,9 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
                 </strong>
                 <span className="text-sm text-[#7d6f64]">por painel</span>
               </div>
-              <strong className="mt-1 block text-sm text-[#8a5a2b]">
-                Preço direto da fábrica
-              </strong>
               <p className="mt-1 text-xs text-[#7d6f64]">
                 Painel de 240 × 60 cm. O preço varia consoante o tamanho.
               </p>
-              <a
-                href="#preco-fabrica"
-                className="mt-2 inline-block text-xs text-[#5c5049] underline"
-                style={{ padding: "8px 0", textUnderlineOffset: 4 }}
-              >
-                Como conseguimos este preço?
-              </a>
             </div>
 
             {/* Color */}
@@ -239,26 +226,28 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
             </div>
 
             {/* Size */}
-            <div id="product-tamanho">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">
-                    01
-                  </span>
-                  <strong className="text-sm">Tamanho:</strong>
-                  <span className="text-sm text-[#7d6f64]">
+            <div id="product-tamanho" className="min-w-0">
+              <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+                    <span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">
+                      01
+                    </span>
+                    <strong className="text-sm">Tamanho:</strong>
+                  </div>
+                  <span className="mt-1 block text-sm text-[#7d6f64]">
                     {size !== null ? SIZES[size].label : "Escolha uma opção"}
                   </span>
                 </div>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#8a5a2b] transition hover:text-[#201a17]"
+                  className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"
                 >
-                  <Ruler className="h-4 w-4" />
-                  Quantos painéis preciso?
+                  <Ruler className="h-4 w-4 shrink-0" />
+                  <span>Quantos painéis preciso?</span>
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                 {SIZES.map((s, i) => {
                   const selected = i === size;
                   if (s.disabled) {
@@ -266,7 +255,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
                       <div
                         key={s.id}
                         aria-disabled="true"
-                        className="belmonte-option-card flex min-h-20 flex-col justify-center rounded-lg border p-3"
+                        className="belmonte-option-card flex min-h-20 min-w-0 flex-col justify-center rounded-lg border p-3"
                         style={{
                           background: "rgb(239,237,235)",
                           border: "1px solid rgb(222,217,212)",
@@ -284,7 +273,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
                       key={s.id}
                       type="button"
                       onClick={() => { setSize(i); setSelectionError(""); }}
-                      className={`belmonte-option-card flex min-h-20 flex-col justify-center rounded-lg border p-3 text-left transition ${
+                      className={`belmonte-option-card flex min-h-20 min-w-0 flex-col justify-center rounded-lg border p-3 text-left transition ${
                         selected
                           ? "border-[#8a5a2b] bg-[#fdfbf9]"
                           : "border-[#e0d6cb] bg-[#fdfbf9] hover:border-[#8a5a2b]"
@@ -332,6 +321,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
             {/* Purchase */}
             <div id="product-purchase" className="space-y-3">
               <button
+                id="primary-buy-button"
                 type="button"
                 onClick={() => addConfiguredProduct(true)}
                 className="w-full rounded-full bg-[#201a17] py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b]"

@@ -1,6 +1,6 @@
 export function MobileBuyBar() {
   const priceLabel = "Desde 5,00\u00a0€";
-  const name = "Painel Ripado Decorativo";
+  const name = "Painel Ripado Acústico";
   return (
     <div className="belmonte-mobile-buy-bar fixed inset-x-0 bottom-0 z-30 items-center justify-between gap-3 bg-[#f7f3ef] px-4 pt-3">
       <div className="min-w-0">
