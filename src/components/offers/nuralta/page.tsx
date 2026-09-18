@@ -17,6 +17,18 @@ import { Footer } from "./footer";
 import { MobileBuyBar } from "./mobile-buy-bar";
 import { NuraltaCartProvider } from "./cart-overlay";
 
+function FactoryPrice() {
+  return (
+    <section id="preco-fabrica" className="bg-[#201a17] px-4 py-12 text-[#f7f3ef] sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#c79a68]">Preço de fábrica</p>
+        <h2 className="mt-3 font-display text-4xl font-normal leading-tight">Do fabricante.<br />Para a sua casa.</h2>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-[#cbbbaf]">Produto Nuralta com configuração, carrinho e checkout centralizados pela E-com.casa.</p>
+      </div>
+    </section>
+  );
+}
+
 export function NuraltaPainelRipadoOfferPage({
   offer,
   product,
@@ -68,6 +80,7 @@ export function NuraltaPainelRipadoOfferPage({
         <TopTicker />
         <Header />
         <ProductConfigurator product={product} offer={offer} />
+        <FactoryPrice />
         <Transformation />
         <ProductDetails />
         <Inspiration />

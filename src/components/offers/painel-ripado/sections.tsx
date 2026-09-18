@@ -20,7 +20,7 @@ export function PanelCampaignStory({ product }: { product: CatalogProduct }) {
   return <>
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-        <div><p className="mb-3 text-[11px] uppercase tracking-[.18em] text-[#8a5a2b]">Textura, ritmo, calor</p><h2 className="font-display text-4xl leading-tight">Um detalhe que muda a forma de sentir o espaço.</h2><p className="mt-5 leading-relaxed text-[#5c5049]">Crie uma parede com presença, textura e calor natural. O Painel Ripado Acústico foi pensado para renovar salas, quartos, escritórios e espaços comerciais.</p><ul className="mt-6 space-y-2 text-sm text-[#3d342e]"><li>Transforma o ambiente rapidamente</li><li>Ritmo visual moderno e acolhedor</li><li>Instalação simples e acabamento elegante</li><li>Manutenção fácil no dia a dia</li></ul></div>
+        <div><p className="mb-3 text-[11px] uppercase tracking-[.18em] text-[#8a5a2b]">Textura, ritmo, calor</p><h2 className="font-display text-4xl leading-tight">Do fabricante.<br />Um detalhe que muda a forma de sentir o espaço.</h2><p className="mt-5 leading-relaxed text-[#5c5049]">Crie uma parede com presença, textura e calor natural. O Painel Ripado Acústico foi pensado para renovar salas, quartos, escritórios e espaços comerciais.</p><ul className="mt-6 space-y-2 text-sm text-[#3d342e]"><li>Transforma o ambiente rapidamente</li><li>Ritmo visual moderno e acolhedor</li><li>Instalação simples e acabamento elegante</li><li>Manutenção fácil no dia a dia</li></ul></div>
         <div className="relative aspect-[4/5] overflow-hidden rounded-lg"><img src={storyImage} alt={`${product.name} - ambiente e acabamento`} className="h-full w-full object-cover object-top" /></div>
       </div>
     </section>
@@ -115,7 +115,7 @@ export function PanelReviews() {
     <section id="avaliacoes" className="border-y border-[#e6ded4] bg-[#fdfbf9] py-10" style={{ scrollMarginTop: 72 }}>
       <div className="mx-auto max-w-4xl px-4 sm:px-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-base font-bold sm:text-lg">Galeria de avaliações</h2>
+          <h2 className="text-base font-bold sm:text-lg">Galeria visual do produto</h2>
           <a href="#lista-avaliacoes" className="inline-flex shrink-0 items-center text-xs text-[#83766d] transition hover:text-[#201a17]">Ver todas ({PANEL_REVIEW_GALLERY.length}) <ChevronRight className="h-3 w-3" /></a>
         </div>
 
