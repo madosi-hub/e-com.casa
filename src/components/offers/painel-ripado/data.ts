@@ -64,14 +64,15 @@ export const PANEL_PRODUCT_MEDIA: PanelProductMedia[] = [
 const PANEL_IMAGE_FILES = ['img2.webp', 'img5.webp', 'img6.webp', 'img7.webp', 'img8.webp'];
 
 export function panelProductMediaForColor(colorIndex: number | null): PanelProductMedia[] {
-  const folder = colorIndex === null ? null : PANEL_COLORS[colorIndex]?.galleryFolder;
+  const color = colorIndex === null ? null : PANEL_COLORS[colorIndex];
+  const folder = color?.galleryFolder;
   if (!folder) return PANEL_PRODUCT_MEDIA;
 
   const images = PANEL_IMAGE_FILES.map((file) => localPanelGalleryImage(folder, file));
   return [
-    { type: 'image', src: images[0], alt: `Painel ${PANEL_COLORS[colorIndex].name}` },
+    { type: 'image', src: images[0], alt: `Painel ${color.name}` },
     PANEL_PRODUCT_MEDIA[1],
-    ...images.slice(1).map((src) => ({ type: 'image' as const, src, alt: `Painel ${PANEL_COLORS[colorIndex].name}` })),
+    ...images.slice(1).map((src) => ({ type: 'image' as const, src, alt: `Painel ${color.name}` })),
   ];
 }
 
