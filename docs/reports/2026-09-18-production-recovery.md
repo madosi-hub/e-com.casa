@@ -41,3 +41,9 @@ The catalogue service selected PostgreSQL after a successful health check and th
 ## Operational result
 
 The storefront now has a controlled degradation path: a temporary database interruption can remove database-only administrative updates until the next health retry, but it no longer removes the complete public catalogue. No payment, checkout, promotion, product-pricing or inventory rules were relaxed by this release.
+
+## Follow-up: offer resolver resilience
+
+Post-deployment probes identified a second database boundary in the offer resolver. Product and category reads already recovered correctly, but the direct `ProductOffer` query could still interrupt server rendering before the Nuralta product reached the funnel.
+
+The campaign reader now fails closed without propagating the database exception. The dedicated Nuralta route remains available at its regular catalogue price when campaign state is temporarily unavailable, while an explicit inactive admin record still disables the funnel. Other campaign routes remain unavailable unless an active database record is present, preventing accidental discount activation.

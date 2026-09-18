@@ -4,7 +4,7 @@ import { getProduct } from '@/lib/catalog';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { getProductOffers } from './store';
-import { isOfferActive } from './promotion';
+import { isOfferRouteEnabled } from './route-policy';
 import type { OfferConfig, OfferReviewItem } from './types';
 
 export interface ResolvedOffer {
@@ -93,11 +93,11 @@ export const resolveOffer = cache(async (requestedSlug: string): Promise<Resolve
     (requestedSlug === 'painel-ripado' && candidate.productSlug === 'odem-painel-ripado-acustico-carvalho')
   );
 
-  if (!isOfferActive(offer)) return null;
+  if (!isOfferRouteEnabled(requestedSlug, offer)) return null;
 
   const productSlug = requestedSlug === 'painel-ripado'
     ? 'nuralta-painel-ripado-decorativo'
-    : offer.productSlug;
+    : offer?.productSlug ?? 'nuralta-painel-ripado-decorativo';
   const product = await getProduct(productSlug);
   if (!product || !isCatalogProductSaleable(product)) return null;
 

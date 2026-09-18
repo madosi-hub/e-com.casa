@@ -4,11 +4,13 @@ import { validateProductOffer, type ProductOffer } from './promotion';
 function project(row: Row): ProductOffer {
   return { ...row, startsAt: row.startsAt.toISOString(), endsAt: row.endsAt.toISOString() };
 }
-/** No stale cache or file fallback: a disabled campaign must never reactivate after a DB outage. */
+/** Public campaign reads fail closed: an unavailable database never activates a discount. */
 export async function getProductOffers(): Promise<ProductOffer[]> {
   try { return (await db.productOffer.findMany()).map(project); } catch (error) {
-    if ((error as { code?: string }).code === 'P2021') return [];
-    throw error;
+    if ((error as { code?: string }).code !== 'P2021') {
+      console.warn('[offers] ProductOffer read unavailable; serving without campaign pricing.', error);
+    }
+    return [];
   }
 }
 /** Server-only admin application service. Call after authenticating the operator. */
