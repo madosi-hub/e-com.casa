@@ -47,3 +47,11 @@ The storefront now has a controlled degradation path: a temporary database inter
 Post-deployment probes identified a second database boundary in the offer resolver. Product and category reads already recovered correctly, but the direct `ProductOffer` query could still interrupt server rendering before the Nuralta product reached the funnel.
 
 The campaign reader now fails closed without propagating the database exception. The dedicated Nuralta route remains available at its regular catalogue price when campaign state is temporarily unavailable, while an explicit inactive admin record still disables the funnel. Other campaign routes remain unavailable unless an active database record is present, preventing accidental discount activation.
+
+## Follow-up: self-contained funnel media
+
+Visual verification after the resolver recovery showed that the funnel structure was rendering but its principal media area remained empty. The offer still referenced assets from the historical Nuralta deployment through a rewrite, and that upstream origin was returning `503` responses for the gallery and brand files.
+
+The missing, approved Nuralta media have now been restored from the historical project and are served locally by this storefront. Existing colour-specific galleries introduced by the MADOSI implementation were retained without replacement. The restored set covers the base product gallery, colour selectors, logos, review media, video posters and the inspiration section.
+
+A media integrity test now scans the complete Nuralta funnel source and fails whenever a static `/pt/` asset is not present under `public`. This prevents a future refactor or repository migration from silently reintroducing an externally dependent blank funnel.
