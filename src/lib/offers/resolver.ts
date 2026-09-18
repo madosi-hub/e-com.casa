@@ -35,19 +35,24 @@ async function getVerifiedReviews(productSlug: string): Promise<OfferReviewItem[
 }
 
 export function configForProduct(product: CatalogProduct, slug: string, reviews: OfferReviewItem[] = []): OfferConfig {
+  const headline = product.slug === 'odem-painel-ripado-acustico-carvalho' ? 'Painel Ripado Acústico' : product.name;
+  const subheadline = product.slug === 'odem-painel-ripado-acustico-carvalho'
+    ? 'Design que transforma. Instalação que simplifica.'
+    : product.shortDescription;
+
   return {
     slug,
     productSlug: product.slug,
     announcement: 'Portes grátis Portugal e Espanha · Europa acima de 50 €',
     eyebrow: `${product.brand ?? 'E-com.casa'} · Oferta`,
-    headline: product.name,
-    subheadline: product.shortDescription,
-    valueProposition: { title: 'Escolha o acabamento. Transforme o seu espaço.', body: product.shortDescription },
+    headline,
+    subheadline,
+    valueProposition: { title: 'Escolha o acabamento. Transforme o seu espaço.', body: subheadline },
     transformation: { title: 'Detalhes que fazem a diferença.', body: product.description, image: product.image },
     benefits: [],
-    why: { title: 'Do fabricante para o seu projeto.', body: product.shortDescription, points: [] },
+    why: { title: 'Do fabricante para o seu projeto.', body: subheadline, points: [] },
     installation: [],
-    inspirationImages: product.gallery.split(',').filter(Boolean),
+    inspirationImages: (product.gallery ?? '').split(',').filter(Boolean),
     reviews: reviews.length ? { mode: 'verified', reviews } : { mode: 'none' },
     faqs: [
       { question: 'A que opção corresponde o preço apresentado?', answer: `O valor inicial corresponde à primeira variante disponível de ${product.name}. Se outra medida ou acabamento tiver um suplemento, o preço é atualizado antes de adicionar ao carrinho.` },
@@ -72,11 +77,11 @@ function nuraltaConfig(product: CatalogProduct, slug: string): OfferConfig {
     ...base,
     announcement: 'Envio gratuito para Portugal Continental',
     eyebrow: 'Nuralta · Fabrico próprio',
-    headline: 'Painel Ripado Decorativo',
+    headline: 'Painel Ripado Acústico',
     subheadline: 'Design que transforma. Instalação que simplifica.',
     seo: {
-      title: 'Painel Ripado Decorativo Nuralta',
-      description: 'Painel Ripado Decorativo em MDF, fabricado pela Nuralta. Configuração e encomenda online através da E-com.casa.',
+      title: 'Painel Ripado Acústico Nuralta',
+      description: 'Painel Ripado Acústico em MDF, fabricado pela Nuralta. Configuração e encomenda online através da E-com.casa.',
     },
   };
 }
@@ -90,10 +95,13 @@ export const resolveOffer = cache(async (requestedSlug: string): Promise<Resolve
 
   if (!isOfferActive(offer)) return null;
 
-  const product = await getProduct(offer.productSlug);
+  const productSlug = requestedSlug === 'painel-ripado'
+    ? 'nuralta-painel-ripado-decorativo'
+    : offer.productSlug;
+  const product = await getProduct(productSlug);
   if (!product || !isCatalogProductSaleable(product)) return null;
 
-  if (offer.productSlug === 'nuralta-painel-ripado-decorativo') {
+  if (product.slug === 'nuralta-painel-ripado-decorativo') {
     return { product, offer: nuraltaConfig(product, requestedSlug) };
   }
 

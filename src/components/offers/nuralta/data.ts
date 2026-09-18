@@ -61,7 +61,6 @@ export const GALLERY: GalleryItem[] = [
     ariaLabel: "Reproduzir vídeo do produto",
   },
   { type: "image", src: "/pt/images/img3.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 3" },
-  { type: "image", src: "/pt/images/img4.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 4" },
   { type: "image", src: "/pt/images/img5.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 5" },
   { type: "image", src: "/pt/images/img6.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 6" },
   { type: "image", src: "/pt/images/img7.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 7" },
@@ -225,8 +224,6 @@ export const REVIEW_THUMBS: ReviewThumb[] = [
   { src: "/pt/images/reviews/customer-review-15.webp", alt: "Projeto de Bruno Marques, Setúbal" },
   { src: "/pt/images/reviews/customer-review-16.webp", alt: "Projeto de Leonor Oliveira, Sintra" },
   { src: "/pt/images/reviews/customer-review-17-01.webp", alt: "Projeto de Gonçalo Ramos, Lisboa" },
-  { src: "/pt/images/reviews/customer-review-17-02.webp", alt: "Projeto de Gonçalo Ramos, Lisboa" },
-  { src: "/pt/images/reviews/customer-review-17-03.webp", alt: "Projeto de Gonçalo Ramos, Lisboa" },
   { src: "/pt/images/reviews/customer-review-17-04.webp", alt: "Projeto de Gonçalo Ramos, Lisboa" },
 ];
 

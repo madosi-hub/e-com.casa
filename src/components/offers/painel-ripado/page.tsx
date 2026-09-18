@@ -14,7 +14,7 @@ import { PanelConfigurator } from './configurator';
 import { PanelCampaignStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 
 export function TopTicker() {
-  const items = ['Portes grátis PT e ES · Europa acima de 50 €', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega acompanhada', 'E-com.casa'];
+  const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 3 a 7 dias úteis', 'Nuralta Interiores'];
   const group = <div className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4">{items.map((item) => <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8"><span>{item}</span><span className="opacity-40">◆</span></span>)}</div>;
   return <div className="overflow-hidden bg-[#201a17] py-1 text-[#e9dfd5] sm:py-2"><div className="ecom-panel-ticker flex w-max text-[9px] uppercase tracking-[.12em] sm:text-[11px]">{group}{group}</div></div>;
 }
@@ -49,13 +49,34 @@ export function FloatingHeader() {
 
 export function PainelRipadoOfferPage({ offer, product: initialProduct, market }: { offer: OfferConfig; product: CatalogProduct; market: OfferMarketContext }) {
   const product = useLiveProduct(initialProduct);
+  const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
+
   useEffect(() => {
     captureOfferAttribution(offer.slug);
     trackOfferEvent('offer_view', { offerSlug: offer.slug, productSlug: product.slug, country: market.countryCode, locale: market.locale });
     trackOfferEvent('product_view', { offerSlug: offer.slug, productSlug: product.slug, country: market.countryCode });
   }, [market.countryCode, market.locale, offer.slug, product.slug]);
 
-  return <main id="top" className="min-h-screen overflow-x-hidden bg-[#f7f3ef] text-[#201a17]">
+  useEffect(() => {
+    const updateMobileBuyBar = () => {
+      const primaryButton = document.getElementById('primary-buy-button');
+      if (!primaryButton) {
+        setShowMobileBuyBar(false);
+        return;
+      }
+      setShowMobileBuyBar(primaryButton.getBoundingClientRect().bottom < 0);
+    };
+
+    updateMobileBuyBar();
+    window.addEventListener('scroll', updateMobileBuyBar, { passive: true });
+    window.addEventListener('resize', updateMobileBuyBar);
+    return () => {
+      window.removeEventListener('scroll', updateMobileBuyBar);
+      window.removeEventListener('resize', updateMobileBuyBar);
+    };
+  }, []);
+
+  return <main id="top" className="nuralta-funnel min-h-screen overflow-x-hidden bg-[#f7f3ef] text-[#201a17]">
     <style jsx global>{`
       @keyframes ecomPanelTicker { to { transform: translateX(-50%); } }
       .ecom-panel-ticker { animation: ecomPanelTicker 26s linear infinite; }
@@ -67,9 +88,9 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market }
     <PanelCampaignStory product={product} />
     <PanelProductDetails product={product} />
     <PanelInspiration product={product} />
-    <PanelReviews offer={offer} product={product} />
+    <PanelReviews />
     <PanelFaq offer={offer} />
     <PanelFooter market={market} />
-    <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-[#d8cec2] bg-[#f7f3ef]/95 px-4 py-3 shadow-[0_-8px_24px_rgba(32,26,23,.14)] backdrop-blur sm:hidden"><div><span className="block text-[10px] text-[#7d6f64]">Oferta desde</span><strong>{campaignEuro(product.priceCents)}</strong></div><a href="#configurar-painel" className="rounded-full bg-[#201a17] px-6 py-3 text-sm font-semibold text-white">Comprar agora</a></div>
+    {showMobileBuyBar && <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-[#d8cec2] bg-[#f7f3ef]/95 px-4 py-3 shadow-[0_-8px_24px_rgba(32,26,23,.14)] backdrop-blur sm:hidden"><div><span className="block text-[10px] text-[#7d6f64]">Oferta desde</span><strong>{campaignEuro(product.priceCents)}</strong></div><a href="#configurar-painel" className="rounded-full bg-[#201a17] px-6 py-3 text-sm font-semibold text-white">Comprar agora</a></div>}
   </main>;
 }
