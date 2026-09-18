@@ -87,12 +87,14 @@ export function ChatWidget() {
 
   // Restore the conversation once per tab (after mount, SSR-safe)
   useEffect(() => {
-    const stored = loadStoredChat();
-    if (stored) {
-      setMessages(stored.messages);
-      setRestoredNotice(true);
-    }
-    setHydrated(true);
+    queueMicrotask(() => {
+      const stored = loadStoredChat();
+      if (stored) {
+        setMessages(stored.messages);
+        setRestoredNotice(true);
+      }
+      setHydrated(true);
+    });
   }, []);
 
   // Persist on every change (after hydration to avoid wiping on first render)

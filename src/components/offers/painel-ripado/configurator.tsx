@@ -3,7 +3,7 @@
 import { useLiveProduct } from '@/hooks/use-live-product';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
-import { type TouchEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-store';
@@ -69,6 +69,10 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const unitCents = selectedVariant ? product.priceCents + selectedVariant.priceDeltaCents : selectedSize?.priceCents ?? PANEL_SIZES[0].priceCents;
   const displayedPrice = selectedSize ? campaignEuro(unitCents) : `Desde ${campaignEuro(PANEL_SIZES[0].priceCents)}`;
 
+  const moveGallery = useCallback((direction: number) => {
+    setActiveIndex((index) => (index + direction + gallery.length) % gallery.length);
+  }, [gallery.length]);
+
   const calculator = useMemo(() => {
     const width = Number(wallWidth.replace(',', '.'));
     const height = Number(wallHeight.replace(',', '.'));
@@ -105,7 +109,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [productLightboxOpen]);
+  }, [moveGallery, productLightboxOpen]);
 
   useEffect(() => {
     if (active.type !== 'video') return;
@@ -126,10 +130,6 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     video.addEventListener('loadeddata', playVideo, { once: true });
     return () => video.removeEventListener('loadeddata', playVideo);
   }, [active.src, active.type]);
-
-  function moveGallery(direction: number) {
-    setActiveIndex((index) => (index + direction + gallery.length) % gallery.length);
-  }
 
   function handleGalleryTouchStart(event: TouchEvent<HTMLDivElement>) {
     const touch = event.touches[0];

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Headphones, PackageCheck, Play, Plus, ShieldCheck, X } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
@@ -78,6 +78,13 @@ export function PanelReviews() {
   const currentPage = Math.min(page, pageCount);
   const visibleReviews = filteredReviews.slice((currentPage - 1) * PANEL_REVIEWS_PER_PAGE, currentPage * PANEL_REVIEWS_PER_PAGE);
 
+  const moveLightbox = useCallback((direction: number) => {
+    setLightboxIndex((index) => {
+      if (index === null) return index;
+      return (index + direction + PANEL_REVIEW_GALLERY.length) % PANEL_REVIEW_GALLERY.length;
+    });
+  }, []);
+
   useEffect(() => {
     const timer = window.setInterval(() => setReviewNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
@@ -97,19 +104,12 @@ export function PanelReviews() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [lightboxIndex]);
+  }, [lightboxIndex, moveLightbox]);
 
   const openMedia = (src: string) => {
     const index = PANEL_REVIEW_GALLERY.findIndex((item) => item.src === src);
     if (index >= 0) setLightboxIndex(index);
   };
-
-  function moveLightbox(direction: number) {
-    setLightboxIndex((index) => {
-      if (index === null) return index;
-      return (index + direction + PANEL_REVIEW_GALLERY.length) % PANEL_REVIEW_GALLERY.length;
-    });
-  }
 
   return (
     <section id="avaliacoes" className="border-y border-[#e6ded4] bg-[#fdfbf9] py-10" style={{ scrollMarginTop: 72 }}>
