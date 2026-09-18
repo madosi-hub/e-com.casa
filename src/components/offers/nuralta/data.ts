@@ -67,6 +67,9 @@ export const GALLERY: GalleryItem[] = [
   { type: "image", src: "/pt/images/img8.webp", alt: "Painel Carvalho", ariaLabel: "Ver imagem 8" },
 ];
 
+/** Keep the last campaign image selected without coupling the UI to a fixed gallery size. */
+export const INITIAL_GALLERY_INDEX = Math.max(0, GALLERY.length - 1);
+
 export type DetailGroup = {
   number: string;
   title: string;

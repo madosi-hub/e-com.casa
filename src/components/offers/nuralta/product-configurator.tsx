@@ -9,7 +9,7 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
-import { COLORS, SIZES, GALLERY, PAYMENT_METHODS } from "./data";
+import { COLORS, SIZES, GALLERY, INITIAL_GALLERY_INDEX, PAYMENT_METHODS } from "./data";
 import { StarRow } from "./stars";
 import type { CatalogProduct } from "@/lib/catalog/types";
 import type { OfferConfig } from "@/lib/offers/types";
@@ -22,7 +22,7 @@ import { useNuraltaCart } from "./cart-overlay";
 export function ProductConfigurator({ product, offer }: { product: CatalogProduct; offer: OfferConfig }) {
   const add = useCart((state) => state.add);
   const { openNuraltaCart } = useNuraltaCart();
-  const [activeIndex, setActiveIndex] = useState(7); // img8 selected by default
+  const [activeIndex, setActiveIndex] = useState(INITIAL_GALLERY_INDEX);
   const [color, setColor] = useState<number | null>(null);
   const [size, setSize] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
@@ -51,7 +51,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
     go(deltaX < 0 ? 1 : -1);
   };
 
-  const active = GALLERY[activeIndex];
+  const active = GALLERY[activeIndex] ?? GALLERY[INITIAL_GALLERY_INDEX];
 
   const addConfiguredProduct = (buyNow: boolean) => {
     if (color === null || size === null) {

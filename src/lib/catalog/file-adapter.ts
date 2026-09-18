@@ -130,6 +130,10 @@ export class FileCatalogAdapter implements CatalogAdapter {
     return 'bundled-provider-snapshot';
   }
 
+  getAllProducts(): CatalogProduct[] {
+    return sortCatalogProducts(this.getProducts(), undefined);
+  }
+
   async list(query: ProductQuery): Promise<ProductListResult> {
     const sorted = sortCatalogProducts(this.getProducts().filter((product) => matchesCatalogProduct(product, query)), query.sort);
     const page = Math.max(1, query.page ?? 1);

@@ -153,6 +153,14 @@ export class PrismaCatalogAdapter implements CatalogAdapter {
   readonly name = 'prisma';
   constructor(private readonly client: PrismaClient) {}
 
+  async listAll(): Promise<CatalogProduct[]> {
+    const rows = await this.client.product.findMany({
+      where: buildWhere({}),
+      orderBy: buildOrder(undefined),
+    });
+    return rows.map(mapProduct);
+  }
+
   async list(query: ProductQuery): Promise<ProductListResult> {
     const page = Math.max(1, query.page ?? 1);
     const perPage = Math.min(48, Math.max(1, query.perPage ?? 24));

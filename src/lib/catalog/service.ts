@@ -59,14 +59,77 @@ async function activeAdapter(): Promise<CatalogAdapter> {
 
 export async function catalogStatus(): Promise<{ adapter: string; products: number; source?: string }> {
   const adapter = await activeAdapter();
-  return {
-    adapter: adapter.name,
-    products: await adapter.count(),
-    source: adapter === fileAdapter ? fileAdapter.getSource() : 'postgresql',
-  };
+  try {
+    return {
+      adapter: adapter.name,
+      products: await adapter.count(),
+      source: adapter === fileAdapter ? fileAdapter.getSource() : 'postgresql',
+    };
+  } catch (error) {
+    if (adapter !== fileAdapter) markDatabaseUnavailable('status read', error);
+    return {
+      adapter: fileAdapter.name,
+      products: await fileAdapter.count(),
+      source: fileAdapter.getSource(),
+    };
+  }
 }
 
-let rawCache: { adapter: string; at: number; products: CatalogProduct[] } | null = null;
+type RawCatalogue = { adapter: string; at: number; products: CatalogProduct[] };
+
+let rawCache: RawCatalogue | null = null;
+let rawCachePromise: { adapter: string; promise: Promise<RawCatalogue> } | null = null;
+
+function databaseErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown catalogue database error';
+}
+
+function markDatabaseUnavailable(operation: string, error: unknown): void {
+  databaseHealthy = false;
+  productTableReady = false;
+  lastHealthCheck = Date.now();
+  if (rawCache?.adapter === prismaAdapter.name) rawCache = null;
+  console.warn(`[catalog] PostgreSQL ${operation} failed; using the provider snapshot.`, databaseErrorMessage(error));
+}
+
+function mergeProducts(fallback: CatalogProduct[], primary: CatalogProduct[]): CatalogProduct[] {
+  const bySlug = new Map(fallback.map((product) => [product.slug, product]));
+  for (const product of primary) bySlug.set(product.slug, product);
+  return [...bySlug.values()];
+}
+
+async function buildRawCatalogue(adapter: CatalogAdapter): Promise<RawCatalogue> {
+  if (adapter === fileAdapter) {
+    return { adapter: fileAdapter.name, at: Date.now(), products: fileAdapter.getAllProducts() };
+  }
+
+  try {
+    const primary = await prismaAdapter.listAll();
+    return {
+      adapter: prismaAdapter.name,
+      at: Date.now(),
+      products: mergeProducts(fileAdapter.getAllProducts(), primary),
+    };
+  } catch (error) {
+    markDatabaseUnavailable('catalogue read', error);
+    return { adapter: fileAdapter.name, at: Date.now(), products: fileAdapter.getAllProducts() };
+  }
+}
+
+async function getRawCatalogue(adapter: CatalogAdapter): Promise<RawCatalogue> {
+  if (rawCache && rawCache.adapter === adapter.name && Date.now() - rawCache.at <= 30_000) return rawCache;
+  if (rawCachePromise?.adapter === adapter.name) return rawCachePromise.promise;
+
+  const promise = buildRawCatalogue(adapter);
+  rawCachePromise = { adapter: adapter.name, promise };
+
+  try {
+    rawCache = await promise;
+    return rawCache;
+  } finally {
+    if (rawCachePromise?.promise === promise) rawCachePromise = null;
+  }
+}
 
 async function catalogOffers() {
   try {
@@ -79,21 +142,10 @@ async function catalogOffers() {
 
 export async function getProducts(query: ProductQuery = {}): Promise<ProductListResult> {
   const adapter = await activeAdapter();
-
-  if (!rawCache || rawCache.adapter !== adapter.name || Date.now() - rawCache.at > 30_000) {
-    const first = await adapter.list({ perPage: 48 });
-    const rest = await Promise.all(
-      Array.from({ length: Math.max(0, first.totalPages - 1) }, (_, index) => adapter.list({ perPage: 48, page: index + 2 })),
-    );
-    rawCache = {
-      adapter: adapter.name,
-      at: Date.now(),
-      products: [first, ...rest].flatMap((result) => result.products),
-    };
-  }
+  const catalogue = await getRawCatalogue(adapter);
 
   const offers = await catalogOffers();
-  const priced = rawCache.products
+  const priced = catalogue.products
     .map((product) => applyCommerce({
       ...product,
       funnelOffer: offers.find((offer) => offer.productSlug === product.slug) ?? null,
@@ -115,14 +167,34 @@ export async function getProducts(query: ProductQuery = {}): Promise<ProductList
 
 export async function getProduct(slug: string): Promise<CatalogProduct | null> {
   const adapter = await activeAdapter();
-  const product = await adapter.getBySlug(slug);
+  let product: CatalogProduct | null = null;
+
+  try {
+    product = await adapter.getBySlug(slug);
+  } catch (error) {
+    if (adapter !== fileAdapter) markDatabaseUnavailable('product read', error);
+  }
+
+  if (!product && adapter !== fileAdapter) product = await fileAdapter.getBySlug(slug);
   if (!product) return null;
   const offers = await catalogOffers();
   return applyCommerce({ ...product, funnelOffer: offers.find((offer) => offer.productSlug === product.slug) ?? null });
 }
 
 export async function getCategories(type?: CatalogCategory['type']): Promise<CatalogCategory[]> {
-  return (await activeAdapter()).getCategories(type);
+  const adapter = await activeAdapter();
+  const fallback = await fileAdapter.getCategories(type);
+  if (adapter === fileAdapter) return fallback;
+
+  try {
+    const primary = await adapter.getCategories(type);
+    const byKey = new Map(fallback.map((category) => [`${category.type}:${category.slug}`, category]));
+    for (const category of primary) byKey.set(`${category.type}:${category.slug}`, category);
+    return [...byKey.values()].sort((a, b) => a.sortOrder - b.sortOrder);
+  } catch (error) {
+    markDatabaseUnavailable('category read', error);
+    return fallback;
+  }
 }
 
 export async function getFeaturedProducts(limit = 8): Promise<CatalogProduct[]> {

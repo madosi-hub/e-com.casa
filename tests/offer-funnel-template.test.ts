@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { GALLERY, INITIAL_GALLERY_INDEX } from '../src/components/offers/nuralta/data';
 
 const root = process.cwd();
 const template = readFileSync(`${root}/src/components/offers/painel-ripado/page.tsx`, 'utf8');
@@ -89,4 +90,12 @@ test('the dedicated Nuralta offer preserves the complete approved source funnel 
   expect(nuraltaCart).toContain('Fita LED Nuralta + Controlo RGB');
   expect(nuraltaFooter).toContain('Nuralta Interiores, Unipessoal Lda. · NIF 517 946 327');
   expect(nuraltaFooter).toContain('Impulsionada pela marca @E-Com.Casa');
+});
+
+test('the Nuralta gallery always starts on an available campaign image', () => {
+  expect(GALLERY.length).toBeGreaterThan(0);
+  expect(INITIAL_GALLERY_INDEX).toBe(GALLERY.length - 1);
+  expect(GALLERY[INITIAL_GALLERY_INDEX]).toBeDefined();
+  expect(nuraltaConfigurator).toContain('useState(INITIAL_GALLERY_INDEX)');
+  expect(nuraltaConfigurator).not.toContain('useState(7)');
 });
