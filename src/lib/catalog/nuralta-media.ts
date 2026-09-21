@@ -13,6 +13,6 @@ export function nuraltaCatalogImage(slug: string, fallback: string): string {
   return NURALTA_ACCESSORY_IMAGES[slug] ?? mirrorProviderMedia(fallback);
 }
 
-export function nuraltaCatalogGallery(slug: string, fallback: string): string {
-  return NURALTA_ACCESSORY_IMAGES[slug] ?? fallback.split(',').map((src) => mirrorProviderMedia(src.trim())).join(',');
+export function nuraltaCatalogGallery(slug: string, fallback?: string | null): string {
+  return NURALTA_ACCESSORY_IMAGES[slug] ?? fallback?.split(',').map((src) => mirrorProviderMedia(src.trim())).join(',') ?? '';
 }
