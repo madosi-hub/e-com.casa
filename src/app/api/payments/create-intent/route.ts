@@ -3,6 +3,7 @@
 // receives only the publishable key and client secret.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
@@ -35,15 +36,21 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(req, 'create-intent', 20, 60_000);
   if (!limit.ok) return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } });
 
+  const requestId = randomUUID();
+  let stage = 'request';
+
   try {
+    stage = 'parse_request';
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid payment request' }, { status: 400 });
     const { orderNumber, accessToken, trackingParameters } = parsed.data;
+    stage = 'load_order';
     const order = await db.order.findUnique({ where: { orderNumber }, include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } } });
     if (!order || !tokenMatches(order.accessToken, accessToken)) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     if (order.paymentStatus === 'PAID') return NextResponse.json({ error: 'Order already paid' }, { status: 409 });
     if (['REFUNDED', 'PARTIALLY_REFUNDED'].includes(order.paymentStatus)) return NextResponse.json({ error: 'Order payment is closed' }, { status: 409 });
 
+    stage = 'validate_configuration';
     if (!isPaymentConfigured()) {
       console.error('create-intent: XPayments not configured');
       return NextResponse.json({ error: 'Online payments are temporarily unavailable. Please try again shortly.' }, { status: 503 });
@@ -56,6 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Online payments are temporarily unavailable. Please try again shortly.' }, { status: 503 });
     }
 
+    stage = 'prepare_provider';
     const provider = getPaymentProvider();
     const capabilities = resolvePaymentCapabilities(order.country, order.currency);
     const amountMinor = toMinorUnit(order.total, order.currency);
@@ -63,6 +71,7 @@ export async function POST(req: NextRequest) {
     const existing = order.payments[0] ?? null;
     let intent;
 
+    stage = 'reuse_intent';
     if (existing?.paymentIntentId && REUSABLE.includes(existing.status as PaymentStatus)) {
       try { intent = await provider.retrievePaymentIntent(existing.paymentIntentId); } catch { intent = null; }
       if (intent && intent.amountMinor === amountMinor && REUSABLE.includes(intent.status)) {
@@ -80,14 +89,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    stage = 'cancel_previous_intent';
     if (existing?.paymentIntentId) { try { await provider.cancelPaymentIntent(existing.paymentIntentId); } catch { /* best effort */ } }
 
     const trackingMetadata = Object.fromEntries(
       Object.entries(trackingParameters ?? {}).filter(([, value]) => typeof value === 'string' && value.length > 0)
         .map(([key, value]) => [`tracking_${key}`, String(value)]),
     );
+    stage = 'create_provider_intent';
     intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}`, metadata: trackingMetadata });
 
+    stage = 'persist_payment';
     const payment = await db.payment.upsert({
       where: { orderId: order.id },
       create: { orderId: order.id, provider: provider.name, providerAccount: intent.xpaymentsTransactionId ?? null, paymentIntentId: intent.id, amount: order.total, amountMinor, currency: order.currency, status: intent.status, clientSecretCreatedAt: new Date() },
@@ -110,7 +122,20 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const perr = error instanceof PaymentError ? error : null;
-    console.error('POST /api/payments/create-intent error', perr?.code ?? error);
-    return NextResponse.json({ error: perr?.code === 'PAYMENT_CONFIGURATION_ERROR' ? 'Online payments are temporarily unavailable. Please try again shortly.' : 'We could not start the payment. Please try again.' }, { status: perr?.httpStatus ?? 500 });
+    console.error('POST /api/payments/create-intent error', {
+      requestId,
+      stage,
+      code: perr?.code ?? 'UNKNOWN_ERROR',
+      providerCode: perr?.providerCode,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json({
+      error: perr?.code === 'PAYMENT_CONFIGURATION_ERROR'
+        ? 'Online payments are temporarily unavailable. Please try again shortly.'
+        : 'We could not start the payment. Please try again.',
+      errorCode: perr?.code ?? 'UNKNOWN_ERROR',
+      stage,
+      requestId,
+    }, { status: perr?.httpStatus ?? 500 });
   }
 }
