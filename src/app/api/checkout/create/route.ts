@@ -7,6 +7,7 @@
 // (orderNumber, accessToken) for every later payment call.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
@@ -205,7 +206,22 @@ export async function POST(req: NextRequest) {
       { status: existing ? 200 : 201 },
     );
   } catch (error) {
-    console.error('POST /api/checkout/create error', error);
-    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 });
+    const requestId = randomUUID();
+    const details = error as { code?: string; name?: string; message?: string; meta?: unknown };
+    const code = details.code ?? 'UNKNOWN_ERROR';
+    const message = details.message ?? (error instanceof Error ? error.message : String(error));
+    console.error('[checkout/create]', {
+      requestId,
+      code,
+      name: details.name ?? (error instanceof Error ? error.name : 'UnknownError'),
+      message,
+      meta: details.meta,
+    });
+
+    const publicError = code === 'P2021' || code === 'P2022'
+      ? 'A base de dados de produção precisa de uma atualização. Contacte o suporte com a referência apresentada.'
+      : 'Não foi possível preparar o checkout. Contacte o suporte com a referência apresentada.';
+
+    return NextResponse.json({ error: publicError, requestId }, { status: 500 });
   }
 }
