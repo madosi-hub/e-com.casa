@@ -137,10 +137,11 @@ export function usePaymentSession({
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
         body: JSON.stringify({ ...payload, checkoutToken: getCheckoutToken() }),
       });
-      const orderData = await orderRes.json();
+      const orderData = await orderRes.json() as { error?: string; requestId?: string };
       if (!orderRes.ok) {
         setPhase('error');
-        setState((s) => ({ ...s, errorMessage: orderData.error ?? 'Checkout failed', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
+        const reference = orderData.requestId ? ` Referência: ${orderData.requestId}` : '';
+        setState((s) => ({ ...s, errorMessage: `${orderData.error ?? 'Não foi possível preparar o checkout.'}${reference}`, errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
         return;
       }
       const { orderNumber, accessToken } = orderData as { orderNumber: string; accessToken: string };
