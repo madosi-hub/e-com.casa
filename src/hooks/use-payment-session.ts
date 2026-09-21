@@ -134,7 +134,7 @@ export function usePaymentSession({
           'Content-Type': 'application/json',
           'Idempotency-Key': getCheckoutToken(),
         },
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
         body: JSON.stringify({ ...payload, checkoutToken: getCheckoutToken() }),
       });
       const orderData = await orderRes.json();
@@ -149,7 +149,7 @@ export function usePaymentSession({
       const intentRes = await fetch('/api/payments/create-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
         body: JSON.stringify({ orderNumber, accessToken }),
       });
       const intentData = await intentRes.json();

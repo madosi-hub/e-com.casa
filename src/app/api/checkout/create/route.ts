@@ -185,7 +185,8 @@ export async function POST(req: NextRequest) {
       }).catch(() => undefined); // consent must never block checkout
     }
 
-    await sendUtmifyOrder(order, 'waiting_payment');
+    // Analytics must never delay the payment session response.
+    void sendUtmifyOrder(order, 'waiting_payment');
 
     return NextResponse.json(
       {
