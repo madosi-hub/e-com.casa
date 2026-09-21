@@ -7,6 +7,8 @@ import type {
   ProductQuery,
   ProductVariant,
 } from './types';
+import { mirrorProviderMedia } from './media';
+import { nuraltaCatalogGallery, nuraltaCatalogImage } from './nuralta-media';
 
 function parseVariants(json: string): ProductVariant[] {
   try {
@@ -40,9 +42,9 @@ export function mapProduct(row: ProductRow): CatalogProduct {
     spaceSlugs: row.spaceSlugs,
     styleSlugs: row.styleSlugs,
     collectionSlugs: row.collectionSlugs,
-    image: row.image,
-    hoverImage: row.hoverImage,
-    gallery: row.gallery,
+    image: nuraltaCatalogImage(row.slug, row.image),
+    hoverImage: row.hoverImage ? nuraltaCatalogImage(row.slug, row.hoverImage) : row.hoverImage,
+    gallery: nuraltaCatalogGallery(row.slug, row.gallery),
     imageStatus: row.imageStatus,
     badge: row.badge,
     rating: row.rating,
@@ -65,7 +67,10 @@ export function mapProduct(row: ProductRow): CatalogProduct {
     care: row.care,
     color: row.color,
     shippingClass: row.shippingClass,
-    variants: parseVariants(row.variantsJson),
+    variants: parseVariants(row.variantsJson).map((variant) => ({
+      ...variant,
+      image: variant.image ? mirrorProviderMedia(variant.image) : variant.image,
+    })),
     electrical: row.electrical,
     battery: row.battery,
     complianceStatus: row.complianceStatus,

@@ -7,6 +7,8 @@ import { CartDrawer } from '@/components/cart/cart-drawer';
 import { CartPriceSync } from '@/components/cart/cart-price-sync';
 import { LanguageBoot } from '@/hooks/use-t';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
+import { UtmifyTracking } from '@/components/analytics/utmify-tracking';
+import { UmamiTracking } from '@/components/analytics/umami-tracking';
 
 export function RuntimeWidgets() {
   const pathname = usePathname();
@@ -22,6 +24,8 @@ export function RuntimeWidgets() {
       {chatEnabled && !chatHidden && <ChatWidget />}
       <CartDrawer />
       <CartPriceSync />
+      <UtmifyTracking />
+      <UmamiTracking />
       {!painelRipadoRoute && <LanguageBoot />}
     </>
   );

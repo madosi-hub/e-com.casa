@@ -19,6 +19,7 @@ import {
 } from '@/lib/checkout';
 import { resolvePaymentCurrency } from '@/lib/payments/payment-capabilities';
 import { ORDER_NOTES_MAX } from '@/lib/constants';
+import { sendUtmifyOrder } from '@/lib/utmify';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,15 @@ const createCheckoutSchema = z.object({
   notes: z.string().max(ORDER_NOTES_MAX).optional().nullable(),
   marketingConsent: z.boolean().default(false),
   items: z.array(orderItemSchema).min(1),
+  trackingParameters: z.object({
+    src: z.string().max(500).nullable().optional(),
+    sck: z.string().max(500).nullable().optional(),
+    utm_source: z.string().max(200).nullable().optional(),
+    utm_medium: z.string().max(200).nullable().optional(),
+    utm_campaign: z.string().max(200).nullable().optional(),
+    utm_content: z.string().max(200).nullable().optional(),
+    utm_term: z.string().max(200).nullable().optional(),
+  }).nullable().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -123,6 +133,7 @@ export async function POST(req: NextRequest) {
       discount: totals.discount.toFixed(2),
       total: totals.total.toFixed(2),
       promoCode: totals.promoCode,
+      trackingParametersJson: data.trackingParameters ? JSON.stringify(data.trackingParameters) : null,
       itemsJson: JSON.stringify(totals.lineItems),
       giftWrap: data.giftWrap,
       notes: sanitizeNotes(data.notes) || null,
@@ -173,6 +184,8 @@ export async function POST(req: NextRequest) {
         },
       }).catch(() => undefined); // consent must never block checkout
     }
+
+    await sendUtmifyOrder(order, 'waiting_payment');
 
     return NextResponse.json(
       {

@@ -157,6 +157,7 @@ model Order {
   accessToken   String  @unique
   checkoutToken String? @unique
   pricingHash    String?
+  trackingParametersJson String?
 
   trackingNumber      String? @unique
   carrier             String?

@@ -32,6 +32,15 @@ export interface CheckoutOrderPayload {
   notes?: string | null;
   marketingConsent: boolean;
   items: { slug: string; quantity: number; variantId?: string | null }[];
+  trackingParameters?: {
+    src?: string | null;
+    sck?: string | null;
+    utm_source?: string | null;
+    utm_medium?: string | null;
+    utm_campaign?: string | null;
+    utm_content?: string | null;
+    utm_term?: string | null;
+  } | null;
 }
 
 interface SessionState {
