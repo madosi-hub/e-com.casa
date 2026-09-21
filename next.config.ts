@@ -20,15 +20,17 @@ const nextConfig: NextConfig = {
         hostname: "raw.githubusercontent.com",
         pathname: "/nexflowx-hub/nuraltainteriores/main/public/pt/**",
       },
-    ],
-  },
-  async rewrites() {
-    return [
       {
-        source: "/pt/:path*",
-        destination: "https://www.nuraltainteriores.online/pt/:path*",
+        protocol: "https",
+        hostname: "media.discordapp.net",
+        pathname: "/attachments/**",
       },
-    ];
+      {
+        protocol: "https",
+        hostname: "cdn.discordapp.com",
+        pathname: "/attachments/**",
+      },
+    ],
   },
 };
 

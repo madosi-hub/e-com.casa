@@ -3,7 +3,7 @@
 export const TICKER_ITEMS = [
   "Envio gratuito para Portugal Continental",
   "Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco",
-  "Entrega em 3 a 7 dias úteis",
+  "Entrega em 8 a 12 dias úteis devido à elevada procura",
   "Nuralta Interiores",
 ];
 
@@ -283,7 +283,7 @@ export const FAQS: Faq[] = [
     number: "08",
     question: "Quanto tempo demora a entrega?",
     answer:
-      "A entrega é feita em 3 a 7 dias úteis, com envio gratuito para Portugal Continental e acompanhamento pela Nuralta.",
+      "A entrega é feita em 8 a 12 dias úteis devido à elevada procura, com envio gratuito para Portugal Continental e acompanhamento pela Nuralta.",
   },
   {
     number: "09",

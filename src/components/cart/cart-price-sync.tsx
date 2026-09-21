@@ -20,7 +20,7 @@ export function CartPriceSync() {
         const raw = products.get(line.slug); if (!raw) return line;
         const p = applyBundleOffer(raw, [...products.values()]);
         const v = p.variants.find(v => v.id === line.variantId);
-        return { ...line, brand: p.brand, categorySlug: p.categorySlug, price: ((p.priceCents + (v?.priceDeltaCents ?? 0)) / 100).toFixed(2), regularUnitPrice: (((p.regularPriceCents ?? p.priceCents) + (v?.regularPriceDeltaCents ?? v?.priceDeltaCents ?? 0)) / 100).toFixed(2), promoEndsAt: p.promoEndsAt, automaticDiscountPct: p.promoDiscountPct, maxStock: cartStockLimit(p) };
+        return { ...line, brand: p.brand, categorySlug: p.categorySlug, image: v?.image ?? p.image, price: ((p.priceCents + (v?.priceDeltaCents ?? 0)) / 100).toFixed(2), regularUnitPrice: (((p.regularPriceCents ?? p.priceCents) + (v?.regularPriceDeltaCents ?? v?.priceDeltaCents ?? 0)) / 100).toFixed(2), promoEndsAt: p.promoEndsAt, automaticDiscountPct: p.promoDiscountPct, maxStock: cartStockLimit(p) };
       }) }));
     };
     void refresh(); const id = setInterval(refresh, 30000);

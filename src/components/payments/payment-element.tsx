@@ -15,9 +15,16 @@ export interface PaymentElementProps {
   elements: StripeElements | null;
   /** Hide the built-in payment method tabs' default spacing tweaks. */
   className?: string;
+  ariaLabel?: string;
+  loadingLabel?: string;
 }
 
-export function PaymentElement({ elements, className = '' }: PaymentElementProps) {
+export function PaymentElement({
+  elements,
+  className = '',
+  ariaLabel = 'Secure payment details',
+  loadingLabel = 'Loading secure payment…',
+}: PaymentElementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -45,12 +52,12 @@ export function PaymentElement({ elements, className = '' }: PaymentElementProps
 
   return (
     <div className={`relative ${className}`}>
-      <div id="payment-element" ref={containerRef} aria-label="Secure payment details" />
+      <div id="payment-element" ref={containerRef} aria-label={ariaLabel} />
       {!mounted && (
         <div className="absolute inset-0 flex items-center justify-center rounded-md border border-border/60 bg-background/60">
           <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
             <LoaderCircle className="h-4 w-4 animate-spin" />
-            Loading secure payment…
+            {loadingLabel}
           </span>
         </div>
       )}

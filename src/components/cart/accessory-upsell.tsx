@@ -2,10 +2,10 @@
 import { applyBundleOffer, rankAccessories } from '@/lib/catalog/bundle';
 import { useEffect, useId, useState } from 'react';
 import { Plus, Wrench } from 'lucide-react';
+import { AccessoryDetailModal } from './accessory-detail-modal';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { useCart } from '@/lib/cart-store';
 import { cartStockLimit } from '@/lib/catalog/inventory';
-import { applyCommerce } from '@/lib/catalog/commerce';
 import { formatPrice } from '@/lib/format';
 
 const NURALTA_ACCESSORY_SLUGS = ['nuralta-kit-instalacao-completo', 'nuralta-fita-led-rgb-3m'];
@@ -13,12 +13,32 @@ const NURALTA_ACCESSORY_SLUGS = ['nuralta-kit-instalacao-completo', 'nuralta-fit
 function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct[] }) {
   const add = useCart(s => s.add);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [detailProduct, setDetailProduct] = useState<CatalogProduct | null>(null);
   useEffect(() => {
     let live = true;
     Promise.all(NURALTA_ACCESSORY_SLUGS.map(slug => fetch(`/api/products/${slug}`).then(r => r.ok ? r.json() : null).catch(() => null)))
       .then(rows => { if (live) setProducts(rows.map(row => row?.product).filter(Boolean)); });
     return () => { live = false; };
   }, []);
+
+  function addAccessory(product: CatalogProduct) {
+    const variant = product.variants[0];
+    const cents = product.priceCents + (variant?.priceDeltaCents ?? 0);
+    add({
+      slug: product.slug,
+      brand: product.brand,
+      categorySlug: product.categorySlug,
+      name: product.name,
+      subtitle: product.subtitle,
+      price: (cents / 100).toFixed(2),
+      image: product.image,
+      automaticDiscountPct: product.promoDiscountPct,
+      promoEndsAt: product.promoEndsAt,
+      maxStock: cartStockLimit(product),
+      variantId: variant?.id,
+      variantLabel: variant?.name,
+    });
+  }
 
   return <section className="my-4 rounded-xl border border-[#e6ded4] bg-[#fdfbf9] p-4" aria-label="Complete a sua instalação">
     <h3 className="text-sm font-bold text-[#201a17]">Complete a sua instalação</h3>
@@ -29,11 +49,12 @@ function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct
         const variant = product.variants[0];
         const cents = product.priceCents + (variant?.priceDeltaCents ?? 0);
         const regularCents = (product.regularPriceCents ?? product.priceCents) + (variant?.regularPriceDeltaCents ?? variant?.priceDeltaCents ?? 0);
-        const gallery = [product.image, ...product.gallery.split(',').filter(Boolean)];
         const installation = product.slug.includes('kit-instalacao');
         return <article key={product.slug} className="py-4 first:pt-1 last:pb-1">
           <div className="flex gap-3">
-            <img src={product.image} alt={product.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+            <button type="button" onClick={() => setDetailProduct(product)} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg" aria-label={`Ver fotos e detalhes de ${product.name}`}>
+              <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+            </button>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] uppercase tracking-[.12em] text-[#8a5a2b]">{installation ? 'Para instalar' : 'Para realçar'}</p>
               <h4 className="mt-0.5 text-sm font-semibold text-[#201a17]">{product.name.replace(' Nuralta', '')}</h4>
@@ -42,19 +63,17 @@ function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct
                 <strong className="text-sm text-[#201a17]">+{formatPrice((cents / 100).toFixed(2))}</strong>
                 {cents < regularCents && <><span className="text-[11px] text-[#8d8178] line-through">{formatPrice((regularCents / 100).toFixed(2))}</span><span className="text-[10px] font-bold text-[#4d7d44]">−{product.promoDiscountPct}%</span></>}
               </div>
+              <button type="button" onClick={() => setDetailProduct(product)} className="mt-1 text-xs font-semibold underline underline-offset-4">Ver fotos e detalhes</button>
             </div>
-            <button type="button" className="self-center rounded-full border border-[#201a17] px-3 py-2 text-xs font-semibold" onClick={() => add({ slug: product.slug, brand: product.brand, categorySlug: product.categorySlug, name: product.name, subtitle: product.subtitle, price: (cents / 100).toFixed(2), image: product.image, automaticDiscountPct: product.promoDiscountPct, promoEndsAt: product.promoEndsAt, maxStock: cartStockLimit(product), variantId: variant?.id, variantLabel: variant?.name })}>+ Adicionar</button>
+            <button type="button" className="self-center rounded-full border border-[#201a17] px-3 py-2 text-xs font-semibold" onClick={() => addAccessory(product)}>+ Adicionar</button>
           </div>
-          <details className="ml-[76px] mt-2 text-xs text-[#5c5049]">
-            <summary className="cursor-pointer font-semibold underline underline-offset-4">Ver fotos e detalhes</summary>
-            <p className="mt-2 leading-5">{product.description}</p>
-            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">{gallery.map((src, index) => <img key={`${src}-${index}`} src={src} alt={`${product.name} — imagem ${index + 1}`} className="h-20 w-20 shrink-0 rounded-lg object-cover" loading="lazy" />)}</div>
-          </details>
         </article>;
       })}
     </div>
+    {detailProduct && <AccessoryDetailModal key={detailProduct.slug} product={detailProduct} onClose={() => setDetailProduct(null)} onAdd={() => { addAccessory(detailProduct); setDetailProduct(null); }} />}
   </section>;
 }
+
 
 export function AccessoryUpsell() {
   const id = useId();

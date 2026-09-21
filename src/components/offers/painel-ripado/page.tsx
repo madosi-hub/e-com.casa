@@ -6,6 +6,7 @@ import { campaignEuro } from './data';
 import { useEffect, useState } from 'react';
 import { House, Menu, PackageSearch, ShoppingCart, X } from 'lucide-react';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
+import { useCart } from '@/lib/cart-store';
 import { captureOfferAttribution } from '@/lib/offers/attribution';
 import { trackOfferEvent } from '@/lib/offers/analytics';
 import type { CatalogProduct } from '@/lib/catalog/types';
@@ -14,7 +15,7 @@ import { PanelConfigurator } from './configurator';
 import { PanelCampaignStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 
 export function TopTicker() {
-  const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 3 a 7 dias úteis', 'Nuralta Interiores'];
+  const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 8 a 12 dias úteis devido à elevada procura', 'Nuralta Interiores'];
   const group = <div className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4">{items.map((item) => <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8"><span>{item}</span><span className="opacity-40">◆</span></span>)}</div>;
   return <div className="overflow-hidden bg-[#201a17] py-1 text-[#e9dfd5] sm:py-2"><div className="ecom-panel-ticker flex w-max text-[9px] uppercase tracking-[.12em] sm:text-[11px]">{group}{group}</div></div>;
 }
@@ -23,6 +24,7 @@ export function FloatingHeader() {
   const [visible, setVisible] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const openCart = useCartDrawer((state) => state.open);
+  const cartCount = useCart((state) => state.lines.reduce((sum, line) => sum + line.quantity, 0));
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 40);
     onScroll();
@@ -33,14 +35,17 @@ export function FloatingHeader() {
     <div className="fixed inset-x-0 top-0 z-40 transition-all duration-200" style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-100%)', visibility: visible ? 'visible' : 'hidden', pointerEvents: visible ? 'auto' : 'none' }}>
       <header className="flex items-center justify-between border-b border-[#e6ded4] bg-[#f7f3ef]/95 px-4 py-2 backdrop-blur">
         <button type="button" aria-label="Abrir menu" onClick={() => setDrawerOpen(true)} className="rounded-full p-1.5"><Menu className="h-4 w-4" /></button>
-        <Link href="/" className="font-display text-xl font-semibold tracking-tight">E-com.casa</Link>
-        <button type="button" aria-label="Carrinho" onClick={openCart} className="rounded-full p-1.5"><ShoppingCart className="h-4 w-4" /></button>
+        <span className="font-display text-xl font-semibold tracking-tight" aria-label="E-com.casa">E-com.casa</span>
+        <button type="button" aria-label={`Carrinho${cartCount > 0 ? `, ${cartCount} artigo${cartCount === 1 ? '' : 's'}` : ''}`} onClick={openCart} className="relative rounded-full p-1.5">
+          <ShoppingCart className="h-4 w-4" />
+          {cartCount > 0 && <span key={cartCount} className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#201a17] px-1 text-[9px] font-bold text-white">{cartCount}</span>}
+        </button>
       </header>
     </div>
     <div className={`fixed inset-0 z-50 ${drawerOpen ? '' : 'pointer-events-none'}`} aria-hidden={!drawerOpen}>
       <div onClick={() => setDrawerOpen(false)} className={`absolute inset-0 bg-black/50 transition-opacity ${drawerOpen ? 'opacity-100' : 'opacity-0'}`} />
       <aside className={`absolute left-0 top-0 h-full w-[300px] bg-white shadow-2xl transition-transform ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between border-b px-5 py-4"><Link href="/" className="font-display text-xl font-semibold">E-com.casa</Link><button type="button" onClick={() => setDrawerOpen(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></button></div>
+        <div className="flex items-center justify-between border-b px-5 py-4"><span className="font-display text-xl font-semibold" aria-label="E-com.casa">E-com.casa</span><button type="button" onClick={() => setDrawerOpen(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></button></div>
         <nav className="p-3"><a href="#top" onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm"><House className="h-5 w-5" />Início</a><Link href="/orders" className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm"><PackageSearch className="h-5 w-5" />As minhas encomendas</Link><Link href="/offers" className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm">Ofertas em curso</Link></nav>
       </aside>
     </div>
@@ -50,6 +55,13 @@ export function FloatingHeader() {
 export function PainelRipadoOfferPage({ offer, product: initialProduct, market }: { offer: OfferConfig; product: CatalogProduct; market: OfferMarketContext }) {
   const product = useLiveProduct(initialProduct);
   const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
+  const openCart = useCartDrawer((state) => state.open);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('carrinho') === 'aberto') {
+      openCart();
+    }
+  }, [openCart]);
 
   useEffect(() => {
     captureOfferAttribution(offer.slug);

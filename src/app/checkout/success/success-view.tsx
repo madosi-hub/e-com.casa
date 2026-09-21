@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useT } from '@/hooks/use-t';
 import { useCart } from '@/lib/cart-store';
+import { translate, type Lang } from '@/lib/i18n';
 import { resetCheckoutToken } from '@/hooks/use-payment-session';
 import { formatPrice, formatDate } from '@/lib/format';
 import { GIFT_WRAP_PRICE } from '@/lib/constants';
@@ -60,8 +61,9 @@ interface StatusApiResponse {
   paymentStatus: string;
 }
 
-function PaymentStatusPoller({ orderNumber, token }: { orderNumber: string; token: string }) {
-  const t = useT();
+function PaymentStatusPoller({ orderNumber, token, language }: { orderNumber: string; token: string; language?: Lang }) {
+  const uiT = useT();
+  const t = language ? (key: string, vars?: Record<string, string | number>) => translate(language, key, vars) : uiT;
   const router = useRouter();
   const [tick, setTick] = useState(0);
 
@@ -102,9 +104,32 @@ function FinaliseClientState() {
   return null;
 }
 
-export function SuccessView({ order, token }: { order: SuccessOrderData; token: string }) {
-  const t = useT();
+export function SuccessView({
+  order,
+  token,
+  language,
+  deliveryWindow,
+  deliveryMessage,
+  retryPath,
+  continuePath,
+  continueLabel,
+}: {
+  order: SuccessOrderData;
+  token: string;
+  language?: Lang;
+  deliveryWindow?: string;
+  deliveryMessage?: string;
+  retryPath?: string;
+  continuePath?: string;
+  continueLabel?: string;
+}) {
+  const uiT = useT();
+  const t = language ? (key: string, vars?: Record<string, string | number>) => translate(language, key, vars) : uiT;
   const waiting = ['PENDING_PAYMENT', 'PAYMENT_PROCESSING'].includes(order.status);
+
+  useEffect(() => {
+    if (language === 'pt') document.documentElement.lang = 'pt-PT';
+  }, [language]);
 
   // header states
   const header = (() => {
@@ -191,7 +216,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
     <div className="mx-auto max-w-2xl">
       <FinaliseClientState />
       <div className="text-center">{header}</div>
-      {waiting && <PaymentStatusPoller orderNumber={order.orderNumber} token={token} />}
+      {waiting && <PaymentStatusPoller orderNumber={order.orderNumber} token={token} language={language} />}
 
       <div className="mt-8 rounded-lg border border-border bg-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -203,7 +228,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
               {order.orderNumber}
               {order.giftWrap && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-terracotta/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-terracotta">
-                  <Gift className="h-3 w-3" strokeWidth={2} /> Gift
+                  <Gift className="h-3 w-3" strokeWidth={2} /> {language === 'pt' ? 'Presente' : 'Gift'}
                 </span>
               )}
             </p>
@@ -229,7 +254,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {t('success.placed')}
             </p>
-            <p className="mt-1 text-[13.5px]">{formatDate(order.createdAt)}</p>
+            <p className="mt-1 text-[13.5px]">{formatDate(order.createdAt, language === 'pt' ? 'pt-PT' : undefined)}</p>
           </div>
         </div>
 
@@ -247,7 +272,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
                   {item.name}
                 </Link>
                 <p className="text-[12px] text-muted-foreground">
-                  {item.variantLabel ? `${item.variantLabel} · ` : ''}Qty {item.quantity}
+                  {item.variantLabel ? `${item.variantLabel} · ` : ''}{language === 'pt' ? 'Qtd.' : 'Qty'} {item.quantity}
                 </p>
               </div>
               <p className="text-[13.5px] font-semibold">{formatPrice(parseFloat(item.price) * item.quantity)}</p>
@@ -313,7 +338,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
             </p>
             <p className="mt-1.5 text-muted-foreground">
               {order.status === 'PAID'
-                ? t('success.nextPaid', { window: order.shippingMethod === 'express' ? '1–2' : '3–5' })
+                ? deliveryMessage ?? t('success.nextPaid', { window: deliveryWindow ?? (order.shippingMethod === 'express' ? '1–2' : '3–5') })
                 : t('success.nextWaiting')}
             </p>
           </div>
@@ -333,7 +358,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         {order.status === 'PAYMENT_FAILED' || order.status === 'CANCELLED' ? (
           <Button asChild className="rounded-md bg-primary">
-            <Link href="/checkout">{t('success.retry')}</Link>
+            <Link href={retryPath ?? '/checkout'}>{t('success.retry')}</Link>
           </Button>
         ) : (
           <Button asChild variant="outline" className="rounded-md">
@@ -343,7 +368,7 @@ export function SuccessView({ order, token }: { order: SuccessOrderData; token: 
           </Button>
         )}
         <Button asChild className="rounded-md bg-primary">
-          <Link href="/shop">{t('checkout.backToShop')}</Link>
+          <Link href={continuePath ?? '/shop'}>{continueLabel ?? t('checkout.backToShop')}</Link>
         </Button>
       </div>
     </div>
