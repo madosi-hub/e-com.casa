@@ -41,11 +41,17 @@ export function UmamiTracking() {
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest('a,button') : null;
       if (!target) return;
-      track('ui_click', {
+      const label = safeValue(
+        target.getAttribute('aria-label') ||
+        target.getAttribute('title') ||
+        target.textContent,
+      );
+      const eventName = label ? `ui_click · ${label}` : 'ui_click';
+      track(eventName, {
         path: window.location.pathname,
         element: target.tagName.toLowerCase(),
         id: safeValue(target.id),
-        label: safeValue(target.getAttribute('aria-label')),
+        label,
         href: target instanceof HTMLAnchorElement ? safeValue(target.getAttribute('href')) : null,
       });
     };

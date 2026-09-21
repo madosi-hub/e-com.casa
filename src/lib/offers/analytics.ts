@@ -9,6 +9,8 @@ export type OfferAnalyticsEvent =
   | 'faq_open'
   | 'video_play'
   | 'calculator_used'
+  | 'calculator_opened'
+  | 'calculator_closed'
   | 'locale_changed'
   | 'add_to_cart'
   | 'begin_checkout'
