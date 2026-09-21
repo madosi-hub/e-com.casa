@@ -26,7 +26,7 @@ export const LEGAL_PAGES: LegalPage[] = [
     blocks: [
       {
         kind: "p",
-        text: "Esta página explica como preparamos, expedimos e entregamos as suas encomendas de painéis ripados decorativos Nuralta, bem como os prazos previstos e os centros logísticos utilizados.",
+        text: "Esta página explica como preparamos, expedimos e entregamos as suas encomendas de painéis ripados decorativos E-com.casa, bem como os prazos previstos e os centros logísticos utilizados.",
       },
       { kind: "h3", text: "Prazos de entrega" },
       {
@@ -83,7 +83,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "external",
         label: "Contactar o apoio sobre entregas",
-        href: "mailto:suporte@nuraltainteriores.online",
+        href: "mailto:suporte@e-com.casa",
       },
     ],
   },
@@ -154,7 +154,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "external",
         label: "Iniciar uma devolução",
-        href: "mailto:suporte@nuraltainteriores.online",
+        href: "mailto:suporte@e-com.casa",
       },
     ],
   },
@@ -167,12 +167,12 @@ export const LEGAL_PAGES: LegalPage[] = [
     blocks: [
       {
         kind: "p",
-        text: "A Nuralta Interiores respeita a privacidade dos seus clientes e cumpre o Regulamento Geral de Proteção de Dados (RGPD — Regulamento (UE) 2016/679) e a legislação nacional aplicável.",
+        text: "A E-com.casa respeita a privacidade dos seus clientes e cumpre o Regulamento Geral de Proteção de Dados (RGPD — Regulamento (UE) 2016/679) e a legislação nacional aplicável.",
       },
       { kind: "h3", text: "Responsável pelo tratamento" },
       {
         kind: "p",
-        text: "O responsável pelo tratamento dos dados pessoais é a MGJ EXPERT LTD, titular da marca Nuralta Interiores, operada comercialmente através da E-com.casa. Os contactos do responsável encontram-se na página «Dados da empresa».",
+        text: "O responsável pelo tratamento dos dados pessoais é a MGJ EXPERT LTD, operadora da E-com.casa. Os contactos do responsável encontram-se na página «Dados da empresa».",
       },
       { kind: "h3", text: "Dados recolhidos" },
       {
@@ -233,7 +233,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "external",
         label: "Exercer os seus direitos por e-mail",
-        href: "mailto:suporte@nuraltainteriores.online",
+        href: "mailto:suporte@e-com.casa",
       },
     ],
   },
@@ -251,7 +251,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "Identidade do operador" },
       {
         kind: "p",
-        text: "A marca Nuralta Interiores é operada comercialmente pela E-com.casa, propriedade da MGJ EXPERT LTD, registada em Inglaterra e País de Gales com o n.º de empresa 17422467. A identificação completa consta na página «Dados da empresa».",
+        text: "A E-com.casa é operada pela MGJ EXPERT LTD, registada em Inglaterra e País de Gales com o n.º de empresa 17422467. A identificação completa consta na página «Dados da empresa».",
       },
       { kind: "h3", text: "Produtos e preços" },
       {
@@ -281,7 +281,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "Propriedade intelectual" },
       {
         kind: "p",
-        text: "Todos os conteúdos do site (textos, imagens, vídeos, logótipos, design) são da titularidade da Nuralta Interiores ou licenciados pelos respetivos titulares. É proibida a reprodução sem autorização prévia e por escrito.",
+        text: "Todos os conteúdos do site (textos, imagens, vídeos, logótipos, design) são da titularidade da E-com.casa ou licenciados pelos respetivos titulares. É proibida a reprodução sem autorização prévia e por escrito.",
       },
       { kind: "h3", text: "Lei aplicável e resolução de litígios" },
       {
@@ -308,8 +308,8 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "E-mail" },
       {
         kind: "external",
-        label: "suporte@nuraltainteriores.online",
-        href: "mailto:suporte@nuraltainteriores.online",
+        label: "suporte@e-com.casa",
+        href: "mailto:suporte@e-com.casa",
       },
       { kind: "h3", text: "Telefone" },
       {
@@ -321,7 +321,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "address",
         lines: [
-          "Nuralta Interiores",
+          "E-com.casa",
           "Rua do Pinhal Novo, 84, Armazém 3",
           "4470-640 Maia · Portugal",
         ],
@@ -342,13 +342,13 @@ export const LEGAL_PAGES: LegalPage[] = [
     blocks: [
       {
         kind: "p",
-        text: "A Nuralta Interiores é uma marca comercial operada pela E-com.casa, propriedade da MGJ EXPERT LTD, registada em Inglaterra e País de Gales. A identificação completa das entidades envolvidas na exploração da marca é apresentada abaixo.",
+        text: "A E-com.casa é uma marca comercial operada pela MGJ EXPERT LTD, registada em Inglaterra e País de Gales. A identificação completa da entidade responsável é apresentada abaixo.",
       },
       { kind: "h3", text: "Marca comercial" },
       {
         kind: "address",
         lines: [
-          "Nuralta Interiores",
+          "E-com.casa",
           "Rua do Pinhal Novo, 84, Armazém 3",
           "4470-640 Maia · Portugal",
           "NIF 517 946 327",
@@ -357,7 +357,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "Operador comercial" },
       {
         kind: "p",
-        text: "E-com.casa — operador comercial da marca Nuralta Interiores.",
+        text: "E-com.casa — operador comercial.",
       },
       { kind: "h3", text: "Entidade proprietária" },
       {
@@ -373,7 +373,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "ul",
         items: [
-          "E-mail: suporte@nuraltainteriores.online",
+          "E-mail: suporte@e-com.casa",
           "Telefone: +351 913 482 761",
         ],
       },

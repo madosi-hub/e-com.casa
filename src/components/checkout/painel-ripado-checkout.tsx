@@ -141,34 +141,31 @@ export default function CheckoutPage() {
     form.postalCode.trim().length > 0;
 
   const payload = useMemo(
-    () =>
-      detailsValid && cart.lines.length > 0
-        ? {
-            email: form.email.trim(),
-            firstName: form.firstName.trim(),
-            lastName: form.lastName.trim(),
-            address: form.address.trim(),
-            address2: form.address2.trim() || null,
-            city: form.city.trim(),
-            postalCode: form.postalCode.trim(),
-            country: form.country,
-            phone: form.phone.trim() || null,
-            shippingMethod: form.shippingMethod,
-            promoCode: cart.promoCode,
-              giftWrap: false,
-            notes: form.notes.trim() || null,
-            marketingConsent: form.marketingOptIn,
-            items: cart.lines.map((l) => ({ slug: l.slug, quantity: l.quantity, variantId: l.variantId ?? null })),
-            trackingParameters,
-          }
-        : null,
+    () => cart.lines.length > 0
+      ? {
+          // Keep the Stripe Elements session stable while contact fields are typed.
+          email: 'checkout@e-com.casa',
+          firstName: 'A preencher',
+          lastName: 'A preencher',
+          address: 'A preencher',
+          address2: null,
+          city: 'A preencher',
+          postalCode: '0000-000',
+          country: form.country,
+          phone: null,
+          shippingMethod: form.shippingMethod,
+          promoCode: cart.promoCode,
+          giftWrap: false,
+          notes: null,
+          marketingConsent: false,
+          items: cart.lines.map((l) => ({ slug: l.slug, quantity: l.quantity, variantId: l.variantId ?? null })),
+          trackingParameters,
+        }
+      : null,
     [
-      detailsValid,
       cart.lines,
       cart.promoCode,
-      form.email, form.firstName, form.lastName, form.address, form.address2,
-      form.city, form.postalCode, form.country, form.phone,
-      form.shippingMethod, form.notes, form.marketingOptIn,
+      form.country, form.shippingMethod,
       trackingParameters,
     ],
   );
@@ -202,7 +199,29 @@ export default function CheckoutPage() {
       toast({ title: t('checkout.toastEmpty'), variant: 'destructive' });
       return;
     }
+    if (!detailsValid) {
+      toast({ title: t('checkout.completeDetails'), variant: 'destructive' });
+      return;
+    }
     if (session.phase !== 'ready') return;
+
+    const synced = await session.syncOrder({
+      ...payload!,
+      email: form.email.trim(),
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      address: form.address.trim(),
+      address2: form.address2.trim() || null,
+      city: form.city.trim(),
+      postalCode: form.postalCode.trim(),
+      phone: form.phone.trim() || null,
+      notes: form.notes.trim() || null,
+      marketingConsent: form.marketingOptIn,
+    });
+    if (!synced.ok) {
+      toast({ title: t('checkout.errorPaymentTitle'), description: synced.errorMessage, variant: 'destructive' });
+      return;
+    }
 
     const result = await session.confirmPayment();
     if (!result.ok) {
@@ -251,6 +270,7 @@ export default function CheckoutPage() {
   );
 
   const payDisabled =
+    !detailsValid ||
     session.phase === 'preparing' ||
     session.phase === 'confirming' ||
     session.phase === 'unavailable' ||

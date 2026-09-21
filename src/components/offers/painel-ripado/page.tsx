@@ -15,7 +15,7 @@ import { PanelConfigurator } from './configurator';
 import { PanelCampaignStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 
 export function TopTicker() {
-  const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 8 a 12 dias úteis devido à elevada procura', 'Nuralta Interiores'];
+  const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 8 a 12 dias úteis devido à elevada procura', 'E-com.casa'];
   const group = <div className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4">{items.map((item) => <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8"><span>{item}</span><span className="opacity-40">◆</span></span>)}</div>;
   return <div className="overflow-hidden bg-[#201a17] py-1 text-[#e9dfd5] sm:py-2"><div className="ecom-panel-ticker flex w-max text-[9px] uppercase tracking-[.12em] sm:text-[11px]">{group}{group}</div></div>;
 }

@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { db } from '@/lib/db';
 import { getProduct } from '@/lib/catalog';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
+import { FileCatalogAdapter } from '@/lib/catalog/file-adapter';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { getProductOffers } from './store';
 import { isOfferRouteEnabled } from './route-policy';
@@ -95,10 +96,17 @@ export const resolveOffer = cache(async (requestedSlug: string): Promise<Resolve
 
   if (!isOfferRouteEnabled(requestedSlug, offer)) return null;
 
+  const dedicatedPanel = requestedSlug === 'painel-ripado' || requestedSlug === 'nuralta-painel-ripado';
   const productSlug = requestedSlug === 'painel-ripado'
     ? 'nuralta-painel-ripado-decorativo'
     : offer?.productSlug ?? 'nuralta-painel-ripado-decorativo';
-  const product = await getProduct(productSlug);
+  let product = await getProduct(productSlug);
+  // A transient or stale database row must not turn the dedicated funnel into
+  // a false "unavailable" page when the bundled approved snapshot is healthy.
+  if (dedicatedPanel && (!product || !isCatalogProductSaleable(product))) {
+    const snapshotProduct = await new FileCatalogAdapter().getBySlug(productSlug);
+    if (snapshotProduct && isCatalogProductSaleable(snapshotProduct)) product = snapshotProduct;
+  }
   if (!product || !isCatalogProductSaleable(product)) return null;
 
   if (product.slug === 'nuralta-painel-ripado-decorativo') {

@@ -283,7 +283,7 @@ export const FAQS: Faq[] = [
     number: "08",
     question: "Quanto tempo demora a entrega?",
     answer:
-      "A entrega é feita em 8 a 12 dias úteis devido à elevada procura, com envio gratuito para Portugal Continental e acompanhamento pela Nuralta.",
+      "A entrega é feita em 8 a 12 dias úteis devido à elevada procura, com envio gratuito para Portugal Continental e acompanhamento pela E-com.casa.",
   },
   {
     number: "09",
