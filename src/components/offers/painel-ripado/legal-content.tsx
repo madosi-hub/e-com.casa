@@ -43,7 +43,7 @@ const FREE_RESOLUTION_PAGE: LegalPage = {
     {
       kind: 'external',
       label: 'Exercer o direito de livre resolução',
-      href: 'mailto:suporte@nuraltainteriores.online?subject=Direito%20de%20livre%20resolu%C3%A7%C3%A3o',
+      href: 'mailto:suporte@e-com.casa?subject=Direito%20de%20livre%20resolu%C3%A7%C3%A3o',
     },
   ],
 };

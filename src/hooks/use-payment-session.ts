@@ -261,6 +261,25 @@ export function usePaymentSession({
     return { ok: true };
   }, [state, returnPath]);
 
+  const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
+    try {
+      const response = await fetch('/api/checkout/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': getCheckoutToken(),
+        },
+        body: JSON.stringify({ ...nextPayload, checkoutToken: getCheckoutToken() }),
+      });
+      const data = await response.json() as { error?: string };
+      return response.ok
+        ? { ok: true }
+        : { ok: false, errorMessage: data.error ?? 'Não foi possível atualizar a encomenda.' };
+    } catch {
+      return { ok: false, errorMessage: 'Não foi possível atualizar a encomenda.' };
+    }
+  }, []);
+
   return {
     phase,
     stripe: state.stripe,
@@ -269,6 +288,7 @@ export function usePaymentSession({
     orderNumber: state.orderNumber,
     errorMessage: state.errorMessage,
     errorCode: state.errorCode,
+    syncOrder,
     confirmPayment,
     retry: () => {
       setPhase('idle');
