@@ -9,11 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ChevronLeft, ChevronRight, Minus, Plus, ShieldCheck, Trash2, X } from "lucide-react";
+import { ChevronLeft, Minus, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { AccessoryDetailModal } from "@/components/cart/accessory-detail-modal";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-store";
 import { applyBundleOffer } from "@/lib/catalog/bundle";
 import { cartStockLimit } from "@/lib/catalog/inventory";
+import { nuraltaCartImage } from "@/lib/catalog/nuralta-media";
 import { formatPrice } from "@/lib/format";
 import type { CatalogProduct } from "@/lib/catalog/types";
 import { PAYMENT_METHODS } from "./data";
@@ -63,7 +65,6 @@ export function useNuraltaCart() {
   if (!value) throw new Error("useNuraltaCart must be used inside NuraltaCartProvider");
   return value;
 }
-
 export function NuraltaCartProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const openNuraltaCart = useCallback(() => setOpen(true), []);
@@ -74,7 +75,6 @@ export function NuraltaCartProvider({ children }: { children: ReactNode }) {
     </CartOverlayContext.Provider>
   );
 }
-
 function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
   const lines = useCart((state) => state.lines);
@@ -176,11 +176,22 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
           <div className="mt-5 divide-y divide-[#e6ded4] border-y border-[#e6ded4]">
             {lines.map((line) => {
               const key = `${line.slug}|${line.variantId ?? ""}`;
+              const productHref = line.slug === "nuralta-painel-ripado-decorativo" ? "/offers/painel-ripado" : `/product/${line.slug}`;
+              const displayName = line.name.replace(/\s+Nuralta\b/gi, "").trim();
+              const isAccessory = ACCESSORIES.some((accessory) => accessory.slug === line.slug);
               return (
                 <article key={key} className="flex gap-4 py-5">
-                  <img src={line.image} alt={line.name} className="h-24 w-20 rounded-lg object-cover sm:h-28 sm:w-24" />
+                  {isAccessory ? (
+                    <button type="button" onClick={() => setDetailSlug(line.slug)} aria-label={`Ver fotos e detalhes de ${displayName}`} className="block h-24 w-20 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-24">
+                      <img src={nuraltaCartImage(line.slug, line.image)} alt={displayName} className="h-full w-full object-cover" />
+                    </button>
+                  ) : (
+                    <a href={productHref} onClick={onClose} className="block h-24 w-20 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-24">
+                      <img src={nuraltaCartImage(line.slug, line.image)} alt={displayName} className="h-full w-full object-cover" />
+                    </a>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{line.quantity}x {line.name.replace(" Nuralta", "")}</p>
+                    <a href={productHref} onClick={onClose} className="font-semibold hover:underline">{line.quantity}x {displayName}</a>
                     <p className="mt-1 text-sm text-[#7d6f64]">{line.variantLabel || line.subtitle}</p>
                     <strong className="mt-2 block">{formatPrice(line.price)}</strong>
                     <div className="mt-3 inline-flex items-center rounded-full border border-[#d8cec2] bg-white">
@@ -230,7 +241,7 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
             <div className="flex justify-between"><dt>Envio</dt><dd>Grátis</dd></div>
             <div className="flex justify-between border-t border-[#e6ded4] pt-3 text-lg font-bold"><dt>Total</dt><dd>{formatPrice(subtotal.toFixed(2))}</dd></div>
           </dl>
-          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push("/checkout"); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
+          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push("/offers/painel-ripado/checkout"); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
           <p className="mt-3 text-center text-xs text-[#7d6f64]">Escolha a forma de pagamento no passo seguinte</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Métodos de pagamento">
             {PAYMENT_METHODS.map((method) => <span key={method.alt} className="inline-flex h-8 items-center rounded border border-zinc-200 px-2"><img src={method.src} alt={method.alt} style={{ width: method.width, maxHeight: 17 }} /></span>)}
@@ -239,26 +250,8 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
         </aside>
       </div>
 
-      {detail && detailProduct && <AccessoryDetail product={detailProduct} copy={detail} onClose={() => setDetailSlug(null)} onAdd={() => { addAccessory(detailProduct); setDetailSlug(null); }} />}
+      {detail && detailProduct && <AccessoryDetailModal key={detailProduct.slug} product={detailProduct} onClose={() => setDetailSlug(null)} onAdd={() => { addAccessory(detailProduct); setDetailSlug(null); }} />}
     </div>
   );
 }
 
-function AccessoryDetail({ product, copy, onClose, onAdd }: { product: CatalogProduct; copy: (typeof ACCESSORIES)[number]; onClose: () => void; onAdd: () => void }) {
-  const [index, setIndex] = useState(0);
-  const gallery = [product.image, ...product.gallery.split(",").filter(Boolean)];
-  const variant = product.variants[0];
-  const cents = product.priceCents + (variant?.priceDeltaCents ?? 0);
-  const go = (direction: number) => setIndex((current) => (current + direction + gallery.length) % gallery.length);
-  return (
-    <div className="fixed inset-0 z-[120] grid place-items-center bg-black/60 p-3" role="dialog" aria-modal="true" aria-label={copy.dialogTitle}>
-      <div className="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[#f7f3ef] p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.14em] text-[#8a5a2b]">{copy.slug.includes("led") ? "RGB · 3 m" : "Instalação completa"}</p><h3 className="belmonte-serif mt-1 text-3xl">{copy.dialogTitle}</h3></div><button type="button" onClick={onClose} aria-label="Fechar detalhes" className="rounded-full border border-[#d8cec2] p-2"><X className="h-5 w-5" /></button></div>
-        <div className="relative mt-5 aspect-video overflow-hidden rounded-xl bg-[#e8e0d7]"><img src={gallery[index]} alt={`${copy.name} — imagem ${index + 1}`} className="h-full w-full object-cover" /><button type="button" aria-label="Imagem anterior" onClick={() => go(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white p-2"><ChevronLeft className="h-5 w-5" /></button><button type="button" aria-label="Próxima imagem" onClick={() => go(1)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white p-2"><ChevronRight className="h-5 w-5" /></button></div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{gallery.map((src, galleryIndex) => <button type="button" key={`${src}-${galleryIndex}`} onClick={() => setIndex(galleryIndex)} className={`h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 ${galleryIndex === index ? "border-[#8a5a2b]" : "border-transparent"}`}><img src={src} alt={`Ver imagem ${galleryIndex + 1}`} className="h-full w-full object-cover" /></button>)}</div>
-        <div className="mt-5 grid gap-6 md:grid-cols-2"><div><h4 className="font-semibold">Detalhes {copy.slug.includes("led") ? "da fita LED" : "do kit"}</h4><ul className="mt-3 space-y-2 text-sm text-[#5c5049]">{copy.bullets.map((bullet) => <li key={bullet}>✓ {bullet}</li>)}</ul></div><div><h4 className="font-semibold">Avaliações de clientes em Portugal</h4><div className="mt-3 space-y-3">{copy.reviews.map((review) => { const [body, author, city] = review; return <blockquote key={author} className="rounded-lg bg-white p-3 text-sm"><p>“{body}”</p><footer className="mt-2 text-xs text-[#7d6f64]">{author} · 🇵🇹 {city} · ★★★★★</footer></blockquote>; })}</div></div></div>
-        <button type="button" onClick={onAdd} className="mt-6 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white">+{formatPrice((cents / 100).toFixed(2))} · Adicionar {copy.slug.includes("led") ? "fita LED" : "kit"}</button>
-      </div>
-    </div>
-  );
-}

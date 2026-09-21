@@ -32,7 +32,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "ul",
         items: [
-          "Portugal Continental: 3 a 7 dias úteis após confirmação do pagamento.",
+          "Portugal Continental: 8 a 12 dias úteis após confirmação do pagamento, devido à elevada procura.",
           "Portugal Insular (Madeira e Açores): 5 a 10 dias úteis, sujeito a transporte marítimo.",
           "Espanha e restante União Europeia: 5 a 12 dias úteis, consoante o destino.",
           "Os prazos contam-se em dias úteis e iniciam-se após confirmação do pagamento e do stock.",
@@ -240,18 +240,18 @@ export const LEGAL_PAGES: LegalPage[] = [
   // TERMOS DE USO
   {
     id: "termos",
-    title: "Termos e condições de uso",
+    title: "Termos e condições",
     subtitle: "Condições gerais de utilização e venda",
-    updated: "Atualizado em janeiro de 2026",
+    updated: "Atualizado em setembro de 2026",
     blocks: [
       {
         kind: "p",
-        text: "Os presentes termos e condições regulam a utilização do site nuraltainteriores.online e a compra de produtos nele disponibilizados. Ao usar o site, aceita ficar vinculado a estas condições.",
+        text: "Os presentes termos e condições regulam a utilização desta página e a compra dos produtos nela disponibilizados. Ao utilizar a página ou concluir uma encomenda, aceita ficar vinculado a estas condições.",
       },
       { kind: "h3", text: "Identidade do operador" },
       {
         kind: "p",
-        text: "A marca Nuralta Interiores é operada comercialmente pela E-com.casa, propriedade da MGJ EXPERT LTD, registada em England and Wales com o n.º de empresa 17422467. A identificação completa consta na página «Dados da empresa».",
+        text: "A marca Nuralta Interiores é operada comercialmente pela E-com.casa, propriedade da MGJ EXPERT LTD, registada em Inglaterra e País de Gales com o n.º de empresa 17422467. A identificação completa consta na página «Dados da empresa».",
       },
       { kind: "h3", text: "Produtos e preços" },
       {
@@ -276,7 +276,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "Garantia" },
       {
         kind: "p",
-        text: "Os painéis beneficiam de uma garantia de 1 ano contra defeitos de fabrico, nos termos legais. A garantia não cobre danos decorrentes de instalação incorreta, humidade, uso impróprio ou desgaste normal.",
+        text: "Os bens móveis novos beneficiam do prazo legal de garantia de três anos, sem prejuízo dos restantes direitos do consumidor. A garantia não cobre danos decorrentes de instalação incorreta, humidade, utilização imprópria ou desgaste normal.",
       },
       { kind: "h3", text: "Propriedade intelectual" },
       {
@@ -286,12 +286,12 @@ export const LEGAL_PAGES: LegalPage[] = [
       { kind: "h3", text: "Lei aplicável e resolução de litígios" },
       {
         kind: "p",
-        text: "As presentes condições regem-se pela lei portuguesa e, subsidiariamente, pela lei aplicável ao consumidor no seu país de residência. Em caso de litígio, poderá recorrer à plataforma europeia de resolução de litígios em linha e ao Livro de Reclamações.",
+        text: "As presentes condições regem-se pela lei portuguesa e, subsidiariamente, pela lei aplicável ao consumidor no seu país de residência. Em caso de litígio, poderá recorrer ao Livro de Reclamações e à entidade de resolução alternativa de litígios de consumo competente.",
       },
       {
         kind: "external",
-        label: "Plataforma europeia de resolução de litígios",
-        href: "https://ec.europa.eu/consumers/odr/",
+        label: "Resolução Alternativa de Litígios de Consumo (ASAE)",
+        href: "https://www.asae.gov.pt/perguntas-frequentes1/area-economica/resolucao-alternativa-de-litigios-de-consumo.aspx",
       },
     ],
   },
@@ -342,7 +342,7 @@ export const LEGAL_PAGES: LegalPage[] = [
     blocks: [
       {
         kind: "p",
-        text: "A Nuralta Interiores é uma marca comercial operada por E-com.casa, propriedade da MGJ EXPERT LTD, registada em England and Wales. A identificação completa das entidades envolvidas na exploração da marca é apresentada abaixo.",
+        text: "A Nuralta Interiores é uma marca comercial operada pela E-com.casa, propriedade da MGJ EXPERT LTD, registada em Inglaterra e País de Gales. A identificação completa das entidades envolvidas na exploração da marca é apresentada abaixo.",
       },
       { kind: "h3", text: "Marca comercial" },
       {
@@ -366,7 +366,7 @@ export const LEGAL_PAGES: LegalPage[] = [
           "MGJ EXPERT LTD",
           "71-75 Shelton Street, Covent Garden",
           "London, WC2H 9JQ, United Kingdom",
-          "N.º de empresa 17422467 (England and Wales)",
+          "N.º de empresa 17422467 (Inglaterra e País de Gales)",
         ],
       },
       { kind: "h3", text: "Contactos" },
@@ -398,7 +398,7 @@ export const LEGAL_PAGES: LegalPage[] = [
         items: [
           "Livro de Reclamações eletrónico, nos termos da legislação portuguesa.",
           "Centro de Arbitragem de Conflitos de Consumo aplicável à sua zona.",
-          "Plataforma europeia ODR para resolução de litígios em linha.",
+          "Entidade de resolução alternativa de litígios de consumo competente.",
         ],
       },
       {

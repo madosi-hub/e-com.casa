@@ -4,17 +4,23 @@ import { usePathname } from 'next/navigation';
 import { PromotionInfo } from './promotion-info';
 import { SiteHeader } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
+import { CheckoutFooter, CheckoutHeader } from '@/components/checkout/checkout-chrome';
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const offerCheckoutRoute = pathname.startsWith('/offers/painel-ripado/checkout');
+  const offerInformationRoute = pathname.startsWith('/offers/painel-ripado/informacao/');
+  const offerChromeRoute = offerCheckoutRoute || offerInformationRoute;
   const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin');
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className={offerChromeRoute ? 'flex min-h-screen flex-col bg-[#f7f3ef]' : 'flex min-h-screen flex-col'}>
+      {offerChromeRoute && <CheckoutHeader />}
       {!selfContainedRoute && <SiteHeader />}
       {!selfContainedRoute && <PromotionInfo />}
       <main id="main-content" className="flex-1">{children}</main>
       {!selfContainedRoute && <SiteFooter />}
+      {offerChromeRoute && <CheckoutFooter />}
     </div>
   );
 }

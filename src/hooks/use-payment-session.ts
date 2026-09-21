@@ -77,9 +77,19 @@ export interface UsePaymentSessionOptions {
   signature: string;
   /** Called after the payment result is known-good → navigate. */
   onComplete: (orderNumber: string, accessToken: string) => void;
+  /** Stripe Elements locale. Offer checkouts can pin their campaign language. */
+  locale?: 'auto' | 'pt';
+  /** Relative return path used after gateway authentication. */
+  returnPath?: string;
 }
 
-export function usePaymentSession({ payload, signature, onComplete }: UsePaymentSessionOptions) {
+export function usePaymentSession({
+  payload,
+  signature,
+  onComplete,
+  locale = 'auto',
+  returnPath = '/checkout/success',
+}: UsePaymentSessionOptions) {
   const [phase, setPhase] = useState<PaymentSessionPhase>('idle');
   const [state, setState] = useState<SessionState>({
     orderNumber: null,
@@ -168,6 +178,7 @@ export function usePaymentSession({ payload, signature, onComplete }: UsePayment
         clientSecret: intentData.clientSecret,
         appearance: ELEMENTS_APPEARANCE,
         loader: 'auto',
+        locale,
       });
 
       setState({
@@ -185,7 +196,7 @@ export function usePaymentSession({ payload, signature, onComplete }: UsePayment
       setPhase('error');
       setState((s) => ({ ...s, errorMessage: 'We could not start the payment. Please try again.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
     }
-  }, [payload]);
+  }, [payload, locale]);
 
   // Re-ensure whenever the order signature changes and the payload is valid
   useEffect(() => {
@@ -206,11 +217,13 @@ export function usePaymentSession({ payload, signature, onComplete }: UsePayment
       return { ok: false, errorCode: 'TEMPORARY_PAYMENT_ERROR', errorMessage: 'Payment is not ready yet.' };
     }
     setPhase('confirming');
-    const returnUrl = `${window.location.origin}/checkout/success?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(accessToken)}`;
+    const returnUrl = new URL(returnPath, window.location.origin);
+    returnUrl.searchParams.set('order', orderNumber);
+    returnUrl.searchParams.set('token', accessToken);
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: returnUrl },
+      confirmParams: { return_url: returnUrl.toString() },
       redirect: 'if_required',
     });
 
@@ -237,7 +250,7 @@ export function usePaymentSession({ payload, signature, onComplete }: UsePayment
     }
     // requires_action etc. → redirect already scheduled by Stripe
     return { ok: true };
-  }, [state]);
+  }, [state, returnPath]);
 
   return {
     phase,
