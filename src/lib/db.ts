@@ -11,8 +11,8 @@ function createPrismaClient() {
 }
 
 /**
- * The checkout uses the dedicated Supabase datasource declared in Prisma.
- * This remains server-only because this module is never imported by the client.
+ * One Prisma client per runtime process. This is intentionally provider-neutral:
+ * DATABASE_URL can point to Neon today and to another PostgreSQL provider later.
  */
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 

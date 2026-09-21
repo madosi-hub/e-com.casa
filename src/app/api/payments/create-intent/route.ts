@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
         ? 'Online payments are temporarily unavailable. Please try again shortly.'
         : 'We could not start the payment. Please try again.',
       errorCode: perr?.code ?? 'UNKNOWN_ERROR',
+      providerCode: perr?.providerCode ?? null,
       stage,
       requestId,
     }, { status: perr?.httpStatus ?? 500 });
