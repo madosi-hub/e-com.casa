@@ -83,6 +83,8 @@ export default function CheckoutPage() {
       const raw = window.localStorage.getItem(CHECKOUT_DRAFT_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as Partial<typeof form>;
+        // Draft restoration is a one-time client hydration step from localStorage.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm((current) => ({
           ...current,
           ...saved,

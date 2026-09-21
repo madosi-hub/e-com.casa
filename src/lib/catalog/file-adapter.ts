@@ -8,7 +8,7 @@ import type {
   ProductQuery,
   ProductVariant,
 } from './types';
-import { useProviderMediaMirror } from './media';
+import { mirrorProviderMedia } from './media';
 import { nuraltaCatalogGallery, nuraltaCatalogImage } from './nuralta-media';
 
 type JsonProduct = Omit<CatalogProduct, 'variants'> & { variants?: ProductVariant[] };
@@ -32,7 +32,7 @@ function readProducts(file: string): CatalogProduct[] {
       variants: Array.isArray(product.variants)
         ? product.variants.map((variant) => ({
           ...variant,
-          image: variant.image ? useProviderMediaMirror(variant.image) : variant.image,
+          image: variant.image ? mirrorProviderMedia(variant.image) : variant.image,
         }))
         : [],
     }));

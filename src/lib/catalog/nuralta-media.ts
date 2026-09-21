@@ -1,4 +1,4 @@
-import { useProviderMediaMirror } from './media';
+import { mirrorProviderMedia } from './media';
 
 const NURALTA_ACCESSORY_IMAGES: Record<string, string> = {
   'nuralta-kit-instalacao-completo': 'https://media.discordapp.net/attachments/1551363790367629333/1551403503119769701/content.png?ex=6ab1d89a&is=6ab0871a&hm=18d56ccf78a198399daa18917ac1313e6b9cbcc6185ebd5c2925f83ee6fde6ef&=&format=webp&quality=lossless&width=819&height=1024',
@@ -6,13 +6,13 @@ const NURALTA_ACCESSORY_IMAGES: Record<string, string> = {
 };
 
 export function nuraltaCartImage(slug: string, fallback: string): string {
-  return NURALTA_ACCESSORY_IMAGES[slug] ?? useProviderMediaMirror(fallback);
+  return NURALTA_ACCESSORY_IMAGES[slug] ?? mirrorProviderMedia(fallback);
 }
 
 export function nuraltaCatalogImage(slug: string, fallback: string): string {
-  return NURALTA_ACCESSORY_IMAGES[slug] ?? useProviderMediaMirror(fallback);
+  return NURALTA_ACCESSORY_IMAGES[slug] ?? mirrorProviderMedia(fallback);
 }
 
 export function nuraltaCatalogGallery(slug: string, fallback: string): string {
-  return NURALTA_ACCESSORY_IMAGES[slug] ?? fallback.split(',').map((src) => useProviderMediaMirror(src.trim())).join(',');
+  return NURALTA_ACCESSORY_IMAGES[slug] ?? fallback.split(',').map((src) => mirrorProviderMedia(src.trim())).join(',');
 }

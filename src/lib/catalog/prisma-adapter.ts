@@ -7,7 +7,7 @@ import type {
   ProductQuery,
   ProductVariant,
 } from './types';
-import { useProviderMediaMirror } from './media';
+import { mirrorProviderMedia } from './media';
 import { nuraltaCatalogGallery, nuraltaCatalogImage } from './nuralta-media';
 
 function parseVariants(json: string): ProductVariant[] {
@@ -69,7 +69,7 @@ export function mapProduct(row: ProductRow): CatalogProduct {
     shippingClass: row.shippingClass,
     variants: parseVariants(row.variantsJson).map((variant) => ({
       ...variant,
-      image: variant.image ? useProviderMediaMirror(variant.image) : variant.image,
+      image: variant.image ? mirrorProviderMedia(variant.image) : variant.image,
     })),
     electrical: row.electrical,
     battery: row.battery,
