@@ -59,6 +59,7 @@ const createCheckoutSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  let stage = 'request';
   const limit = rateLimit(req, 'checkout-create', 12, 60_000);
   if (!limit.ok) {
     return NextResponse.json(
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    stage = 'parse_body';
     const body = await req.json();
     const parsed = createCheckoutSchema.safeParse(body);
     if (!parsed.success) {
@@ -79,6 +81,7 @@ export async function POST(req: NextRequest) {
     const data = parsed.data;
 
     // Server-side repricing — the only totals we trust
+    stage = 'reprice_cart';
     let totals;
     try {
       totals = await repriceCart({
@@ -105,6 +108,7 @@ export async function POST(req: NextRequest) {
 
     // Idempotent per checkout session: same checkoutToken → update the
     // still-pending order instead of creating a new one.
+    stage = 'load_order';
     const existing = data.checkoutToken
       ? await db.order.findUnique({ where: { checkoutToken: data.checkoutToken } })
       : null;
@@ -141,6 +145,7 @@ export async function POST(req: NextRequest) {
       pricingHash: totals.pricingHash,
     };
 
+    stage = 'persist_order';
     let order = existing && ['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus)
       ? await db.order.update({
           where: { id: existing.id },
@@ -161,10 +166,12 @@ export async function POST(req: NextRequest) {
           },
         });
 
+    stage = 'load_payment';
     // If a stale PaymentIntent exists with a different pricing hash it
     // will be cancelled by /api/payments/create-intent automatically.
     const payment = await db.payment.findUnique({ where: { orderId: order.id } });
 
+    stage = 'consent';
     // Explicit marketing consent captured at checkout — consent is
     // never inferred from the order submission itself.
     if (data.marketingConsent) {
@@ -185,6 +192,7 @@ export async function POST(req: NextRequest) {
       }).catch(() => undefined); // consent must never block checkout
     }
 
+    stage = 'tracking';
     // Analytics must never delay the payment session response.
     void sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters);
 
@@ -221,6 +229,6 @@ export async function POST(req: NextRequest) {
       ? 'A base de dados de produção precisa de uma atualização. Contacte o suporte com a referência apresentada.'
       : 'Não foi possível preparar o checkout. Contacte o suporte com a referência apresentada.';
 
-    return NextResponse.json({ error: publicError, requestId }, { status: 500 });
+    return NextResponse.json({ error: publicError, errorCode: code, stage, requestId }, { status: 500 });
   }
 }
