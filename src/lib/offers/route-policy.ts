@@ -9,7 +9,9 @@ export const NURALTA_OFFER_ALIAS = 'painel-ripado';
  * Every other campaign remains fail-closed unless an active database row exists.
  */
 export function isOfferRouteEnabled(requestedSlug: string, offer?: ProductOffer): boolean {
-  if (requestedSlug === NURALTA_OFFER_SLUG || requestedSlug === NURALTA_OFFER_ALIAS) return true;
+  if (requestedSlug === NURALTA_OFFER_SLUG || requestedSlug === NURALTA_OFFER_ALIAS) {
+    return offer ? isOfferActive(offer) : true;
+  }
   if (offer) return isOfferActive(offer);
   return false;
 }
