@@ -10,7 +10,7 @@ import { db } from '@/lib/db';
 import { getProduct } from '@/lib/catalog';
 import { assignTrackingFields } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
-import { sendUtmifyOrder } from '@/lib/utmify';
+import { sendUtmifyOrder, type UTMifyTrackingParameters } from '@/lib/utmify';
 import { getPaymentProvider } from './xpayments-provider';
 import { toMinorUnit } from './amounts';
 import type { ProviderPaymentIntent } from './payment-types';
@@ -37,6 +37,20 @@ export interface ReconcileResult {
 function safePaidAt(value?: Date): Date {
   if (!value || Number.isNaN(value.getTime())) return new Date();
   return value;
+}
+
+function trackingFromIntent(intent: ProviderPaymentIntent): UTMifyTrackingParameters | null {
+  const metadata = (intent.raw as { metadata?: Record<string, string | undefined> } | undefined)?.metadata;
+  if (!metadata) return null;
+  return {
+    src: metadata.tracking_src ?? null,
+    sck: metadata.tracking_sck ?? null,
+    utm_source: metadata.tracking_utm_source ?? null,
+    utm_medium: metadata.tracking_utm_medium ?? null,
+    utm_campaign: metadata.tracking_utm_campaign ?? null,
+    utm_content: metadata.tracking_utm_content ?? null,
+    utm_term: metadata.tracking_utm_term ?? null,
+  };
 }
 
 /**
@@ -167,7 +181,7 @@ export async function applyProviderIntent(
       }).catch((error) => {
         console.error('payment confirmation email failed after reconciliation', error instanceof Error ? error.message : 'unknown');
       });
-      await sendUtmifyOrder({ ...order, paymentMethodType: method }, 'paid');
+      await sendUtmifyOrder({ ...order, paymentMethodType: method }, 'paid', trackingFromIntent(intent));
     }
 
     return { checked: true, changed: transitionedToPaid, paymentStatus: 'PAID', providerStatus: intent.status };

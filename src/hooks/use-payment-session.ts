@@ -151,7 +151,7 @@ export function usePaymentSession({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
-        body: JSON.stringify({ orderNumber, accessToken }),
+        body: JSON.stringify({ orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null }),
       });
       const intentData = await intentRes.json();
       if (!intentRes.ok || !intentData.clientSecret) {

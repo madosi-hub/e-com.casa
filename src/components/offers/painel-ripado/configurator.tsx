@@ -291,7 +291,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong></div>
                   <span className="mt-1 block text-sm text-[#7d6f64]">{selectedSize?.label ?? 'Escolha uma opção'}</span>
                 </div>
-                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso?</span></button>
+                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso?</span></button>
               </div>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                 {PANEL_SIZES.map((size, index) => {
@@ -387,7 +387,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
           <div className="w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6" style={{ maxHeight: '90vh' }}>
             <div className="flex items-start justify-between gap-4">
               <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#8a5a2b]">Calculadora de painéis</p><h2 id="panel-calculator-title" className="mt-1 text-xl font-bold text-[#201a17]">Qual é o tamanho da parede?</h2><p className="mt-1 text-xs leading-5 text-[#7d6f64]">Indique as medidas em metros. Já incluímos 10% de margem para cortes e ajustes.</p></div>
-              <button type="button" onClick={() => setCalculatorOpen(false)} className="shrink-0 rounded-full p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Fechar calculadora"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={() => { setCalculatorOpen(false); trackOfferEvent('calculator_closed', { offerSlug: offer.slug, productSlug: product.slug, reason: 'button' }); }} className="shrink-0 rounded-full p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Fechar calculadora"><X className="h-5 w-5" /></button>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <label className="text-xs font-semibold text-zinc-700">Largura<div className="mt-1.5 flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3"><input type="text" inputMode="decimal" value={wallWidth} onChange={(event) => setWallWidth(event.target.value.replace(/[^\d.,]/g, ''))} placeholder="Ex.: 3,20" className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none" /><span className="text-xs text-zinc-500">m</span></div></label>

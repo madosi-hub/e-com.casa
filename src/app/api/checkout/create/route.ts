@@ -134,7 +134,6 @@ export async function POST(req: NextRequest) {
       discount: totals.discount.toFixed(2),
       total: totals.total.toFixed(2),
       promoCode: totals.promoCode,
-      trackingParametersJson: data.trackingParameters ? JSON.stringify(data.trackingParameters) : null,
       itemsJson: JSON.stringify(totals.lineItems),
       giftWrap: data.giftWrap,
       notes: sanitizeNotes(data.notes) || null,
@@ -187,7 +186,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Analytics must never delay the payment session response.
-    void sendUtmifyOrder(order, 'waiting_payment');
+    void sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters);
 
     return NextResponse.json(
       {

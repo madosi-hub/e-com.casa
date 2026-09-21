@@ -26,6 +26,8 @@ interface CheckoutTrackingParameters {
   sck?: string | null;
 }
 
+export type UTMifyTrackingParameters = CheckoutTrackingParameters;
+
 function dateUtc(value: Date | string | null): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -33,9 +35,9 @@ function dateUtc(value: Date | string | null): string | null {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-function tracking(value: string | null): TrackingParameters {
+function tracking(value?: string | null, direct?: CheckoutTrackingParameters | null): TrackingParameters {
   try {
-    const parsed = value ? JSON.parse(value) as CheckoutTrackingParameters : {};
+    const parsed = direct ?? (value ? JSON.parse(value) as CheckoutTrackingParameters : {});
     return {
       src: parsed.src ?? null,
       sck: parsed.sck ?? null,
@@ -59,8 +61,9 @@ function paymentMethod(value: string | null): 'credit_card' | 'boleto' | 'pix' |
 }
 
 export async function sendUtmifyOrder(
-  order: Pick<Order, 'orderNumber' | 'email' | 'firstName' | 'lastName' | 'phone' | 'country' | 'total' | 'currency' | 'itemsJson' | 'createdAt' | 'paidAt' | 'paymentMethodType' | 'trackingParametersJson'>,
+  order: Pick<Order, 'orderNumber' | 'email' | 'firstName' | 'lastName' | 'phone' | 'country' | 'total' | 'currency' | 'itemsJson' | 'createdAt' | 'paidAt' | 'paymentMethodType'>,
   status: UTMifyStatus,
+  directTracking?: UTMifyTrackingParameters | null,
 ): Promise<void> {
   const token = "w0R4DbciwZinZLP98upenHoSgzCoyo3XeGIw";
   if (!token) return;
@@ -92,7 +95,7 @@ export async function sendUtmifyOrder(
       quantity: item.quantity ?? 1,
       priceInCents: Math.round(Number(item.price ?? 0) * 100),
     })),
-    trackingParameters: tracking(order.trackingParametersJson),
+    trackingParameters: tracking(null, directTracking),
     commission: {
       totalPriceInCents,
       gatewayFeeInCents: 0,

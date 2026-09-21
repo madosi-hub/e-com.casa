@@ -16,7 +16,19 @@ import type { PaymentStatus } from '@/lib/payments/payment-types';
 
 export const dynamic = 'force-dynamic';
 
-const schema = z.object({ orderNumber: z.string().min(3).max(40), accessToken: z.string().min(8).max(120) });
+const schema = z.object({
+  orderNumber: z.string().min(3).max(40),
+  accessToken: z.string().min(8).max(120),
+  trackingParameters: z.object({
+    src: z.string().max(500).nullable().optional(),
+    sck: z.string().max(500).nullable().optional(),
+    utm_source: z.string().max(200).nullable().optional(),
+    utm_medium: z.string().max(200).nullable().optional(),
+    utm_campaign: z.string().max(200).nullable().optional(),
+    utm_content: z.string().max(200).nullable().optional(),
+    utm_term: z.string().max(200).nullable().optional(),
+  }).nullable().optional(),
+});
 const REUSABLE: PaymentStatus[] = ['CREATED', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING'];
 
 export async function POST(req: NextRequest) {
@@ -26,7 +38,7 @@ export async function POST(req: NextRequest) {
   try {
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid payment request' }, { status: 400 });
-    const { orderNumber, accessToken } = parsed.data;
+    const { orderNumber, accessToken, trackingParameters } = parsed.data;
     const order = await db.order.findUnique({ where: { orderNumber }, include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } } });
     if (!order || !tokenMatches(order.accessToken, accessToken)) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     if (order.paymentStatus === 'PAID') return NextResponse.json({ error: 'Order already paid' }, { status: 409 });
@@ -70,7 +82,11 @@ export async function POST(req: NextRequest) {
 
     if (existing?.paymentIntentId) { try { await provider.cancelPaymentIntent(existing.paymentIntentId); } catch { /* best effort */ } }
 
-    intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}` });
+    const trackingMetadata = Object.fromEntries(
+      Object.entries(trackingParameters ?? {}).filter(([, value]) => typeof value === 'string' && value.length > 0)
+        .map(([key, value]) => [`tracking_${key}`, String(value)]),
+    );
+    intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}`, metadata: trackingMetadata });
 
     const payment = await db.payment.upsert({
       where: { orderId: order.id },
