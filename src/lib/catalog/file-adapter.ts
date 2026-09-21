@@ -8,20 +8,13 @@ import type {
   ProductQuery,
   ProductVariant,
 } from './types';
+import { useProviderMediaMirror } from './media';
+import { nuraltaCatalogGallery, nuraltaCatalogImage } from './nuralta-media';
 
 type JsonProduct = Omit<CatalogProduct, 'variants'> & { variants?: ProductVariant[] };
 
 let cache: { products: CatalogProduct[]; categories: CatalogCategory[]; loadedAt: number } | null = null;
 const CACHE_TTL_MS = 30_000;
-const PROVIDER_MEDIA_PREFIX = 'https://www.nuraltainteriores.online/pt/';
-const PROVIDER_MEDIA_MIRROR = 'https://raw.githubusercontent.com/nexflowx-hub/nuraltainteriores/main/public/pt/';
-
-function useProviderMediaMirror(src: string): string {
-  return src.startsWith(PROVIDER_MEDIA_PREFIX)
-    ? `${PROVIDER_MEDIA_MIRROR}${src.slice(PROVIDER_MEDIA_PREFIX.length)}`
-    : src;
-}
-
 function dataPath(file: string): string {
   return path.join(process.cwd(), 'data', 'catalog', file);
 }
@@ -32,9 +25,9 @@ function readProducts(file: string): CatalogProduct[] {
     if (!Array.isArray(parsed)) return [];
     return parsed.map((product) => ({
       ...product,
-      image: useProviderMediaMirror(product.image),
-      hoverImage: product.hoverImage ? useProviderMediaMirror(product.hoverImage) : product.hoverImage,
-      gallery: product.gallery?.split(',').map((src) => useProviderMediaMirror(src.trim())).join(','),
+      image: nuraltaCatalogImage(product.slug, product.image),
+      hoverImage: product.hoverImage ? nuraltaCatalogImage(product.slug, product.hoverImage) : product.hoverImage,
+      gallery: nuraltaCatalogGallery(product.slug, product.gallery),
       stockKnown: product.stockKnown ?? false,
       variants: Array.isArray(product.variants)
         ? product.variants.map((variant) => ({

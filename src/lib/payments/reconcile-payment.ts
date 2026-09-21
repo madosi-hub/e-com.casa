@@ -10,6 +10,7 @@ import { db } from '@/lib/db';
 import { getProduct } from '@/lib/catalog';
 import { assignTrackingFields } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
+import { sendUtmifyOrder } from '@/lib/utmify';
 import { getPaymentProvider } from './xpayments-provider';
 import { toMinorUnit } from './amounts';
 import type { ProviderPaymentIntent } from './payment-types';
@@ -166,6 +167,7 @@ export async function applyProviderIntent(
       }).catch((error) => {
         console.error('payment confirmation email failed after reconciliation', error instanceof Error ? error.message : 'unknown');
       });
+      await sendUtmifyOrder({ ...order, paymentMethodType: method }, 'paid');
     }
 
     return { checked: true, changed: transitionedToPaid, paymentStatus: 'PAID', providerStatus: intent.status };
