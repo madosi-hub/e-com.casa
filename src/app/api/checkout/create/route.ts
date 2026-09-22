@@ -193,8 +193,9 @@ export async function POST(req: NextRequest) {
     }
 
     stage = 'tracking';
-    // The provisional order only preloads payment methods; it is not a real pending sale.
-    if (data.email !== 'checkout@e-com.casa' && data.firstName !== 'A preencher') {
+    // Opening checkout starts one pending order; submitting customer details
+    // updates that same order before payment, without a resend queue.
+    if (!existing || data.email !== 'checkout@e-com.casa') {
       after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
     }
 
