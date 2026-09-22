@@ -9,10 +9,13 @@ const resolver = readFileSync(`${root}/src/lib/offers/resolver.ts`, 'utf8');
 const configurator = readFileSync(`${root}/src/components/offers/painel-ripado/configurator.tsx`, 'utf8');
 const sections = readFileSync(`${root}/src/components/offers/painel-ripado/sections.tsx`, 'utf8');
 const siteChrome = readFileSync(`${root}/src/components/layout/site-chrome.tsx`, 'utf8');
+const cartDrawer = readFileSync(`${root}/src/components/cart/cart-drawer.tsx`, 'utf8');
+const runtimeWidgets = readFileSync(`${root}/src/components/layout/runtime-widgets.tsx`, 'utf8');
 const nuraltaTemplate = readFileSync(`${root}/src/components/offers/nuralta/page.tsx`, 'utf8');
 const nuraltaConfigurator = readFileSync(`${root}/src/components/offers/nuralta/product-configurator.tsx`, 'utf8');
 const nuraltaFooter = readFileSync(`${root}/src/components/offers/nuralta/footer.tsx`, 'utf8');
 const nuraltaCart = readFileSync(`${root}/src/components/offers/nuralta/cart-overlay.tsx`, 'utf8');
+const painelCheckout = readFileSync(`${root}/src/components/checkout/painel-ripado-checkout.tsx`, 'utf8');
 
 test('every product offer reuses the approved complete funnel', () => {
   expect(sharedRoute).toContain('<PainelRipadoOfferPage {...props} />');
@@ -95,6 +98,24 @@ test('the Nuralta slug uses the same approved funnel as the painel-ripado alias'
   expect(nuraltaCart).toContain('Fita LED Nuralta + Controlo RGB');
   expect(nuraltaFooter).toContain('Nuralta Interiores, Unipessoal Lda. · NIF 517 946 327');
   expect(nuraltaFooter).toContain('Impulsionada pela marca @E-Com.Casa');
+});
+
+test('both Nuralta offer URLs use the dedicated painel-ripado checkout flow', () => {
+  expect(cartDrawer).toContain("pathname === '/offers/painel-ripado'");
+  expect(cartDrawer).toContain("pathname === '/offers/nuralta-painel-ripado'");
+  expect(cartDrawer).toContain("nuraltaOfferRoute ? '/offers/painel-ripado/checkout' : '/checkout'");
+  expect(runtimeWidgets).toContain("pathname.startsWith('/offers/nuralta-painel-ripado')");
+});
+
+test('the dedicated checkout derives the required surname and reveals CTT delivery after the postal code', () => {
+  expect(painelCheckout).not.toContain("field('lastName'");
+  expect(painelCheckout).not.toContain('id="co-shipping"');
+  expect(painelCheckout).not.toContain('id="co-notes"');
+  expect(painelCheckout).toContain('lastName: form.firstName.trim()');
+  expect(painelCheckout).toContain('onBlur={loadShippingQuote}');
+  expect(painelCheckout).toContain("shippingQuoteStatus === 'loading'");
+  expect(painelCheckout).toContain("shippingQuoteStatus === 'ready'");
+  expect(painelCheckout).toContain('/pt/images/logo-ctt-express.svg');
 });
 
 test('the Nuralta gallery always starts on an available campaign image', () => {
