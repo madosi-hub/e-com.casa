@@ -5,6 +5,7 @@ import { join, relative } from 'node:path';
 const projectRoot = join(import.meta.dir, '..');
 const offerRoot = join(projectRoot, 'src', 'components', 'offers', 'nuralta');
 const publicRoot = join(projectRoot, 'public');
+const catalogMediaSource = join(projectRoot, 'src', 'lib', 'catalog', 'nuralta-media.ts');
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory)
@@ -33,4 +34,16 @@ test('all static Nuralta funnel media are bundled with the storefront', () => {
 
   expect(referencedMedia.size).toBeGreaterThan(0);
   expect(missingMedia).toEqual([]);
+});
+
+test('all Nuralta accessory media are bundled with the storefront', () => {
+  const source = readFileSync(catalogMediaSource, 'utf8');
+  const referencedMedia = [...source.matchAll(/["'](\/images\/nuralta-accessories\/[^"']+)["']/g)]
+    .map((match) => match[1]);
+  const missingMedia = referencedMedia.filter((mediaPath) => !existsSync(join(publicRoot, mediaPath)));
+
+  expect(referencedMedia).toHaveLength(9);
+  expect(new Set(referencedMedia).size).toBe(9);
+  expect(missingMedia).toEqual([]);
+  expect(source).not.toContain('discordapp.com');
 });
