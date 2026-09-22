@@ -39,9 +39,15 @@ const t = (key: string, vars?: Record<string, string | number>) => {
   );
 };
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
+const CHECKOUT_PLACEHOLDER_EMAIL = 'checkout@e-com.casa';
 const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
 const CHECKOUT_LABEL_CLASS = 'text-[12px] font-normal leading-[16px] text-[#27272a]';
 const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#e4e4e7] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#a1a1aa] focus-visible:border-[#777781] focus-visible:ring-[#777781]/15 md:text-[16px]';
+
+function validPendingEmail(value: string): string | null {
+  const email = value.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+}
 
 export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offerSlug?: PanelOfferSlug }) {
   const router = useRouter();
@@ -52,6 +58,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const [mounted, setMounted] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [trackingParameters, setTrackingParameters] = useState<Record<string, string | null> | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     email: '',
@@ -85,6 +92,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
           ...saved,
           termsAccepted: false,
         }));
+        if (typeof saved.email === 'string') setPendingEmail(validPendingEmail(saved.email));
       }
     } catch {
       // A blocked or malformed local draft must never prevent checkout.
@@ -156,7 +164,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     () => cart.lines.length > 0
       ? {
           // Keep the Stripe Elements session stable while contact fields are typed.
-          email: 'checkout@e-com.casa',
+          email: pendingEmail ?? CHECKOUT_PLACEHOLDER_EMAIL,
           firstName: 'A preencher',
           lastName: 'A preencher',
           address: 'A preencher',
@@ -178,6 +186,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       cart.lines,
       cart.promoCode,
       form.country,
+      pendingEmail,
       trackingParameters,
     ],
   );
@@ -312,7 +321,15 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             </div>
             <div className="mt-1 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-x-2 gap-y-2.5">
               {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
-              {field('email', 'E-mail', { type: 'email', autoComplete: 'email', placeholder: 'o.seu.email@exemplo.com' })}
+              {field('email', 'E-mail', {
+                type: 'email',
+                autoComplete: 'email',
+                placeholder: 'o.seu.email@exemplo.com',
+                onBlur: (event) => {
+                  const email = validPendingEmail(event.currentTarget.value);
+                  if (email) setPendingEmail(email);
+                },
+              })}
               {field('address', t('checkout.address'), { autoComplete: 'address-line1', placeholder: 'Rua e número' })}
               {field('address2', 'Complemento da morada (opcional)', { autoComplete: 'address-line2', placeholder: 'Andar, porta ou ponto de referência', required: false })}
               {field('city', t('checkout.city'), { autoComplete: 'address-level2', placeholder: 'Lisboa' }, true)}

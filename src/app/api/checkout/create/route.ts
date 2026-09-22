@@ -24,6 +24,8 @@ import { sendUtmifyOrder } from '@/lib/utmify';
 
 export const dynamic = 'force-dynamic';
 
+const OFFER_CHECKOUT_PLACEHOLDER_EMAIL = 'checkout@e-com.casa';
+
 const orderItemSchema = z.object({
   slug: z.string().min(1),
   quantity: z.number().int().min(1).max(99),
@@ -193,9 +195,11 @@ export async function POST(req: NextRequest) {
     }
 
     stage = 'tracking';
-    // Opening checkout starts one pending order; submitting customer details
-    // updates that same order before payment, without a resend queue.
-    if (!existing || data.email !== 'checkout@e-com.casa') {
+    // The offer checkout may prepare its internal order and PaymentIntent with a
+    // placeholder, but UTMify should only receive a lead after the visitor has
+    // finished a real email address. Reusing the order number lets later cart
+    // changes update the same pending sale instead of creating duplicates.
+    if (data.email !== OFFER_CHECKOUT_PLACEHOLDER_EMAIL) {
       after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
     }
 
