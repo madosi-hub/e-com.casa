@@ -6,7 +6,7 @@
 // Response carries the order access token ONCE; the browser uses
 // (orderNumber, accessToken) for every later payment call.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
@@ -193,8 +193,10 @@ export async function POST(req: NextRequest) {
     }
 
     stage = 'tracking';
-    // Analytics must never delay the payment session response.
-    void sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters);
+    // The provisional order only preloads payment methods; it is not a real pending sale.
+    if (data.email !== 'checkout@e-com.casa' && data.firstName !== 'A preencher') {
+      after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
+    }
 
     return NextResponse.json(
       {

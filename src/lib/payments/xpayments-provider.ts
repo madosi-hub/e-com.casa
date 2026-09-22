@@ -93,7 +93,7 @@ export class XPaymentsStripeProvider implements PaymentProvider {
       'metadata[customer_country]': input.customerCountry,
       'metadata[store]': 'e-com.casa',
       ...(this.cfg.storeId ? { 'metadata[store_id]': this.cfg.storeId } : {}),
-      ...input.metadata,
+      ...Object.fromEntries(Object.entries(input.metadata ?? {}).map(([key, value]) => [`metadata[${key}]`, value])),
     });
     const intent = await this.request<StripeLikeIntent>('POST', '/payment_intents', { body, idempotencyKey: input.idempotencyKey });
     return toProviderIntent(intent);

@@ -30,22 +30,23 @@ export const ELEMENTS_APPEARANCE = {
   theme: 'flat' as const,
   variables: {
     colorPrimary: '#5f7052', // olive
-    colorBackground: '#ffffff',
-    colorText: '#1f241c', // ink
-    colorTextSecondary: '#6b7166',
-    colorTextPlaceholder: '#9aa093',
+    colorBackground: '#fafafa',
+    colorText: '#27272a', // ink
+    colorTextSecondary: '#71717a',
+    colorTextPlaceholder: '#a1a1aa',
     colorDanger: '#b3573f', // terracotta
-    fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
-    fontSizeBase: '14px',
+    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontSizeBase: '16px',
     spacingUnit: '4px',
-    borderRadius: '6px',
+    borderRadius: '16px',
     focusBoxShadow: '0 0 0 3px rgba(95, 112, 82, 0.18)',
   },
   rules: {
     '.Input': {
-      border: '1px solid #d9dcd4',
+      border: '1px solid #e4e4e7',
       boxShadow: 'none',
-      padding: '10px 12px',
+      padding: '12px 16px',
+      fontWeight: '400',
     },
     '.Input:focus': {
       border: '1px solid #5f7052',
@@ -55,13 +56,13 @@ export const ELEMENTS_APPEARANCE = {
       border: '1px solid #b3573f',
     },
     '.Label': {
-      fontSize: '12.5px',
-      fontWeight: '500',
-      marginBottom: '6px',
-      color: '#1f241c',
+      fontSize: '12px',
+      fontWeight: '400',
+      marginBottom: '8px',
+      color: '#27272a',
     },
     '.Tab': {
-      border: '1px solid #d9dcd4',
+      border: '1px solid #e4e4e7',
       boxShadow: 'none',
     },
     '.Tab--selected': {

@@ -181,7 +181,7 @@ export async function applyProviderIntent(
       }).catch((error) => {
         console.error('payment confirmation email failed after reconciliation', error instanceof Error ? error.message : 'unknown');
       });
-      await sendUtmifyOrder({ ...order, paymentMethodType: method }, 'paid', trackingFromIntent(intent));
+      await sendUtmifyOrder({ ...order, paidAt, paymentMethodType: method }, 'paid', trackingFromIntent(intent));
     }
 
     return { checked: true, changed: transitionedToPaid, paymentStatus: 'PAID', providerStatus: intent.status };

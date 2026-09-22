@@ -244,7 +244,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
                   className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"
                 >
                   <Ruler className="h-4 w-4 shrink-0" />
-                  <span>Quantos painéis preciso? calcule aqui</span>
+                  <span>Quantos painéis preciso? Calcule aqui</span>
                 </button>
               </div>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">

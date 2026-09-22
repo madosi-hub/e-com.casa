@@ -327,7 +327,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong>{selectionGuidanceVisible && sizeIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
                   <span className="mt-1 block text-sm text-[#7d6f64]">{selectedSize?.label ?? 'Escolha uma opção'}</span>
                 </div>
-                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso? calcule aqui</span></button>
+                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso? Calcule aqui</span></button>
               </div>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                 {PANEL_SIZES.map((size, index) => {
