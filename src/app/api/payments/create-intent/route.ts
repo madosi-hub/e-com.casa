@@ -122,21 +122,29 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const perr = error instanceof PaymentError ? error : null;
+    const details = error as { code?: string; errorCode?: string; name?: string; message?: string };
+    const rawCode = details.code ?? details.errorCode ?? null;
+    const name = details.name ?? (error instanceof Error ? error.name : 'UnknownError');
+    const message = details.message ?? (error instanceof Error ? error.message : String(error));
     console.error('POST /api/payments/create-intent error', {
       requestId,
       stage,
-      code: perr?.code ?? 'UNKNOWN_ERROR',
+      code: perr?.code ?? rawCode ?? 'UNKNOWN_ERROR',
       providerCode: perr?.providerCode,
-      message: error instanceof Error ? error.message : String(error),
+      name,
+      message,
     });
+    // Temporary production diagnostic requested for checkout testing.
+    // Remove the raw message once the underlying failure is identified.
     return NextResponse.json({
       error: perr?.code === 'PAYMENT_CONFIGURATION_ERROR'
         ? 'Online payments are temporarily unavailable. Please try again shortly.'
         : 'We could not start the payment. Please try again.',
-      errorCode: perr?.code ?? 'UNKNOWN_ERROR',
+      errorCode: perr?.code ?? rawCode ?? 'UNKNOWN_ERROR',
       providerCode: perr?.providerCode ?? null,
       stage,
       requestId,
-    }, { status: perr?.httpStatus ?? 500 });
+      debug: { name, message },
+    }, { status: perr?.httpStatus ?? 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

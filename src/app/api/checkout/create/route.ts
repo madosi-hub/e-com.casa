@@ -217,13 +217,15 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     const requestId = randomUUID();
-    const details = error as { code?: string; name?: string; message?: string; meta?: unknown };
-    const code = details.code ?? 'UNKNOWN_ERROR';
+    const details = error as { code?: string; errorCode?: string; name?: string; message?: string; meta?: unknown };
+    const code = details.code ?? details.errorCode ?? 'UNKNOWN_ERROR';
     const message = details.message ?? (error instanceof Error ? error.message : String(error));
+    const name = details.name ?? (error instanceof Error ? error.name : 'UnknownError');
     console.error('[checkout/create]', {
       requestId,
+      stage,
       code,
-      name: details.name ?? (error instanceof Error ? error.name : 'UnknownError'),
+      name,
       message,
       meta: details.meta,
     });
@@ -232,6 +234,11 @@ export async function POST(req: NextRequest) {
       ? 'A base de dados de produção precisa de uma atualização. Contacte o suporte com a referência apresentada.'
       : 'Não foi possível preparar o checkout. Contacte o suporte com a referência apresentada.';
 
-    return NextResponse.json({ error: publicError, errorCode: code, stage, requestId }, { status: 500 });
+    // Temporary production diagnostic requested for checkout testing.
+    // Remove the raw message once the underlying failure is identified.
+    return NextResponse.json(
+      { error: publicError, errorCode: code, stage, requestId, debug: { name, message } },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 }
