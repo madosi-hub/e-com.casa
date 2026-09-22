@@ -135,6 +135,9 @@ test('the dedicated checkout derives the required surname and reveals CTT delive
   expect(painelCheckout).not.toContain("field('lastName'");
   expect(painelCheckout).not.toContain('id="co-shipping"');
   expect(painelCheckout).not.toContain('id="co-notes"');
+  expect(painelCheckout).not.toContain('id="co-country"');
+  expect(painelCheckout).not.toContain("field('phone'");
+  expect(painelCheckout).toContain('phone: null');
   expect(painelCheckout).toContain('lastName: form.firstName.trim()');
   expect(painelCheckout).toContain('onBlur={loadShippingQuote}');
   expect(painelCheckout).toContain("shippingQuoteStatus === 'loading'");

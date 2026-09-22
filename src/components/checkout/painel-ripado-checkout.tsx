@@ -6,12 +6,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ChevronDown, Lock, LoaderCircle, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
@@ -23,12 +22,10 @@ import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
 import { ExpressCheckout } from '@/components/payments/express-checkout';
 import {
-  COUNTRIES,
   PROMO_CODES,
 } from '@/lib/constants';
 
 const OFFER_COPY: Record<string, string> = {
-  'checkout.marketing': 'Quero receber ofertas e ideias para a casa por email. Consulte a nossa',
   'checkout.payNote': 'Os dados de pagamento são tratados de forma segura pelos nossos parceiros.',
   'checkout.each': 'por unidade',
   'checkout.emptyTitle': 'O seu carrinho está vazio',
@@ -42,8 +39,10 @@ const t = (key: string, vars?: Record<string, string | number>) => {
     copy,
   );
 };
-const regionNames = new Intl.DisplayNames(['pt-PT'], { type: 'region' });
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
+const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
+const CHECKOUT_LABEL_CLASS = 'text-[12px] font-normal leading-[16px] text-[#27272a]';
+const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#e4e4e7] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#a1a1aa] focus-visible:border-[#777781] focus-visible:ring-[#777781]/15 md:text-[16px]';
 
 export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offerSlug?: PanelOfferSlug }) {
   const router = useRouter();
@@ -63,8 +62,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     city: '',
     postalCode: '',
     country: 'PT',
-    phone: '',
-    marketingOptIn: false,
     termsAccepted: false,
   });
   const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
@@ -81,13 +78,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     try {
       const raw = window.localStorage.getItem(CHECKOUT_DRAFT_KEY);
       if (raw) {
-        const saved = JSON.parse(raw) as Partial<typeof form>;
+        const { marketingOptIn: _legacyMarketingOptIn, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean };
         // Draft restoration is a one-time client hydration step from localStorage.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm((current) => ({
           ...current,
           ...saved,
-          marketingOptIn: false,
           termsAccepted: false,
         }));
       }
@@ -112,7 +108,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   useEffect(() => {
     if (!draftHydrated) return;
     try {
-      const { marketingOptIn: _marketingOptIn, termsAccepted: _termsAccepted, ...draft } = form;
+      const { termsAccepted: _termsAccepted, ...draft } = form;
       window.localStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // Persistence is best effort; checkout remains fully functional.
@@ -231,9 +227,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       address2: form.address2.trim() || null,
       city: form.city.trim(),
       postalCode: form.postalCode.trim(),
-      phone: form.phone.trim() || null,
+      phone: null,
       notes: null,
-      marketingConsent: form.marketingOptIn,
+      marketingConsent: false,
     });
     if (!synced.ok) {
       toast({ title: t('checkout.errorPaymentTitle'), description: synced.errorMessage, variant: 'destructive' });
@@ -254,9 +250,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   if (mounted && cart.lines.length === 0) {
     return (
-      <div className="container-ecom flex min-h-[55vh] flex-col items-center justify-center py-16 text-center">
+      <div className="container-ecom flex min-h-[55vh] flex-col items-center justify-center py-16 text-center font-sans">
         <ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1.25} />
-        <h1 className="font-display mt-5 text-[26px] font-medium">{t('checkout.emptyTitle')}</h1>
+        <h1 className="mt-5 text-[28px] font-semibold leading-tight">{t('checkout.emptyTitle')}</h1>
         <p className="mt-2 text-[14px] text-muted-foreground">{t('checkout.emptyDesc')}</p>
         <Link href={offerPath} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
           Voltar à oferta
@@ -271,18 +267,21 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     props: React.InputHTMLAttributes<HTMLInputElement> = {},
     half = false
   ) => (
-    <div className={half ? 'sm:col-span-1' : 'sm:col-span-2'}>
-      <Label htmlFor={`co-${name}`} className="text-[12.5px] font-medium">
+    <div className={half ? 'col-span-1 min-w-0' : 'col-span-2 min-w-0'}>
+      <Label htmlFor={`co-${name}`} className={CHECKOUT_LABEL_CLASS}>
         {label}
       </Label>
-      <Input
-        id={`co-${name}`}
-        required={props.required !== false}
-        value={String(form[name] ?? '')}
-        onChange={(e) => set(name, e.target.value)}
-        className="mt-1.5 h-10 rounded-md bg-white"
-        {...props}
-      />
+      <div className="relative">
+        <Input
+          id={`co-${name}`}
+          required={props.required !== false}
+          value={String(form[name] ?? '')}
+          onChange={(e) => set(name, e.target.value)}
+          className={`${CHECKOUT_FIELD_CLASS}${name === 'address' ? ' pr-10' : ''}`}
+          {...props}
+        />
+        {name === 'address' && <Search aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a1a1aa]" strokeWidth={1.5} />}
+      </div>
     </div>
   );
 
@@ -295,106 +294,86 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     (detailsValid && session.phase === 'idle');
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 sm:py-7 lg:py-9">
-      <div>
-        <h1 className="font-display text-[26px] font-medium tracking-tight sm:text-[30px]">{t('checkout.title')}</h1>
-        <p className="mt-1 text-[12.5px] text-muted-foreground">Confirme os seus dados e conclua a encomenda em segurança.</p>
+    <div className="mx-auto w-full max-w-[1180px] px-4 py-5 font-sans text-[#18181b] sm:px-6 sm:py-7 lg:py-9">
+      <div className="mx-auto w-full max-w-[760px]">
+        <h1 className="text-[28px] font-semibold leading-tight sm:text-[30px]">{t('checkout.title')}</h1>
+        <p className="mt-1.5 text-[15px] leading-6 text-[#70707a]">Confirme os seus dados e conclua a encomenda em segurança.</p>
       </div>
 
       <form onSubmit={onPay} className="mx-auto mt-5 grid w-full max-w-[760px] items-start gap-4">
         {/* Left: details */}
           {/* Shipping address */}
         <div className="order-2 space-y-4">
-          <section aria-labelledby="co-address" className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(32,26,23,.05)] sm:p-5">
-            <h2 id="co-address" className="flex items-center gap-3 font-display text-[18px] font-medium">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#17120f] text-[11px] font-sans font-bold text-white">1</span>
-              Dados de entrega
-            </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
-              {field('email', t('checkout.email'), { type: 'email', autoComplete: 'email', placeholder: 'o.seu.email@exemplo.com' })}
-              {field('address', t('checkout.address'), { autoComplete: 'address-line1' })}
-              {field('address2', t('checkout.address2'), { autoComplete: 'address-line2', required: false })}
-              <div>
-                <Label htmlFor="co-country" className="text-[12.5px] font-medium">{t('checkout.country')}</Label>
-                <Select value={form.country} onValueChange={(v) => set('country', v)}>
-                  <SelectTrigger id="co-country" className="mt-1.5 h-10 w-full rounded-md bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>
-                        {regionNames.of(c.code) ?? c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <section aria-labelledby="co-delivery-title" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
+            <div className="flex items-start gap-3">
+              <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black text-[12px] font-bold text-white">1</span>
+              <div className="min-w-0">
+                <h2 id="co-delivery-title" className="text-[16px] font-bold leading-[24px]">Dados de entrega</h2>
               </div>
-              {field('city', t('checkout.city'), { autoComplete: 'address-level2' }, true)}
-              <div className="sm:col-span-1">
-                <Label htmlFor="co-postalCode" className="text-[12.5px] font-medium">{t('checkout.postal')}</Label>
+            </div>
+            <div className="mt-1 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-x-2 gap-y-2.5">
+              {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
+              {field('email', 'E-mail', { type: 'email', autoComplete: 'email', placeholder: 'o.seu.email@exemplo.com' })}
+              {field('address', t('checkout.address'), { autoComplete: 'address-line1', placeholder: 'Rua e número' })}
+              {field('address2', 'Complemento da morada (opcional)', { autoComplete: 'address-line2', placeholder: 'Andar, porta ou ponto de referência', required: false })}
+              {field('city', t('checkout.city'), { autoComplete: 'address-level2', placeholder: 'Lisboa' }, true)}
+              <div className="col-span-1 min-w-0">
+                <Label htmlFor="co-postalCode" className={CHECKOUT_LABEL_CLASS}>{t('checkout.postal')}</Label>
                 <Input
                   id="co-postalCode"
                   required
                   autoComplete="postal-code"
+                  placeholder="1000-001"
                   value={form.postalCode}
                   onChange={(event) => set('postalCode', event.target.value)}
                   onBlur={loadShippingQuote}
-                  className="mt-1.5 h-10 rounded-md bg-white"
+                  className={CHECKOUT_FIELD_CLASS}
                 />
+              </div>
                 {shippingQuoteStatus === 'loading' && (
-                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 items-center gap-2 rounded-md border border-border/70 bg-background/60 px-3 text-[11.5px] text-muted-foreground">
+                  <div role="status" aria-live="polite" className="col-span-2 mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 text-[12px] text-[#70707a]">
                     <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-olive" aria-hidden />
-                    A calcular entrega para {regionNames.of(form.country) ?? form.country}…
+                    A calcular entrega para Portugal…
                   </div>
                 )}
                 {shippingQuoteStatus === 'ready' && (
-                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-md border border-[#ded5cb] bg-[#faf8f5] px-3 py-2 text-[11.5px] text-[#5c5049]">
+                  <div role="status" aria-live="polite" className="col-span-2 mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-2 text-[12px] text-[#5c5049]">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-[#65755a]" aria-hidden />
-                    <span className="font-semibold">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
+                    <span className="font-medium">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
                     <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
-                    {shipping > 0 && <span className="font-semibold">· {formatPrice(shipping)}</span>}
+                    {shipping > 0 && <span className="font-medium">· {formatPrice(shipping)}</span>}
                   </div>
                 )}
-              </div>
-              {field('phone', t('checkout.phone'), { type: 'tel', autoComplete: 'tel', required: false }, true)}
-            </div>
-            <div className="mt-3 flex items-start gap-2.5">
-              <Checkbox id="co-marketing" checked={form.marketingOptIn} onCheckedChange={(v) => set('marketingOptIn', v === true)} className="mt-0.5" />
-              <Label htmlFor="co-marketing" className="block min-w-0 text-[12.5px] font-normal leading-relaxed text-muted-foreground">
-                {t('checkout.marketing')}{' '}
-                <Link href={informationPath('privacidade')} className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>.
-              </Label>
             </div>
           </section>
 
           {/* Payment — real Stripe Elements flow */}
-          <section aria-labelledby="co-payment" className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(32,26,23,.05)] sm:p-5">
+          <section aria-labelledby="co-payment" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="co-payment" className="flex items-center gap-3 font-display text-[18px] font-medium">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#17120f] text-[11px] font-sans font-bold text-white">2</span>
+              <h2 id="co-payment" className="flex items-center gap-3 text-[16px] font-bold leading-[24px]">
+                <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black text-[12px] font-bold text-white">2</span>
                 Pagamento
               </h2>
               <span className="text-[12px] text-muted-foreground">{t('checkout.secureTitle')}</span>
             </div>
-            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 pl-10 text-[12px] font-normal leading-[16px] text-[#71717a]">
               {t('checkout.secureDesc')}
             </p>
 
             {!detailsValid && (
-              <p className="mt-4 rounded-md border border-border/70 bg-cream/50 px-4 py-3 text-[12.5px] text-muted-foreground">
+              <p className="mt-4 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-4 py-3 text-[12px] leading-5 text-[#71717a]">
                 {t('checkout.completeDetails')}
               </p>
             )}
 
             {detailsValid && session.phase === 'unavailable' && (
-              <div className="mt-4 rounded-md border border-terracotta/30 bg-terracotta/5 px-4 py-3">
+              <div className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">{t('checkout.paymentUnavailable')}</p>
               </div>
             )}
 
             {detailsValid && session.phase === 'error' && (
-              <div className="mt-4 rounded-md border border-terracotta/30 bg-terracotta/5 px-4 py-3">
+              <div className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">
                   {session.errorMessage ?? t('checkout.errorPayment')}
                 </p>
@@ -409,7 +388,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             )}
 
             {(session.phase === 'preparing' || (session.phase === 'idle' && detailsValid)) && (
-              <div className="mt-4 flex items-center gap-2 rounded-md border border-border/70 bg-background/60 px-4 py-4 text-[12.5px] text-muted-foreground">
+              <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-4 py-4 text-[13px] text-[#70707a]">
                 <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2} />
                 {t('checkout.paymentInitializing')}
               </div>
@@ -454,7 +433,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 onCheckedChange={(v) => set('termsAccepted', v === true)}
                 className="mt-0.5"
               />
-              <Label htmlFor="co-terms" className="block min-w-0 text-[12.5px] font-normal leading-relaxed text-muted-foreground">
+              <Label htmlFor="co-terms" className="block min-w-0 text-[13px] font-normal leading-relaxed text-[#70707a]">
                 Li e aceito os{' '}
                 <Link href={informationPath('termos-e-condicoes')} className="underline underline-offset-2">{t('checkout.termsShort')}</Link> e a{' '}
                 <Link href={informationPath('privacidade')} className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>. Confirmo que li o{' '}
@@ -464,7 +443,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             <button
               type="submit"
               disabled={payDisabled}
-              className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#201a17] text-[14px] font-semibold text-white transition-colors hover:bg-[#352d28] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-5 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[16px] bg-[#201a17] px-4 py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#352d28] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {session.phase === 'confirming' ? (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
@@ -487,38 +466,36 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
         {/* Order summary stays above the form and can be collapsed. */}
         <aside aria-label={t('checkout.summary')} className="order-1">
-          <details className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_2px_8px_rgba(32,26,23,.07)]">
+          <details className={`${CHECKOUT_CARD_CLASS} overflow-hidden`}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden sm:px-5">
               <span className="min-w-0">
-                <span className="flex flex-wrap items-center gap-2 text-[13.5px] font-semibold">
-                  Resumo da encomenda
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    {displayLines.reduce((sum, line) => sum + line.quantity, 0)} {displayLines.reduce((sum, line) => sum + line.quantity, 0) === 1 ? 'artigo' : 'artigos'}
-                  </span>
+                <span className="block text-[15px] font-semibold leading-5">Resumo da encomenda</span>
+                <span className="mt-1 inline-flex rounded-full bg-[#f2f2f4] px-2.5 py-1 text-[11px] font-normal leading-none text-[#666670]">
+                  {displayLines.reduce((sum, line) => sum + line.quantity, 0)} {displayLines.reduce((sum, line) => sum + line.quantity, 0) === 1 ? 'artigo' : 'artigos'}
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
-                <span className="text-right"><span className="block text-[9px] uppercase tracking-[.12em] text-muted-foreground">Total</span><strong className="block text-[16px]">{formatPrice(money(total))}</strong></span>
+                <span className="text-right"><span className="block text-[10px] font-normal uppercase tracking-[.05em] text-[#8a8a94]">Total</span><strong className="block text-[20px] font-semibold leading-tight">{formatPrice(money(total))}</strong></span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [details[open]_summary_&]:rotate-180" />
               </span>
             </summary>
-            <div className="border-t border-border px-4 pb-4 pt-3 sm:px-5">
+            <div className="border-t border-[#e2e2e5] px-4 pb-4 pt-3 sm:px-5">
             <ul className="mt-3 max-h-64 space-y-3 overflow-y-auto thin-scrollbar pr-1">
               {displayLines.map((l) => (
                 <li key={l.slug} className="flex gap-3">
                   <div className="relative h-14 w-14 shrink-0">
-                    <div className="absolute inset-0 overflow-hidden rounded-md border border-border/60">
+                    <div className="absolute inset-0 overflow-hidden rounded-lg border border-[#dedfe3]">
                       <Image src={nuraltaCartImage(l.slug, l.image)} alt={l.name} fill sizes="56px" className="object-cover" />
                     </div>
-                    <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink/90 px-1 text-[10.5px] font-semibold text-cream shadow-sm">
+                    <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink/90 px-1 text-[10.5px] font-medium text-cream shadow-sm">
                       {l.quantity}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-[13px] font-medium">{l.name}</p>
+                    <p className="line-clamp-1 text-[14px] font-medium leading-5 text-[#18181b]">{l.name}</p>
                     <p className="text-[12px] text-muted-foreground">{formatPrice(l.price)} {t('checkout.each')}</p>
                   </div>
-                  <p className="text-[13px] font-semibold">{formatPrice(toNumber(l.price) * l.quantity)}</p>
+                  <p className="text-[13px] font-medium">{formatPrice(toNumber(l.price) * l.quantity)}</p>
                 </li>
               ))}
             </ul>
