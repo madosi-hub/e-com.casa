@@ -43,7 +43,7 @@ test('offer and admin routes are self-contained and do not duplicate global chro
   }
 
   for (const copy of [
-    'Do fabricante.',
+    'Um detalhe que muda a forma de sentir o espaço.',
     'Cada detalhe,',
     'Espaços que ganharam outra vida.',
     'Galeria visual do produto',
