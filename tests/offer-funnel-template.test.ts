@@ -16,6 +16,7 @@ const nuraltaConfigurator = readFileSync(`${root}/src/components/offers/nuralta/
 const nuraltaFooter = readFileSync(`${root}/src/components/offers/nuralta/footer.tsx`, 'utf8');
 const nuraltaCart = readFileSync(`${root}/src/components/offers/nuralta/cart-overlay.tsx`, 'utf8');
 const painelCheckout = readFileSync(`${root}/src/components/checkout/painel-ripado-checkout.tsx`, 'utf8');
+const checkoutCreateRoute = readFileSync(`${root}/src/app/api/checkout/create/route.ts`, 'utf8');
 const dynamicCheckout = readFileSync(`${root}/src/app/offers/[slug]/checkout/page.tsx`, 'utf8');
 const dynamicCheckoutSuccess = readFileSync(`${root}/src/app/offers/[slug]/checkout/sucesso/page.tsx`, 'utf8');
 const dynamicInformation = readFileSync(`${root}/src/app/offers/[slug]/informacao/[legalSlug]/page.tsx`, 'utf8');
@@ -143,6 +144,15 @@ test('the dedicated checkout derives the required surname and reveals CTT delive
   expect(painelCheckout).toContain("shippingQuoteStatus === 'loading'");
   expect(painelCheckout).toContain("shippingQuoteStatus === 'ready'");
   expect(painelCheckout).toContain('/pt/images/logo-ctt-express.svg');
+});
+
+test('the Nuralta checkout submits a pending UTMify sale after a valid email loses focus', () => {
+  expect(painelCheckout).toContain('const [pendingEmail, setPendingEmail]');
+  expect(painelCheckout).toContain('email: pendingEmail ?? CHECKOUT_PLACEHOLDER_EMAIL');
+  expect(painelCheckout).toContain('onBlur: (event) =>');
+  expect(painelCheckout).toContain('if (email) setPendingEmail(email)');
+  expect(checkoutCreateRoute).toContain('if (data.email !== OFFER_CHECKOUT_PLACEHOLDER_EMAIL)');
+  expect(checkoutCreateRoute).not.toContain("if (!existing || data.email !== 'checkout@e-com.casa')");
 });
 
 test('the Nuralta gallery always starts on an available campaign image', () => {
