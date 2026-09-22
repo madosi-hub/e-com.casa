@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ArrowLeft, Lock } from 'lucide-react';
 import { useEffect } from 'react';
@@ -56,8 +57,14 @@ export function CheckoutHeader() {
             <span className="sm:hidden">Voltar</span>
           </Link>
 
-          <span className="font-display text-xl font-semibold tracking-tight text-[#201a17] sm:text-[22px]" aria-label="E-com.casa">
-            E-com.casa
+          <span className="flex h-10 w-[176px] items-center justify-center overflow-hidden">
+            <Image
+              src="/images/logo-e-com-casa-preto.png"
+              alt="E-com.casa"
+              width={204}
+              height={68}
+              className="h-[68px] w-[204px] max-w-none shrink-0"
+            />
           </span>
 
           <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-[#6f6259]">

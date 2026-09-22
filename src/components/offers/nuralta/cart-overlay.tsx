@@ -26,7 +26,7 @@ const ACCESSORIES = [
     slug: "nuralta-kit-instalacao-completo",
     kicker: "Para instalar",
     name: "Kit de instalação completo",
-    tagline: "Para 1 painel, recomendamos 1 kit",
+    tagline: "1 kit instala até 3 painéis",
     dialogTitle: "Tudo o que precisa para instalar",
     bullets: [
       "1 cola de montagem — instala até 3 painéis",

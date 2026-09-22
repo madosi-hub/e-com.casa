@@ -58,7 +58,7 @@ function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct
             <div className="min-w-0 flex-1">
               <p className="text-[10px] uppercase tracking-[.12em] text-[#8a5a2b]">{installation ? 'Para instalar' : 'Para realçar'}</p>
               <h4 className="mt-0.5 text-sm font-semibold text-[#201a17]">{product.name.replace(' Nuralta', '')}</h4>
-              <p className="mt-0.5 text-xs text-[#7d6f64]">{installation ? 'Para 1 painel, recomendamos 1 kit' : 'Cor e intensidade ajustáveis'}</p>
+              <p className="mt-0.5 text-xs text-[#7d6f64]">{installation ? '1 kit instala até 3 painéis' : 'Cor e intensidade ajustáveis'}</p>
               <div className="mt-1 flex items-baseline gap-2">
                 <strong className="text-sm text-[#201a17]">+{formatPrice((cents / 100).toFixed(2))}</strong>
                 {cents < regularCents && <><span className="text-[11px] text-[#8d8178] line-through">{formatPrice((regularCents / 100).toFixed(2))}</span><span className="text-[10px] font-bold text-[#4d7d44]">−{product.promoDiscountPct}%</span></>}
