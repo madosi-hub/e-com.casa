@@ -25,6 +25,7 @@ import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 
 export function CartDrawer() {
   const pathname = usePathname();
+  const nuraltaOfferRoute = pathname === '/offers/painel-ripado' || pathname === '/offers/nuralta-painel-ripado';
   const isOpen = useCartDrawer((s) => s.isOpen);
   const setOpen = (v: boolean) => (v ? useCartDrawer.getState().open() : useCartDrawer.getState().close());
   const lines = useCart((s) => s.lines);
@@ -151,7 +152,7 @@ export function CartDrawer() {
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link
-                    href={pathname === '/offers/painel-ripado' ? '/offers/painel-ripado/checkout' : '/checkout'}
+                    href={nuraltaOfferRoute ? '/offers/painel-ripado/checkout' : '/checkout'}
                     onClick={() => setOpen(false)}
                   >
                     <Lock className="h-4 w-4" strokeWidth={1.75} />

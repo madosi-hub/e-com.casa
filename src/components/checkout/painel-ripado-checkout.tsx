@@ -1,17 +1,16 @@
 'use client';
 
 import { calculatePromoDiscount } from '@/lib/constants';
-import { shippingPrice, freeShipping as qualifiesForFreeShipping } from '@/lib/shipping';
+import { shippingPrice } from '@/lib/shipping';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Lock, LoaderCircle, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, ChevronDown, Lock, LoaderCircle, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
@@ -24,21 +23,15 @@ import { PaymentElement } from '@/components/payments/payment-element';
 import { ExpressCheckout } from '@/components/payments/express-checkout';
 import {
   COUNTRIES,
-  FREE_SHIPPING_THRESHOLD,
-  SHIPPING_OPTIONS,
   PROMO_CODES,
-  ORDER_NOTES_MAX,
 } from '@/lib/constants';
 
 const OFFER_COPY: Record<string, string> = {
   'checkout.marketing': 'Quero receber ofertas e ideias para a casa por email. Consulte a nossa',
-  'checkout.giftWrapDesc': 'Papel kraft reciclado, fita de linho e um cartão escrito à mão pela nossa equipa.',
-  'checkout.notesPlaceholder': 'Mensagem para o cartão, código da porta ou instruções para a entrega…',
   'checkout.payNote': 'Os dados de pagamento são tratados de forma segura pelos nossos parceiros.',
   'checkout.each': 'por unidade',
   'checkout.emptyTitle': 'O seu carrinho está vazio',
   'checkout.emptyDesc': 'Adicione um produto antes de avançar para o pagamento.',
-  'ship.standard': 'Entrega ao domicílio',
 };
 const t = (key: string, vars?: Record<string, string | number>) => {
   const copy = OFFER_COPY[key];
@@ -61,19 +54,21 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({
     email: '',
     firstName: '',
-    lastName: '',
     address: '',
     address2: '',
     city: '',
     postalCode: '',
     country: 'PT',
     phone: '',
-    shippingMethod: 'standard' as 'standard' | 'express',
-    giftWrap: false,
-    notes: '',
     marketingOptIn: false,
     termsAccepted: false,
   });
+  const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
+  const shippingQuoteTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (shippingQuoteTimer.current !== null) window.clearTimeout(shippingQuoteTimer.current);
+  }, []);
 
   // Restore the offer checkout draft after hydration. Legal consent is never
   // carried over from an abandoned checkout.
@@ -124,18 +119,36 @@ export default function CheckoutPage() {
   const subtotal = mounted ? toNumber(cart.subtotal().toFixed(2)) : 0;
   const promo = mounted && cart.promoCode ? PROMO_CODES[cart.promoCode] : null;
   const discount = calculatePromoDiscount(displayLines, promo);
-  const option = SHIPPING_OPTIONS.find((o) => o.id === form.shippingMethod) ?? SHIPPING_OPTIONS[0];
-  const shipping = shippingPrice(form.country, subtotal - discount, option.id);
+  const shipping = shippingPrice(form.country, subtotal - discount, 'standard');
   const total = Math.max(0, subtotal - discount + shipping);
 
   const set = (key: keyof typeof form, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
+  const deliveryAddressComplete =
+    form.address.trim().length > 0 &&
+    form.city.trim().length > 0 &&
+    form.postalCode.trim().length >= 4;
+  const shippingAddressKey = [form.country, form.address, form.city, form.postalCode]
+    .map((value) => value.trim().toLowerCase())
+    .join('|');
+  const shippingQuoteStatus = shippingQuote?.key === shippingAddressKey ? shippingQuote.status : 'idle';
+
+  const loadShippingQuote = () => {
+    if (!deliveryAddressComplete) return;
+    if (shippingQuote?.key === shippingAddressKey) return;
+    if (shippingQuoteTimer.current !== null) window.clearTimeout(shippingQuoteTimer.current);
+    const key = shippingAddressKey;
+    setShippingQuote({ key, status: 'loading' });
+    shippingQuoteTimer.current = window.setTimeout(() => {
+      setShippingQuote({ key, status: 'ready' });
+      shippingQuoteTimer.current = null;
+    }, 900);
+  };
 
   // Real payment session
   // Contact + delivery must be complete before an order/intent is created.
   const detailsValid =
     form.email.includes('@') &&
     form.firstName.trim().length > 0 &&
-    form.lastName.trim().length > 0 &&
     form.address.trim().length > 0 &&
     form.city.trim().length > 0 &&
     form.postalCode.trim().length > 0;
@@ -153,7 +166,7 @@ export default function CheckoutPage() {
           postalCode: '0000-000',
           country: form.country,
           phone: null,
-          shippingMethod: form.shippingMethod,
+          shippingMethod: 'standard' as const,
           promoCode: cart.promoCode,
           giftWrap: false,
           notes: null,
@@ -165,7 +178,7 @@ export default function CheckoutPage() {
     [
       cart.lines,
       cart.promoCode,
-      form.country, form.shippingMethod,
+      form.country,
       trackingParameters,
     ],
   );
@@ -209,13 +222,13 @@ export default function CheckoutPage() {
       ...payload!,
       email: form.email.trim(),
       firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
+      lastName: form.firstName.trim(),
       address: form.address.trim(),
       address2: form.address2.trim() || null,
       city: form.city.trim(),
       postalCode: form.postalCode.trim(),
       phone: form.phone.trim() || null,
-      notes: form.notes.trim() || null,
+      notes: null,
       marketingConsent: form.marketingOptIn,
     });
     if (!synced.ok) {
@@ -295,7 +308,6 @@ export default function CheckoutPage() {
             </h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
-              {field('lastName', 'Apelido', { autoComplete: 'family-name', placeholder: 'O seu apelido' }, true)}
               {field('email', t('checkout.email'), { type: 'email', autoComplete: 'email', placeholder: 'o.seu.email@exemplo.com' })}
               {field('address', t('checkout.address'), { autoComplete: 'address-line1' })}
               {field('address2', t('checkout.address2'), { autoComplete: 'address-line2', required: false })}
@@ -315,7 +327,32 @@ export default function CheckoutPage() {
                 </Select>
               </div>
               {field('city', t('checkout.city'), { autoComplete: 'address-level2' }, true)}
-              {field('postalCode', t('checkout.postal'), { autoComplete: 'postal-code' }, true)}
+              <div className="sm:col-span-1">
+                <Label htmlFor="co-postalCode" className="text-[12.5px] font-medium">{t('checkout.postal')}</Label>
+                <Input
+                  id="co-postalCode"
+                  required
+                  autoComplete="postal-code"
+                  value={form.postalCode}
+                  onChange={(event) => set('postalCode', event.target.value)}
+                  onBlur={loadShippingQuote}
+                  className="mt-1.5 h-10 rounded-md bg-white"
+                />
+                {shippingQuoteStatus === 'loading' && (
+                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 items-center gap-2 rounded-md border border-border/70 bg-background/60 px-3 text-[11.5px] text-muted-foreground">
+                    <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-olive" aria-hidden />
+                    A calcular entrega para {regionNames.of(form.country) ?? form.country}…
+                  </div>
+                )}
+                {shippingQuoteStatus === 'ready' && (
+                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-md border border-[#ded5cb] bg-[#faf8f5] px-3 py-2 text-[11.5px] text-[#5c5049]">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#65755a]" aria-hidden />
+                    <span className="font-semibold">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
+                    <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
+                    {shipping > 0 && <span className="font-semibold">· {formatPrice(shipping)}</span>}
+                  </div>
+                )}
+              </div>
               {field('phone', t('checkout.phone'), { type: 'tel', autoComplete: 'tel', required: false }, true)}
             </div>
             <div className="mt-3 flex items-start gap-2.5">
@@ -324,53 +361,6 @@ export default function CheckoutPage() {
                 {t('checkout.marketing')}{' '}
                 <Link href="/offers/painel-ripado/informacao/privacidade" className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>.
               </Label>
-            </div>
-          </section>
-
-          {/* Shipping method */}
-          <section aria-labelledby="co-shipping" className="rounded-2xl border border-border bg-card p-4 shadow-[0_2px_8px_rgba(32,26,23,.05)] sm:p-5">
-            <h2 id="co-shipping" className="font-display text-[18px] font-medium">
-              Entrega
-            </h2>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-olive/30 bg-olive/5 px-3.5 py-3">
-              <span className="flex min-w-0 items-center gap-3">
-                <Truck className="h-4 w-4 shrink-0 text-olive" aria-hidden />
-                <span>
-                  <span className="block text-[13px] font-semibold">Entrega ao domicílio</span>
-                  <span className="block text-[11.5px] leading-relaxed text-muted-foreground">8 a 12 dias úteis devido à elevada procura</span>
-                </span>
-              </span>
-              <span className="ml-7 flex shrink-0 items-center gap-3 sm:ml-0">
-                <img src="/pt/images/logo-ctt-express.svg" alt="Entrega CTT Express" className="h-auto w-[68px]" />
-                <span className="text-[13px] font-semibold text-olive">
-                  {qualifiesForFreeShipping(form.country, subtotal - discount) ? t('common.free') : formatPrice(option.price)}
-                </span>
-              </span>
-            </div>
-
-            {/* Delivery notes / gift message */}
-            <div className="mt-3">
-              <Label htmlFor="co-notes" className="text-[12.5px] font-medium">
-                {t('checkout.notes')}{' '}
-                <span className="font-normal text-muted-foreground">{t('checkout.notesOptional')}</span>
-              </Label>
-              <Textarea
-                id="co-notes"
-                value={form.notes}
-                onChange={(e) => set('notes', e.target.value.slice(0, ORDER_NOTES_MAX))}
-                rows={3}
-                maxLength={ORDER_NOTES_MAX}
-                placeholder={t('checkout.notesPlaceholder')}
-                className="mt-1.5 min-h-[72px] rounded-md bg-white"
-                aria-describedby="co-notes-counter"
-              />
-              <p
-                id="co-notes-counter"
-                className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground"
-                aria-hidden
-              >
-                {form.notes.length}/{ORDER_NOTES_MAX}
-              </p>
             </div>
           </section>
 
@@ -541,7 +531,7 @@ export default function CheckoutPage() {
                 </div>
               )}
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('checkout.shippingLabel', { method: (form.shippingMethod === 'standard' ? t('ship.standard') : t('ship.express')).toLowerCase() })}</dt>
+                <dt className="text-muted-foreground">Entrega por CTT</dt>
                 <dd className="font-medium">{shipping === 0 ? <span className="text-olive">{t('common.free')}</span> : formatPrice(shipping)}</dd>
               </div>
               <div className="flex justify-between">

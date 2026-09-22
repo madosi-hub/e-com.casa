@@ -12,7 +12,7 @@ import { UmamiTracking } from '@/components/analytics/umami-tracking';
 
 export function RuntimeWidgets() {
   const pathname = usePathname();
-  const painelRipadoRoute = pathname.startsWith('/offers/painel-ripado');
+  const painelRipadoRoute = pathname.startsWith('/offers/painel-ripado') || pathname.startsWith('/offers/nuralta-painel-ripado');
   const chatEnabled = process.env.NEXT_PUBLIC_CHAT_ENABLED !== 'false';
   const cartDrawerOpen = useCartDrawer((state) => state.isOpen);
   const chatHidden = cartDrawerOpen || pathname === '/cart' || pathname.startsWith('/checkout') || painelRipadoRoute;
