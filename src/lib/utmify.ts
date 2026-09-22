@@ -65,7 +65,7 @@ export async function sendUtmifyOrder(
   status: UTMifyStatus,
   directTracking?: UTMifyTrackingParameters | null,
 ): Promise<void> {
-  const token = "w0R4DbciwZinZLP98upenHoSgzCoyo3XeGIw";
+  const token = "3yV7Q9RTtQxEOme3F9QOY4BvG3HmYE8ooe4N";
   if (!token) return;
 
   let rawItems: Array<{ slug?: string; name?: string; quantity?: number; price?: string }> = [];
