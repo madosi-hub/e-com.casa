@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { trackOfferEvent } from '@/lib/offers/analytics';
+import { isPanelOfferSlug, panelOfferPath } from '@/lib/offers/route-policy';
 import type { CatalogProduct, ProductVariant } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { campaignEuro, isPanelVideo, panelProductMediaForColor, PANEL_COLORS, PANEL_PAYMENT_METHODS, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_SIZES } from './data';
@@ -52,6 +53,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const [sizeIndex, setSizeIndex] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
   const [selectionError, setSelectionError] = useState('');
+  const [selectionGuidanceVisible, setSelectionGuidanceVisible] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [productLightboxOpen, setProductLightboxOpen] = useState(false);
   const [wallWidth, setWallWidth] = useState('');
@@ -66,6 +68,15 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const selectedSize = sizeIndex === null ? null : PANEL_SIZES[sizeIndex];
   const selectedVariant = findConfiguredVariant(product, colorIndex, sizeIndex);
   const selectedSizeSoldOut = Boolean(selectedSize?.soldOut || selectedVariant?.availability === 'outOfStock');
+  const hasRequiredSelections = colorIndex !== null && sizeIndex !== null;
+  const missingSelectionMessage = colorIndex === null && sizeIndex === null
+    ? 'Falta selecionar a cor e o tamanho.'
+    : colorIndex === null
+      ? 'Falta selecionar a cor.'
+      : sizeIndex === null
+        ? 'Falta selecionar o tamanho.'
+        : '';
+  const visibleSelectionMessage = selectionError || (selectionGuidanceVisible ? missingSelectionMessage : '');
   const unitCents = selectedVariant ? product.priceCents + selectedVariant.priceDeltaCents : selectedSize?.priceCents ?? PANEL_SIZES[0].priceCents;
   const displayedPrice = selectedSize ? campaignEuro(unitCents) : `Desde ${campaignEuro(PANEL_SIZES[0].priceCents)}`;
 
@@ -155,6 +166,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   }
 
   const validate = () => {
+    setSelectionGuidanceVisible(true);
     if (colorIndex === null && sizeIndex === null) {
       setSelectionError('Escolha uma cor e um tamanho antes de continuar.');
       return false;
@@ -173,6 +185,22 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     }
     setSelectionError('');
     return true;
+  };
+
+  const increaseQuantity = () => {
+    if (!hasRequiredSelections) {
+      setSelectionGuidanceVisible(true);
+      setSelectionError(
+        colorIndex === null && sizeIndex === null
+          ? 'Para aumentar a quantidade, falta selecionar a cor e o tamanho.'
+          : colorIndex === null
+            ? 'Para aumentar a quantidade, falta selecionar a cor.'
+            : 'Para aumentar a quantidade, falta selecionar o tamanho.',
+      );
+      return;
+    }
+    setSelectionError('');
+    setQty(Math.min(quantityLimit(product), qty + 1));
   };
 
   const addCampaignLine = (buyNow: boolean) => {
@@ -200,13 +228,21 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       value: (unitCents * qty) / 100,
       currency: product.currency,
     });
-    if (buyNow) router.push('/offers/painel-ripado/checkout');
+    if (buyNow) {
+      router.push(isPanelOfferSlug(offer.slug) ? panelOfferPath(offer.slug, '/checkout') : '/checkout');
+    }
     else openCart();
   };
 
   const applyCalculatedQuantity = () => {
     if (!calculator.panels) return;
     setSizeIndex(calculatorSizeIndex);
+    if (colorIndex === null) {
+      setSelectionGuidanceVisible(true);
+      setSelectionError('Para aplicar a quantidade calculada, falta selecionar a cor.');
+      setCalculatorOpen(false);
+      return;
+    }
     setQty(Math.min(quantityLimit(product), calculator.panels));
     setSelectionError('');
     setCalculatorOpen(false);
@@ -270,8 +306,8 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               {!selectedSize && <p className="mt-1 text-xs text-[#7d6f64]">Painel de {PANEL_SIZES[0].label}. O preço varia consoante o tamanho.</p>}
             </div>
 
-            <div id="product-color" className="belmonte-color-option">
-              <div className="mb-3 flex flex-wrap items-baseline gap-2"><strong className="text-sm">Cor:</strong><span className="text-sm text-[#7d6f64]">{selectedColor?.name ?? 'Escolha uma opção'}</span></div>
+            <div id="product-color" className={`belmonte-color-option ${selectionGuidanceVisible && colorIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
+              <div className="mb-3 flex flex-wrap items-baseline gap-2"><strong className="text-sm">Cor:</strong><span className="text-sm text-[#7d6f64]">{selectedColor?.name ?? 'Escolha uma opção'}</span>{selectionGuidanceVisible && colorIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
               <div className="belmonte-color-selector flex items-center rounded-full border border-[#e0d6cb] bg-[#fdfbf9] px-4 py-2">
                 <div className="relative min-w-0 flex-1 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-8 after:bg-gradient-to-l after:from-[#fdfbf9] after:to-transparent">
                   <div className="belmonte-color-swatches no-scrollbar flex min-w-0 gap-2 overflow-x-auto py-0.5 pr-6">
@@ -285,13 +321,13 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               </div>
             </div>
 
-            <div id="product-size" className="min-w-0">
+            <div id="product-size" className={`min-w-0 ${selectionGuidanceVisible && sizeIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
               <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong></div>
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong>{selectionGuidanceVisible && sizeIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
                   <span className="mt-1 block text-sm text-[#7d6f64]">{selectedSize?.label ?? 'Escolha uma opção'}</span>
                 </div>
-                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso?</span></button>
+                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso? calcule aqui</span></button>
               </div>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                 {PANEL_SIZES.map((size, index) => {
@@ -313,7 +349,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               <div className="flex h-12 w-full items-center justify-between rounded-xl bg-[#f1ece6] px-1">
                 <button type="button" aria-label="Diminuir quantidade" onClick={() => setQty(Math.max(1, qty - 1))} className="grid h-10 w-10 place-items-center rounded-lg text-[#5c5049] transition hover:bg-white/60"><Minus className="h-4 w-4" /></button>
                 <strong className="text-base font-semibold tabular-nums text-[#201a17]">{qty} {qty === 1 ? 'painel' : 'painéis'}</strong>
-                <button type="button" aria-label="Aumentar quantidade" onClick={() => setQty(Math.min(quantityLimit(product), qty + 1))} className="grid h-10 w-10 place-items-center rounded-lg bg-[#201a17] text-white transition hover:bg-[#8a5a2b]"><Plus className="h-4 w-4" /></button>
+                <button type="button" aria-label="Aumentar quantidade" aria-disabled={!hasRequiredSelections} onClick={increaseQuantity} className={`grid h-10 w-10 place-items-center rounded-lg text-white transition ${hasRequiredSelections ? 'bg-[#201a17] hover:bg-[#8a5a2b]' : 'cursor-not-allowed bg-[#8f837a]'}`}><Plus className="h-4 w-4" /></button>
               </div>
               {selectedSize && (
                 <div className="mt-4 flex items-end justify-between px-1">
@@ -324,9 +360,13 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             </div>
 
             <div id="product-purchase" className="space-y-3">
+              {visibleSelectionMessage && (
+                <div role="status" aria-live="polite" className="rounded-xl border border-[#c99578] bg-[#fff7f1] px-4 py-3 text-sm font-semibold text-[#7c3828]">
+                  {visibleSelectionMessage}
+                </div>
+              )}
               <button id="primary-buy-button" type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(true)} className="w-full rounded-full bg-[#201a17] py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">Comprar agora</button>
               <button type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(false)} className="w-full rounded-full border border-[#201a17] py-3.5 text-sm font-semibold transition hover:bg-[#efe7de] disabled:cursor-not-allowed disabled:opacity-45">Adicionar ao carrinho</button>
-              <p role="status" className="min-h-5 text-xs font-medium text-[#8a3f2b]">{selectionError}</p>
               <div>
                 <p className="mb-2 text-sm font-semibold text-[#201a17]">Pague como preferir</p>
                 <div className="flex flex-wrap items-center gap-2">

@@ -55,7 +55,7 @@ const COPY: Record<OfferLanguage, OfferUICopy> = {
     socialProof: 'Prova social', socialProofTitle: 'A confiança aparece quando os dados também são reais.', verifiedReviews: 'avaliações verificadas', reviewsPending: 'As avaliações verificadas serão apresentadas aqui quando existirem.',
     faq: 'FAQ', faqTitle: 'Perguntas antes da transformação.', chooseTop: 'Escolha a variante no topo', availabilityPending: 'Disponibilidade em validação', buy: 'Comprar', status: 'Ver estado',
     videoLabel: 'Vídeo de inspiração', videoReferenceDisclaimer: 'Vídeo editorial de referência. Não representa necessariamente o SKU exato.',
-    calculatorTitle: 'Quantos painéis preciso?', calculatorBody: 'Introduza as medidas da parede para obter uma estimativa rápida com base nas dimensões atuais do painel.', wallWidth: 'Largura da parede (m)', wallHeight: 'Altura da parede (m)', estimate: 'Calcular', estimatedPanels: 'Estimativa', estimateDisclaimer: 'Estimativa indicativa. Confirme medidas, cortes, orientação e margem de desperdício antes da encomenda.',
+    calculatorTitle: 'Quantos painéis preciso? calcule aqui', calculatorBody: 'Introduza as medidas da parede para obter uma estimativa rápida com base nas dimensões atuais do painel.', wallWidth: 'Largura da parede (m)', wallHeight: 'Altura da parede (m)', estimate: 'Calcular', estimatedPanels: 'Estimativa', estimateDisclaimer: 'Estimativa indicativa. Confirme medidas, cortes, orientação e margem de desperdício antes da encomenda.',
     marketNote: 'Conteúdo e regras de mercado ajustados pelo país detetado.',
   },
   en: {

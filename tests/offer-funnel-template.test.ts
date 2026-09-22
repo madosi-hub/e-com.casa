@@ -16,6 +16,9 @@ const nuraltaConfigurator = readFileSync(`${root}/src/components/offers/nuralta/
 const nuraltaFooter = readFileSync(`${root}/src/components/offers/nuralta/footer.tsx`, 'utf8');
 const nuraltaCart = readFileSync(`${root}/src/components/offers/nuralta/cart-overlay.tsx`, 'utf8');
 const painelCheckout = readFileSync(`${root}/src/components/checkout/painel-ripado-checkout.tsx`, 'utf8');
+const dynamicCheckout = readFileSync(`${root}/src/app/offers/[slug]/checkout/page.tsx`, 'utf8');
+const dynamicCheckoutSuccess = readFileSync(`${root}/src/app/offers/[slug]/checkout/sucesso/page.tsx`, 'utf8');
+const dynamicInformation = readFileSync(`${root}/src/app/offers/[slug]/informacao/[legalSlug]/page.tsx`, 'utf8');
 
 test('every product offer reuses the approved complete funnel', () => {
   expect(sharedRoute).toContain('<PainelRipadoOfferPage {...props} />');
@@ -55,6 +58,23 @@ test('offer and admin routes are self-contained and do not duplicate global chro
   expect(siteChrome).toContain("pathname.startsWith('/offers/') || pathname.startsWith('/admin')");
   expect(siteChrome).toContain('!selfContainedRoute && <PromotionInfo />');
   expect(siteChrome).toContain('!selfContainedRoute && <SiteFooter />');
+  expect(template).toContain('/images/logo-e-com-casa-preto.png');
+});
+
+test('the configurator calls out and animates missing selections before purchase', () => {
+  expect(configurator).toContain('const [selectionGuidanceVisible, setSelectionGuidanceVisible] = useState(false)');
+  expect(configurator).toContain('setSelectionGuidanceVisible(true)');
+  expect(configurator).toContain('Falta selecionar a cor e o tamanho.');
+  expect(configurator).toContain('Para aumentar a quantidade, falta selecionar a cor e o tamanho.');
+  expect(configurator).toContain("aria-disabled={!hasRequiredSelections}");
+  expect(configurator).toContain('onClick={increaseQuantity}');
+  expect(configurator).toContain('ecom-pending-option');
+  expect(configurator).toContain('Pendente');
+  expect(configurator).toContain("selectionGuidanceVisible ? missingSelectionMessage : ''");
+  expect(configurator).toContain('selectionGuidanceVisible && colorIndex === null');
+  expect(configurator).toContain('selectionGuidanceVisible && sizeIndex === null');
+  expect(configurator.indexOf('visibleSelectionMessage')).toBeLessThan(configurator.indexOf('id="primary-buy-button"'));
+  expect(template).toContain('@keyframes ecomPendingOption');
 });
 
 test('the funnel keeps the complete ten-question objection handling block', () => {
@@ -93,18 +113,22 @@ test('the Nuralta slug uses the same approved funnel as the painel-ripado alias'
   expect(nuraltaConfigurator).toContain('nuralta-panel-c${color}-s${size}');
   expect(nuraltaCart).toContain('O meu carrinho');
   expect(nuraltaCart).toContain('Finalizar encomenda');
-  expect(nuraltaCart).toContain('router.push("/offers/painel-ripado/checkout")');
+  expect(nuraltaCart).toContain('router.push(panelOfferPath(offerSlug, "/checkout"))');
   expect(nuraltaCart).toContain('Kit de instalação completo');
   expect(nuraltaCart).toContain('Fita LED Nuralta + Controlo RGB');
   expect(nuraltaFooter).toContain('Nuralta Interiores, Unipessoal Lda. · NIF 517 946 327');
   expect(nuraltaFooter).toContain('Impulsionada pela marca @E-Com.Casa');
 });
 
-test('both Nuralta offer URLs use the dedicated painel-ripado checkout flow', () => {
-  expect(cartDrawer).toContain("pathname === '/offers/painel-ripado'");
-  expect(cartDrawer).toContain("pathname === '/offers/nuralta-painel-ripado'");
-  expect(cartDrawer).toContain("nuraltaOfferRoute ? '/offers/painel-ripado/checkout' : '/checkout'");
-  expect(runtimeWidgets).toContain("pathname.startsWith('/offers/nuralta-painel-ripado')");
+test('both panel offer URLs keep their incoming slug through checkout and information pages', () => {
+  expect(cartDrawer).toContain('panelOfferSlugFromPathname(pathname)');
+  expect(cartDrawer).toContain("panelOfferPath(panelOfferSlug, '/checkout')");
+  expect(configurator).toContain("panelOfferPath(offer.slug, '/checkout')");
+  expect(runtimeWidgets).toContain('panelOfferSlugFromPathname(pathname) !== null');
+  expect(painelCheckout).toContain("panelOfferPath(offerSlug, '/checkout')");
+  expect(dynamicCheckout).toContain('isPanelOfferSlug(slug)');
+  expect(dynamicCheckoutSuccess).toContain('offer: slug');
+  expect(dynamicInformation).toContain('offerSlug={slug}');
 });
 
 test('the dedicated checkout derives the required surname and reveals CTT delivery after the postal code', () => {

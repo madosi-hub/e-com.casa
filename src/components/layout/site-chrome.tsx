@@ -5,11 +5,13 @@ import { PromotionInfo } from './promotion-info';
 import { SiteHeader } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { CheckoutFooter, CheckoutHeader } from '@/components/checkout/checkout-chrome';
+import { panelOfferPath, panelOfferSlugFromPathname } from '@/lib/offers/route-policy';
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const offerCheckoutRoute = pathname.startsWith('/offers/painel-ripado/checkout');
-  const offerInformationRoute = pathname.startsWith('/offers/painel-ripado/informacao/');
+  const panelOfferSlug = panelOfferSlugFromPathname(pathname);
+  const offerCheckoutRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/checkout')));
+  const offerInformationRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/informacao/')));
   const offerChromeRoute = offerCheckoutRoute || offerInformationRoute;
   const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin');
 

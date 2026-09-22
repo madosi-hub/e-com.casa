@@ -6,6 +6,7 @@ import { tokenMatches } from '@/lib/checkout';
 import { ensureTracking } from '@/lib/tracking';
 import { refreshOrderPayment } from '@/lib/payments/reconcile-payment';
 import { SuccessView, type SuccessOrderData } from './success-view';
+import { isPanelOfferSlug, panelOfferPath } from '@/lib/offers/route-policy';
 
 export const metadata: Metadata = {
   title: 'Order status',
@@ -82,7 +83,8 @@ async function loadOrder(orderNumber: string, token: string): Promise<SuccessOrd
 
 async function OrderContent({ orderNumber, token, offer }: { orderNumber: string; token: string; offer?: string }) {
   const data = await loadOrder(orderNumber, token);
-  const painelRipado = offer === 'painel-ripado';
+  const panelOfferSlug = isPanelOfferSlug(offer) ? offer : null;
+  const painelRipado = panelOfferSlug !== null;
 
   if (!data) {
     return (
@@ -95,7 +97,7 @@ async function OrderContent({ orderNumber, token, offer }: { orderNumber: string
             ? `Não foi possível encontrar a encomenda ${orderNumber}. Consulte o email de confirmação ou contacte o apoio ao cliente.`
             : `We could not find order ${orderNumber}. Check your confirmation email or contact support.`}
         </p>
-        <Link href={painelRipado ? '/offers/painel-ripado' : '/shop'} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
+        <Link href={panelOfferSlug ? panelOfferPath(panelOfferSlug) : '/shop'} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
           {painelRipado ? 'Continuar a comprar' : 'Continue shopping'}
         </Link>
       </div>
@@ -109,8 +111,8 @@ async function OrderContent({ orderNumber, token, offer }: { orderNumber: string
       language={painelRipado ? 'pt' : undefined}
       deliveryWindow={painelRipado ? '8–12' : undefined}
       deliveryMessage={painelRipado ? 'O prazo de entrega é de 8 a 12 dias úteis devido à elevada procura.' : undefined}
-      retryPath={painelRipado ? '/offers/painel-ripado/checkout' : undefined}
-      continuePath={painelRipado ? '/offers/painel-ripado' : undefined}
+      retryPath={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/checkout') : undefined}
+      continuePath={panelOfferSlug ? panelOfferPath(panelOfferSlug) : undefined}
       continueLabel={painelRipado ? 'Voltar à oferta' : undefined}
     />
   );
@@ -122,7 +124,8 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ order?: string; token?: string; offer?: string }>;
 }) {
   const { order: orderNumber, token, offer } = await searchParams;
-  const painelRipado = offer === 'painel-ripado';
+  const panelOfferSlug = isPanelOfferSlug(offer) ? offer : null;
+  const painelRipado = panelOfferSlug !== null;
 
   return (
     <div className="container-ecom py-12 lg:py-16">
@@ -144,7 +147,7 @@ export default async function CheckoutSuccessPage({
           </h1>
           <p className="mt-2 text-[14px] text-muted-foreground">
             {painelRipado ? 'Abra a ligação no email de confirmação da encomenda ou ' : 'Open the link from your order confirmation email, or '}
-            <Link href={painelRipado ? '/offers/painel-ripado/informacao/contacto' : '/contact'} className="text-olive underline underline-offset-2">
+            <Link href={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/informacao/contacto') : '/contact'} className="text-olive underline underline-offset-2">
               {painelRipado ? 'contacte o apoio ao cliente' : 'contact support'}
             </Link>
             .

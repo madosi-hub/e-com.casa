@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLiveProduct } from '@/hooks/use-live-product';
 import { campaignEuro } from './data';
 import { useEffect, useState } from 'react';
@@ -35,7 +36,7 @@ export function FloatingHeader() {
     <div className="fixed inset-x-0 top-0 z-40 transition-all duration-200" style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-100%)', visibility: visible ? 'visible' : 'hidden', pointerEvents: visible ? 'auto' : 'none' }}>
       <header className="flex items-center justify-between border-b border-[#e6ded4] bg-[#f7f3ef]/95 px-4 py-2 backdrop-blur">
         <button type="button" aria-label="Abrir menu" onClick={() => setDrawerOpen(true)} className="rounded-full p-1.5"><Menu className="h-4 w-4" /></button>
-        <span className="font-display text-xl font-semibold tracking-tight" aria-label="E-com.casa">E-com.casa</span>
+        <Image src="/images/logo-e-com-casa-preto.png" alt="E-com.casa" width={2172} height={724} priority className="h-11 w-auto object-contain" />
         <button type="button" aria-label={`Carrinho${cartCount > 0 ? `, ${cartCount} artigo${cartCount === 1 ? '' : 's'}` : ''}`} onClick={openCart} className="relative rounded-full p-1.5">
           <ShoppingCart className="h-4 w-4" />
           {cartCount > 0 && <span key={cartCount} className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#201a17] px-1 text-[9px] font-bold text-white">{cartCount}</span>}
@@ -45,7 +46,7 @@ export function FloatingHeader() {
     <div className={`fixed inset-0 z-50 ${drawerOpen ? '' : 'pointer-events-none'}`} aria-hidden={!drawerOpen}>
       <div onClick={() => setDrawerOpen(false)} className={`absolute inset-0 bg-black/50 transition-opacity ${drawerOpen ? 'opacity-100' : 'opacity-0'}`} />
       <aside className={`absolute left-0 top-0 h-full w-[300px] bg-white shadow-2xl transition-transform ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex items-center justify-between border-b px-5 py-4"><span className="font-display text-xl font-semibold" aria-label="E-com.casa">E-com.casa</span><button type="button" onClick={() => setDrawerOpen(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></button></div>
+        <div className="flex items-center justify-between border-b px-5 py-4"><Image src="/images/logo-e-com-casa-preto.png" alt="E-com.casa" width={2172} height={724} className="h-12 w-auto object-contain" /><button type="button" onClick={() => setDrawerOpen(false)} aria-label="Fechar menu"><X className="h-5 w-5" /></button></div>
         <nav className="p-3"><a href="#top" onClick={() => setDrawerOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm"><House className="h-5 w-5" />Início</a><Link href="/orders" className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm"><PackageSearch className="h-5 w-5" />As minhas encomendas</Link><Link href="/offers" className="flex items-center gap-3 rounded-xl px-3 py-3.5 text-sm">Ofertas em curso</Link></nav>
       </aside>
     </div>
@@ -91,8 +92,15 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market }
   return <main id="top" className="nuralta-funnel min-h-screen overflow-x-hidden bg-[#f7f3ef] text-[#201a17]">
     <style jsx global>{`
       @keyframes ecomPanelTicker { to { transform: translateX(-50%); } }
+      @keyframes ecomPendingOption {
+        0%, 68%, 100% { transform: translateX(0); }
+        76% { transform: translateX(-3px); }
+        84% { transform: translateX(3px); }
+        92% { transform: translateX(-1px); }
+      }
       .ecom-panel-ticker { animation: ecomPanelTicker 26s linear infinite; }
-      @media (prefers-reduced-motion: reduce) { .ecom-panel-ticker { animation: none; } }
+      .ecom-pending-option { animation: ecomPendingOption 1.8s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) { .ecom-panel-ticker, .ecom-pending-option { animation: none; } }
     `}</style>
     <TopTicker />
     <FloatingHeader />
@@ -102,7 +110,7 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market }
     <PanelInspiration product={product} />
     <PanelReviews />
     <PanelFaq offer={offer} />
-    <PanelFooter market={market} />
+    <PanelFooter market={market} offerSlug={offer.slug} />
     {showMobileBuyBar && <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-[#d8cec2] bg-[#f7f3ef]/95 px-4 py-3 shadow-[0_-8px_24px_rgba(32,26,23,.14)] backdrop-blur sm:hidden"><div><span className="block text-[10px] text-[#7d6f64]">Oferta desde</span><strong>{campaignEuro(product.priceCents)}</strong></div><a href="#configurar-painel" className="rounded-full bg-[#201a17] px-6 py-3 text-sm font-semibold text-white">Comprar agora</a></div>}
   </main>;
 }

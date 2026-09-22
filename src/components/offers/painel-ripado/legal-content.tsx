@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { LEGAL_PAGES, type LegalPage } from '@/components/offers/nuralta/legal-data';
+import type { PanelOfferSlug } from '@/lib/offers/route-policy';
+import { panelOfferPath } from '@/lib/offers/route-policy';
 
 const SOURCE_BY_SLUG: Record<string, string> = {
   envios: 'envio',
@@ -64,7 +66,7 @@ export function getPainelLegalPage(slug: string): LegalPage | undefined {
   return sourceId ? LEGAL_PAGES.find((page) => page.id === sourceId) : undefined;
 }
 
-export function PainelLegalContent({ page, slug }: { page: LegalPage; slug: string }) {
+export function PainelLegalContent({ page, slug, offerSlug = 'painel-ripado' }: { page: LegalPage; slug: string; offerSlug?: PanelOfferSlug }) {
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 py-8 sm:px-6 sm:py-12">
       <header className="border-b border-[#d9cfc4] pb-6 sm:pb-8">
@@ -79,7 +81,7 @@ export function PainelLegalContent({ page, slug }: { page: LegalPage; slug: stri
           {PAINEL_LEGAL_LINKS.map((item) => (
             <Link
               key={item.slug}
-              href={`/offers/painel-ripado/informacao/${item.slug}`}
+              href={panelOfferPath(offerSlug, `/informacao/${item.slug}`)}
               aria-current={item.slug === slug ? 'page' : undefined}
               className={`block shrink-0 border-b-2 px-2 py-2 text-[12.5px] font-medium transition-colors lg:border-b-0 lg:border-l-2 lg:px-3 ${item.slug === slug ? 'border-[#201a17] text-[#201a17]' : 'border-transparent text-[#7d6f64] hover:text-[#201a17]'}`}
             >
