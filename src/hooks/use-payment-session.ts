@@ -71,6 +71,28 @@ function getCheckoutToken(): string {
   }
 }
 
+async function postWithOrderLookupRetry<T extends { stage?: string }>(
+  path: string,
+  payload: unknown,
+  signal?: AbortSignal,
+  idempotencyKey?: string,
+): Promise<{ response: Response; data: T }> {
+  const body = JSON.stringify(payload);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(path, { method: 'POST', headers, signal, body });
+    const data = await response.json() as T;
+    // load_order precedes order persistence and the payment provider call.
+    // Only this read-stage failure is safe to retry with the identical request.
+    if (response.status < 500 || data.stage !== 'load_order' || attempt === 1) {
+      return { response, data };
+    }
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+}
+
 export function resetCheckoutToken() {
   try {
     sessionStorage.removeItem(CHECKOUT_TOKEN_KEY);
@@ -128,16 +150,15 @@ export function usePaymentSession({
 
     try {
       // 1. Create/update the PENDING_PAYMENT order (server-repriced)
-      const orderRes = await fetch('/api/checkout/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': getCheckoutToken(),
-        },
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
-        body: JSON.stringify({ ...payload, checkoutToken: getCheckoutToken() }),
-      });
-      const orderData = await orderRes.json() as { error?: string; requestId?: string };
+      const checkoutToken = getCheckoutToken();
+      const { response: orderRes, data: orderData } = await postWithOrderLookupRetry<{
+        error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string;
+      }>(
+        '/api/checkout/create',
+        { ...payload, checkoutToken },
+        AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
+        checkoutToken,
+      );
       if (!orderRes.ok) {
         setPhase('error');
         const reference = orderData.requestId ? ` Referência: ${orderData.requestId}` : '';
@@ -147,13 +168,14 @@ export function usePaymentSession({
       const { orderNumber, accessToken } = orderData as { orderNumber: string; accessToken: string };
 
       // 2. Create (or reuse) the XPayments PaymentIntent
-      const intentRes = await fetch('/api/payments/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
-        body: JSON.stringify({ orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null }),
-      });
-      const intentData = await intentRes.json();
+      const { response: intentRes, data: intentData } = await postWithOrderLookupRetry<{
+        error?: string; stage?: string; clientSecret?: string; publishableKey?: string;
+        methods?: PaymentMethodCapability[];
+      }>(
+        '/api/payments/create-intent',
+        { orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null },
+        AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
+      );
       if (!intentRes.ok || !intentData.clientSecret) {
         setPhase('unavailable');
         setState((s) => ({
@@ -264,15 +286,13 @@ export function usePaymentSession({
 
   const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
     try {
-      const response = await fetch('/api/checkout/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': getCheckoutToken(),
-        },
-        body: JSON.stringify({ ...nextPayload, checkoutToken: getCheckoutToken() }),
-      });
-      const data = await response.json() as { error?: string };
+      const checkoutToken = getCheckoutToken();
+      const { response, data } = await postWithOrderLookupRetry<{ error?: string; stage?: string }>(
+        '/api/checkout/create',
+        { ...nextPayload, checkoutToken },
+        undefined,
+        checkoutToken,
+      );
       return response.ok
         ? { ok: true }
         : { ok: false, errorMessage: data.error ?? 'Não foi possível atualizar a encomenda.' };
