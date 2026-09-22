@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import CheckoutSuccessPage from '@/app/checkout/success/page';
+import { NURALTA_OFFER_ALIAS } from '@/lib/offers/route-policy';
 
 export const metadata: Metadata = {
   title: 'Estado da encomenda',
@@ -14,7 +15,7 @@ export default async function PainelRipadoCheckoutSuccessPage({
   const params = await searchParams;
   return (
     <CheckoutSuccessPage
-      searchParams={Promise.resolve({ ...params, offer: 'painel-ripado' })}
+      searchParams={Promise.resolve({ ...params, offer: NURALTA_OFFER_ALIAS })}
     />
   );
 }

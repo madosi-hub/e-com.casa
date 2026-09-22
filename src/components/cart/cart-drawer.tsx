@@ -22,10 +22,12 @@ import { FREE_SHIPPING_THRESHOLD } from '@/lib/constants';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { cartStockLimit } from '@/lib/catalog/inventory';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
+import { panelOfferPath, panelOfferSlugFromPathname } from '@/lib/offers/route-policy';
 
 export function CartDrawer() {
   const pathname = usePathname();
-  const nuraltaOfferRoute = pathname === '/offers/painel-ripado' || pathname === '/offers/nuralta-painel-ripado';
+  const panelOfferSlug = panelOfferSlugFromPathname(pathname);
+  const panelOfferProductPath = panelOfferSlug ? panelOfferPath(panelOfferSlug) : '/offers/painel-ripado';
   const isOpen = useCartDrawer((s) => s.isOpen);
   const setOpen = (v: boolean) => (v ? useCartDrawer.getState().open() : useCartDrawer.getState().close());
   const lines = useCart((s) => s.lines);
@@ -84,14 +86,14 @@ export function CartDrawer() {
                         <Image src={nuraltaCartImage(line.slug, line.image)} alt={line.name.replace(/\s+Nuralta\b/gi, '').trim()} fill sizes="80px" className="object-cover" />
                       </button>
                     ) : (
-                      <Link href={line.slug === 'nuralta-painel-ripado-decorativo' ? '/offers/painel-ripado' : `/product/${line.slug}`} onClick={() => setOpen(false)} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/40">
+                      <Link href={line.slug === 'nuralta-painel-ripado-decorativo' ? panelOfferProductPath : `/product/${line.slug}`} onClick={() => setOpen(false)} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-border/60 bg-muted/40">
                         <Image src={nuraltaCartImage(line.slug, line.image)} alt={line.name.replace(/\s+Nuralta\b/gi, '').trim()} fill sizes="80px" className="object-cover" />
                       </Link>
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <Link href={line.slug === 'nuralta-painel-ripado-decorativo' ? '/offers/painel-ripado' : `/product/${line.slug}`} onClick={() => setOpen(false)} className="line-clamp-1 text-[13.5px] font-medium hover:text-olive">
+                          <Link href={line.slug === 'nuralta-painel-ripado-decorativo' ? panelOfferProductPath : `/product/${line.slug}`} onClick={() => setOpen(false)} className="line-clamp-1 text-[13.5px] font-medium hover:text-olive">
                             {line.name.replace(/\s+Nuralta\b/gi, '').trim()}
                           </Link>
                           {line.subtitle && <p className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">{line.subtitle}</p>}
@@ -152,7 +154,7 @@ export function CartDrawer() {
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link
-                    href={nuraltaOfferRoute ? '/offers/painel-ripado/checkout' : '/checkout'}
+                    href={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/checkout') : '/checkout'}
                     onClick={() => setOpen(false)}
                   >
                     <Lock className="h-4 w-4" strokeWidth={1.75} />

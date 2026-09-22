@@ -11,7 +11,7 @@ import {
 } from "react";
 import { ChevronLeft, Minus, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { AccessoryDetailModal } from "@/components/cart/accessory-detail-modal";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-store";
 import { applyBundleOffer } from "@/lib/catalog/bundle";
 import { cartStockLimit } from "@/lib/catalog/inventory";
@@ -19,6 +19,7 @@ import { nuraltaCartImage } from "@/lib/catalog/nuralta-media";
 import { formatPrice } from "@/lib/format";
 import type { CatalogProduct } from "@/lib/catalog/types";
 import { PAYMENT_METHODS } from "./data";
+import { NURALTA_OFFER_ALIAS, panelOfferPath, panelOfferSlugFromPathname } from "@/lib/offers/route-policy";
 
 const ACCESSORIES = [
   {
@@ -77,6 +78,9 @@ export function NuraltaCartProvider({ children }: { children: ReactNode }) {
 }
 function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const offerSlug = panelOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
+  const offerPath = panelOfferPath(offerSlug);
   const lines = useCart((state) => state.lines);
   const add = useCart((state) => state.add);
   const remove = useCart((state) => state.remove);
@@ -176,7 +180,7 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
           <div className="mt-5 divide-y divide-[#e6ded4] border-y border-[#e6ded4]">
             {lines.map((line) => {
               const key = `${line.slug}|${line.variantId ?? ""}`;
-              const productHref = line.slug === "nuralta-painel-ripado-decorativo" ? "/offers/painel-ripado" : `/product/${line.slug}`;
+              const productHref = line.slug === "nuralta-painel-ripado-decorativo" ? offerPath : `/product/${line.slug}`;
               const displayName = line.name.replace(/\s+Nuralta\b/gi, "").trim();
               const isAccessory = ACCESSORIES.some((accessory) => accessory.slug === line.slug);
               return (
@@ -241,7 +245,7 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
             <div className="flex justify-between"><dt>Envio</dt><dd>Grátis</dd></div>
             <div className="flex justify-between border-t border-[#e6ded4] pt-3 text-lg font-bold"><dt>Total</dt><dd>{formatPrice(subtotal.toFixed(2))}</dd></div>
           </dl>
-          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push("/offers/painel-ripado/checkout"); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
+          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push(panelOfferPath(offerSlug, "/checkout")); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
           <p className="mt-3 text-center text-xs text-[#7d6f64]">Escolha a forma de pagamento no passo seguinte</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Métodos de pagamento">
             {PAYMENT_METHODS.map((method) => <span key={method.alt} className="inline-flex h-8 items-center rounded border border-zinc-200 px-2"><img src={method.src} alt={method.alt} style={{ width: method.width, maxHeight: 17 }} /></span>)}

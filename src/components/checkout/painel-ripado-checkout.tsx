@@ -16,6 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { getOfferAttribution } from '@/lib/offers/attribution';
+import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { formatPrice, toNumber, money } from '@/lib/format';
@@ -44,8 +45,11 @@ const t = (key: string, vars?: Record<string, string | number>) => {
 const regionNames = new Intl.DisplayNames(['pt-PT'], { type: 'region' });
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
 
-export default function CheckoutPage() {
+export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offerSlug?: PanelOfferSlug }) {
   const router = useRouter();
+  const offerPath = panelOfferPath(offerSlug);
+  const checkoutPath = panelOfferPath(offerSlug, '/checkout');
+  const informationPath = (slug: string) => panelOfferPath(offerSlug, `/informacao/${slug}`);
   const cart = useCart();
   const [mounted, setMounted] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -191,7 +195,7 @@ export default function CheckoutPage() {
   const finishOrder = (orderNumber: string, accessToken: string) => {
     try { window.localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch { /* best effort */ }
     saveOrderReference(orderNumber, accessToken);
-    router.push(`/offers/painel-ripado/checkout/sucesso?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(accessToken)}`);
+    router.push(`${checkoutPath}/sucesso?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(accessToken)}`);
   };
 
   const session = usePaymentSession({
@@ -199,7 +203,7 @@ export default function CheckoutPage() {
     signature,
     onComplete: finishOrder,
     locale: 'pt',
-    returnPath: '/offers/painel-ripado/checkout/sucesso',
+    returnPath: `${checkoutPath}/sucesso`,
   });
 
   const onPay = async (e: React.FormEvent) => {
@@ -254,7 +258,7 @@ export default function CheckoutPage() {
         <ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1.25} />
         <h1 className="font-display mt-5 text-[26px] font-medium">{t('checkout.emptyTitle')}</h1>
         <p className="mt-2 text-[14px] text-muted-foreground">{t('checkout.emptyDesc')}</p>
-        <Link href="/offers/painel-ripado" className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
+        <Link href={offerPath} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
           Voltar à oferta
         </Link>
       </div>
@@ -359,7 +363,7 @@ export default function CheckoutPage() {
               <Checkbox id="co-marketing" checked={form.marketingOptIn} onCheckedChange={(v) => set('marketingOptIn', v === true)} className="mt-0.5" />
               <Label htmlFor="co-marketing" className="block min-w-0 text-[12.5px] font-normal leading-relaxed text-muted-foreground">
                 {t('checkout.marketing')}{' '}
-                <Link href="/offers/painel-ripado/informacao/privacidade" className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>.
+                <Link href={informationPath('privacidade')} className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>.
               </Label>
             </div>
           </section>
@@ -452,9 +456,9 @@ export default function CheckoutPage() {
               />
               <Label htmlFor="co-terms" className="block min-w-0 text-[12.5px] font-normal leading-relaxed text-muted-foreground">
                 Li e aceito os{' '}
-                <Link href="/offers/painel-ripado/informacao/termos-e-condicoes" className="underline underline-offset-2">{t('checkout.termsShort')}</Link> e a{' '}
-                <Link href="/offers/painel-ripado/informacao/privacidade" className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>. Confirmo que li o{' '}
-                <Link href="/offers/painel-ripado/informacao/livre-resolucao" className="underline underline-offset-2">direito de livre resolução</Link> (14 dias).
+                <Link href={informationPath('termos-e-condicoes')} className="underline underline-offset-2">{t('checkout.termsShort')}</Link> e a{' '}
+                <Link href={informationPath('privacidade')} className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>. Confirmo que li o{' '}
+                <Link href={informationPath('livre-resolucao')} className="underline underline-offset-2">direito de livre resolução</Link> (14 dias).
               </Label>
             </div>
             <button

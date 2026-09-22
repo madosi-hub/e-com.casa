@@ -1,5 +1,10 @@
 import { expect, mock, test } from 'bun:test';
-import { isOfferRouteEnabled, NURALTA_OFFER_SLUG } from '../src/lib/offers/route-policy';
+import {
+  isOfferRouteEnabled,
+  NURALTA_OFFER_SLUG,
+  panelOfferPath,
+  panelOfferSlugFromPathname,
+} from '../src/lib/offers/route-policy';
 import type { ProductOffer } from '../src/lib/offers/promotion';
 
 mock.module('@/lib/db', () => ({
@@ -36,4 +41,11 @@ test('the dedicated Nuralta funnel remains available at regular price when campa
 
 test('an explicit admin switch-off still disables the dedicated funnel', () => {
   expect(isOfferRouteEnabled(NURALTA_OFFER_SLUG, inactiveOffer)).toBe(false);
+});
+
+test('the panel offer slug is preserved across its checkout subroutes', () => {
+  expect(panelOfferSlugFromPathname('/offers/nuralta-painel-ripado')).toBe(NURALTA_OFFER_SLUG);
+  expect(panelOfferSlugFromPathname('/offers/nuralta-painel-ripado/checkout/sucesso')).toBe(NURALTA_OFFER_SLUG);
+  expect(panelOfferPath(NURALTA_OFFER_SLUG, '/checkout')).toBe('/offers/nuralta-painel-ripado/checkout');
+  expect(panelOfferSlugFromPathname('/offers/another-campaign')).toBeNull();
 });
