@@ -71,7 +71,7 @@ function getCheckoutToken(): string {
   }
 }
 
-async function postWithOrderLookupRetry<T extends { stage?: string }>(
+async function postWithSafeCheckoutRetry<T extends { stage?: string }>(
   path: string,
   payload: unknown,
   signal?: AbortSignal,
@@ -84,9 +84,11 @@ async function postWithOrderLookupRetry<T extends { stage?: string }>(
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(path, { method: 'POST', headers, signal, body });
     const data = await response.json() as T;
-    // load_order precedes order persistence and the payment provider call.
-    // Only this read-stage failure is safe to retry with the identical request.
-    if (response.status < 500 || data.stage !== 'load_order' || attempt === 1) {
+    // The order token makes create/update idempotent. Both stages below finish
+    // before the payment provider is called, so the identical request is safe.
+    const safeToRetry = data.stage === 'load_order' ||
+      (path === '/api/checkout/create' && data.stage === 'persist_order');
+    if (response.status < 500 || !safeToRetry || attempt === 1) {
       return { response, data };
     }
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -151,7 +153,7 @@ export function usePaymentSession({
     try {
       // 1. Create/update the PENDING_PAYMENT order (server-repriced)
       const checkoutToken = getCheckoutToken();
-      const { response: orderRes, data: orderData } = await postWithOrderLookupRetry<{
+      const { response: orderRes, data: orderData } = await postWithSafeCheckoutRetry<{
         error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string;
       }>(
         '/api/checkout/create',
@@ -168,7 +170,7 @@ export function usePaymentSession({
       const { orderNumber, accessToken } = orderData as { orderNumber: string; accessToken: string };
 
       // 2. Create (or reuse) the XPayments PaymentIntent
-      const { response: intentRes, data: intentData } = await postWithOrderLookupRetry<{
+      const { response: intentRes, data: intentData } = await postWithSafeCheckoutRetry<{
         error?: string; stage?: string; clientSecret?: string; publishableKey?: string;
         methods?: PaymentMethodCapability[];
       }>(
@@ -287,7 +289,7 @@ export function usePaymentSession({
   const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
     try {
       const checkoutToken = getCheckoutToken();
-      const { response, data } = await postWithOrderLookupRetry<{ error?: string; stage?: string }>(
+      const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string }>(
         '/api/checkout/create',
         { ...nextPayload, checkoutToken },
         undefined,
