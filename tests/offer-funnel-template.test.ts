@@ -62,12 +62,17 @@ test('offer and admin routes are self-contained and do not duplicate global chro
 });
 
 test('the configurator calls out and animates missing selections before purchase', () => {
+  expect(configurator).toContain('const [selectionGuidanceVisible, setSelectionGuidanceVisible] = useState(false)');
+  expect(configurator).toContain('setSelectionGuidanceVisible(true)');
   expect(configurator).toContain('Falta selecionar a cor e o tamanho.');
   expect(configurator).toContain('Para aumentar a quantidade, falta selecionar a cor e o tamanho.');
   expect(configurator).toContain("aria-disabled={!hasRequiredSelections}");
   expect(configurator).toContain('onClick={increaseQuantity}');
   expect(configurator).toContain('ecom-pending-option');
   expect(configurator).toContain('Pendente');
+  expect(configurator).toContain("selectionGuidanceVisible ? missingSelectionMessage : ''");
+  expect(configurator).toContain('selectionGuidanceVisible && colorIndex === null');
+  expect(configurator).toContain('selectionGuidanceVisible && sizeIndex === null');
   expect(configurator.indexOf('visibleSelectionMessage')).toBeLessThan(configurator.indexOf('id="primary-buy-button"'));
   expect(template).toContain('@keyframes ecomPendingOption');
 });
