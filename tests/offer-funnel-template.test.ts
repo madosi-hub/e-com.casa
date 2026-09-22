@@ -64,8 +64,13 @@ test('the painel-ripado public alias remains available for the ODEM funnel', () 
   expect(resolver).toContain('configForProduct(product, requestedSlug, reviews)');
 });
 
-test('the dedicated Nuralta offer preserves the complete approved source funnel and central checkout', () => {
-  expect(sharedRoute).toContain("props.offer.slug === 'nuralta-painel-ripado'");
+test('the Nuralta slug uses the same approved funnel as the painel-ripado alias', () => {
+  expect(sharedRoute).not.toContain("props.offer.slug === 'nuralta-painel-ripado'");
+  expect(sharedRoute).not.toContain('NuraltaPainelRipadoOfferPage');
+  expect(sharedRoute.match(/<PainelRipadoOfferPage \{\.\.\.props\} \/>/g)).toHaveLength(1);
+
+  // Keep the former source funnel covered while its assets and components remain
+  // available to the storefront.
   for (const block of [
     '<TopTicker',
     '<Header',
