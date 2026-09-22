@@ -134,8 +134,6 @@ export async function POST(req: NextRequest) {
       name,
       message,
     });
-    // Temporary production diagnostic requested for checkout testing.
-    // Remove the raw message once the underlying failure is identified.
     return NextResponse.json({
       error: perr?.code === 'PAYMENT_CONFIGURATION_ERROR'
         ? 'Online payments are temporarily unavailable. Please try again shortly.'
@@ -144,7 +142,6 @@ export async function POST(req: NextRequest) {
       providerCode: perr?.providerCode ?? null,
       stage,
       requestId,
-      debug: { name, message },
     }, { status: perr?.httpStatus ?? 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

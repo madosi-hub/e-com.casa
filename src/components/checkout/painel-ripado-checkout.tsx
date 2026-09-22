@@ -20,7 +20,6 @@ import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
-import { ExpressCheckout } from '@/components/payments/express-checkout';
 import {
   PROMO_CODES,
 } from '@/lib/constants';
@@ -360,12 +359,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               {t('checkout.secureDesc')}
             </p>
 
-            {!detailsValid && (
-              <p className="mt-4 rounded-[16px] border border-[#e4e4e7] bg-[#fafafa] px-4 py-3 text-[12px] leading-5 text-[#71717a]">
-                {t('checkout.completeDetails')}
-              </p>
-            )}
-
             {detailsValid && session.phase === 'unavailable' && (
               <div className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">{t('checkout.paymentUnavailable')}</p>
@@ -395,35 +388,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             )}
 
             {session.elements && (
-              <>
-                {/* Express wallets — official Stripe buttons, shown only
-                    when the browser/device/merchant supports them (§25) */}
-                <ExpressCheckout
-                  stripe={session.stripe}
-                  elements={session.elements}
-                  onBeforeConfirm={async () => undefined}
-                  onConfirm={() => session.confirmPayment().then((r) => { if (!r.ok) toast({ title: t('checkout.errorPaymentTitle'), description: t('checkout.errorPayment'), variant: 'destructive' }); })}
-                  className="mt-5"
-                />
-
-                {/* Separator */}
-                <div className="my-5 flex items-center gap-3" aria-hidden>
-                  <span className="h-px flex-1 bg-border" />
-                  <span className="text-[11.5px] uppercase tracking-[0.12em] text-muted-foreground">
-                    {t('checkout.orPayWith')}
-                  </span>
-                  <span className="h-px flex-1 bg-border" />
-                </div>
-
-                {/* Official Stripe Payment Element — all card + local
-                    method UI (incl. MB WAY phone field, Multibanco flow) */}
-                <PaymentElement
-                  elements={session.elements}
-                  ariaLabel="Dados de pagamento seguros"
-                  loadingLabel="A carregar o pagamento seguro…"
-                />
-
-              </>
+              <PaymentElement
+                elements={session.elements}
+                className="mt-5"
+                ariaLabel="Dados de pagamento seguros"
+                loadingLabel="A carregar o pagamento seguro…"
+              />
             )}
 
             <div className="mt-5 flex items-start gap-2.5">

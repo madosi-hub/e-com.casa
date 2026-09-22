@@ -234,10 +234,8 @@ export async function POST(req: NextRequest) {
       ? 'A base de dados de produção precisa de uma atualização. Contacte o suporte com a referência apresentada.'
       : 'Não foi possível preparar o checkout. Contacte o suporte com a referência apresentada.';
 
-    // Temporary production diagnostic requested for checkout testing.
-    // Remove the raw message once the underlying failure is identified.
     return NextResponse.json(
-      { error: publicError, errorCode: code, stage, requestId, debug: { name, message } },
+      { error: publicError, errorCode: code, stage, requestId },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
   }
