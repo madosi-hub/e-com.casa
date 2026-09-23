@@ -1,7 +1,6 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { CookieConsent } from '@/components/cookie/cookie-consent';
 import { ChatWidget } from '@/components/chat/chat-widget';
 import { CartDrawer } from '@/components/cart/cart-drawer';
 import { CartPriceSync } from '@/components/cart/cart-price-sync';
@@ -21,7 +20,6 @@ export function RuntimeWidgets() {
 
   return (
     <>
-      <CookieConsent />
       {chatEnabled && !chatHidden && <ChatWidget />}
       <CartDrawer />
       <CartPriceSync />

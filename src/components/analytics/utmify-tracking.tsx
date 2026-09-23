@@ -2,16 +2,14 @@
 
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
-import { useCookieConsent } from '@/lib/cookie-store';
 
 // Public pixel configuration from the supplied UTMify script.
 const UTMIFY_PIXEL_ID = '6a990085ab8032da69cbb97d';
 
-/** Loads UTMify only after the visitor grants marketing consent. */
+/** Loads UTMify automatically on every public page. */
 export function UtmifyTracking() {
   const pathname = usePathname();
-  const { decided, preferences } = useCookieConsent();
-  const enabled = decided && preferences.marketing && !pathname.startsWith('/admin');
+  const enabled = !pathname.startsWith('/admin');
 
   if (!enabled) return null;
 

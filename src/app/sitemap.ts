@@ -23,7 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const legalDocs = [
-    'notice', 'terms', 'privacy', 'cookies', 'cookie-settings', 'returns', 'shipping',
+    'notice', 'terms', 'privacy', 'cookies', 'returns', 'shipping',
     'warranty', 'product-safety', 'accessibility', 'complaints', 'dispute-resolution',
     'impressum', 'consumer-rights',
   ];

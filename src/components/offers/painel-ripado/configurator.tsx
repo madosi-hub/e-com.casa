@@ -383,11 +383,6 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 86, height: 'auto' }} />
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-[#6f635b]">
-                  <span>Pagamento protegido</span>
-                  <span>Entrega acompanhada</span>
-                  <span>Apoio pós-venda</span>
-                </div>
               </div>
             </div>
           </div>

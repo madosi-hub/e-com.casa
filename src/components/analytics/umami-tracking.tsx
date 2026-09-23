@@ -3,7 +3,6 @@
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { useCookieConsent } from '@/lib/cookie-store';
 
 const UMAMI_WEBSITE_ID = 'b400c97b-5e22-4645-b937-11f5428f2705';
 const UMAMI_HOST = 'https://umamim.madosi.online';
@@ -21,8 +20,7 @@ function safeValue(value: string | null | undefined): string | null {
 
 export function UmamiTracking() {
   const pathname = usePathname();
-  const { decided, preferences } = useCookieConsent();
-  const enabled = decided && preferences.analytics && !pathname.startsWith('/admin');
+  const enabled = !pathname.startsWith('/admin');
 
   useEffect(() => {
     if (!enabled) return;

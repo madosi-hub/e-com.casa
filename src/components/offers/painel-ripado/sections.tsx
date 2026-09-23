@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Headphones, PackageCheck, Play, Plus, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Factory, Headphones, House, PackageCheck, Play, Plus, ShieldCheck, X } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PaymentBrandStrip } from '@/components/payments/payment-brand-strip';
@@ -13,6 +13,47 @@ import { DETAILS as NURALTA_DETAILS, FAQS as NURALTA_FAQS } from '../nuralta/dat
 
 function Stars({ value = 5, size = 13 }: { value?: number; size?: number }) {
   return <span className="inline-flex gap-0.5">{[1,2,3,4,5].map((star) => <span key={star} style={{ color: '#f2b01e', fontSize: size }}>{star <= Math.round(value) ? '★' : '☆'}</span>)}</span>;
+}
+
+export function PanelFactoryStory() {
+  return (
+    <section id="fabrico-proprio" className="bg-[#201a17] px-4 py-14 text-[#f7f3ef] sm:px-6 sm:py-20">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-3xl">
+          <p className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.16em] text-[#c79a68]">
+            <Factory className="h-3.5 w-3.5" />
+            E-com.casa · fabrico próprio
+          </p>
+          <h2 className="mt-4 font-display text-4xl leading-[1.08] sm:text-5xl lg:text-6xl">
+            Da nossa fábrica.
+            <span className="block text-[#d6a56f]">Para a sua casa.</span>
+          </h2>
+          <div className="mt-8 max-w-2xl text-sm leading-6 text-[#c5b7ab] sm:text-base sm:leading-7">
+            <p><strong className="font-semibold text-[#f7f3ef]">Somos a E-com.casa. Fabricamos os painéis que vendemos.</strong></p>
+            <p className="mt-1">Na nossa fábrica, produzimos painéis ripados para salas, quartos, escritórios e espaços comerciais. Com fabrico próprio e venda direta, o seu projeto fica ligado a quem cria o produto.</p>
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-5 border-y border-white/15 py-5 sm:gap-10 sm:py-6">
+            <div>
+              <Factory className="h-5 w-5 text-[#c79a68]" />
+              <strong className="mt-3 block text-xs sm:text-sm">Fábrica E-com.casa</strong>
+              <span className="mt-1 block text-[10px] leading-4 text-[#a99a8e] sm:text-xs">Produzimos os seus painéis</span>
+            </div>
+            <div>
+              <House className="h-5 w-5 text-[#c79a68]" />
+              <strong className="mt-3 block text-xs sm:text-sm">O seu projeto</strong>
+              <span className="mt-1 block text-[10px] leading-4 text-[#a99a8e] sm:text-xs">Compra diretamente a quem fabrica</span>
+            </div>
+          </div>
+
+          <a href="#configurar-painel" className="mt-5 inline-flex items-center gap-5 rounded-full bg-[#d6a56f] px-5 py-3 text-xs font-semibold text-[#201a17] transition hover:bg-[#e0b37f] sm:px-6 sm:py-3.5 sm:text-sm">
+            Conhecer os nossos painéis
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function PanelCampaignStory({ product }: { product: CatalogProduct }) {
