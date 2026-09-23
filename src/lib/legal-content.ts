@@ -19,7 +19,7 @@ export interface LegalDocument {
   sections: LegalSection[];
 }
 
-export const LEGAL_LAST_UPDATED = '2026-09-10';
+export const LEGAL_LAST_UPDATED = '2026-09-23';
 
 const POSTAL = `${COMPANY.registeredOffice.line1}, ${COMPANY.registeredOffice.line2}, ${COMPANY.registeredOffice.city}, ${COMPANY.registeredOffice.postcode}, ${COMPANY.registeredOffice.country}`;
 
@@ -217,13 +217,13 @@ export const legalDocuments: LegalDocument[] = [
           'Performance of a contract — to process orders, payments, delivery and returns.',
           'Legal obligations — to keep accounting records and to comply with tax, consumer and product-safety law.',
           'Legitimate interests — to secure and improve the Website, prevent fraud, and answer enquiries; we balance these interests against your rights.',
-          'Consent — for marketing emails (opt-in) and for non-essential cookies and similar technologies; you can withdraw consent at any time.',
+          'Consent — for marketing emails (opt-in); you can withdraw that consent at any time.',
         ],
       },
       {
         heading: 'Cookies and similar technologies',
         paragraphs: [
-          'We use strictly necessary cookies to run the shop (basket, checkout, security). Non-essential cookies (preferences, analytics, marketing) are only used with your consent. Details are set out in our Cookie Policy, and you can change your choices at any time on the Cookie Settings page.',
+          'We use cookies and similar technologies to run the shop, understand public-site usage and measure campaigns. Details, including browser-level controls, are set out in our Cookie Policy.',
         ],
       },
       {
@@ -259,7 +259,7 @@ export const legalDocuments: LegalDocument[] = [
           'Right to restriction of processing.',
           'Right to data portability.',
           'Right to object, including to processing based on legitimate interests.',
-          'Right to withdraw consent at any time (for marketing and cookies).',
+          'Right to withdraw consent at any time where processing relies on consent, including marketing emails.',
           'Right to opt out of marketing communications at any time.',
           'Right to lodge a complaint with a supervisory authority.',
         ],
@@ -295,7 +295,7 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'How we use cookies',
         paragraphs: [
-          'Strictly necessary cookies keep the basket, checkout and security features working. They can fall under an exemption from consent because the service cannot function without them. Non-essential cookies — preferences, analytics and marketing — are only set after you give consent, and are not loaded before you have made a choice.',
+          'Strictly necessary technologies keep the basket, checkout and security features working. Analytics and campaign-measurement technologies load automatically on public pages so that visits and checkout attribution can be measured.',
         ],
       },
       {
@@ -310,35 +310,13 @@ export const legalDocuments: LegalDocument[] = [
       {
         heading: 'Managing your choices',
         paragraphs: [
-          'On your first visit we show a consent banner with “Accept all”, “Reject non-essential” and “Manage preferences”. You can review or change your choice at any time on the Cookie Settings page, or delete and block cookies in your browser settings. Withdrawing consent stops future use of the relevant cookies.',
+          'You can delete or block cookies and similar technologies through your browser settings. Blocking them may reduce campaign attribution or prevent some preferences from being remembered.',
         ],
       },
       {
         heading: 'Third-party cookies',
         paragraphs: [
-          'No analytics or marketing third-party scripts are loaded before consent. The final list of third-party cookie providers will be documented before go-live [TO BE COMPLETED].',
-        ],
-      },
-    ],
-  },
-
-  {
-    slug: 'cookie-settings',
-    title: 'Cookie Settings',
-    description: 'Review or change your cookie preferences at any time.',
-    intro:
-      'You can review and change your cookie choices at any time. Necessary cookies are always active because the shop cannot function without them. Use the panel below to see your current preferences or to reopen the consent banner.',
-    sections: [
-      {
-        heading: 'Changing your preferences',
-        paragraphs: [
-          'Select “Open the cookie banner” below to reopen the consent banner shown on your first visit. You can also accept all cookies or reject all non-essential cookies directly from this page. Your choice is stored on your device and applied to future visits until you change it.',
-        ],
-      },
-      {
-        heading: 'Withdrawing consent',
-        paragraphs: [
-          'Withdrawing consent only takes effect for the future: cookies already set are not removed automatically. To remove existing cookies, clear them through your browser settings. See our Cookie Policy for the categories we use.',
+          'Public pages load UTMify for visitor and campaign measurement and Umami for site analytics. These providers may set or read identifiers according to their own privacy documentation.',
         ],
       },
     ],

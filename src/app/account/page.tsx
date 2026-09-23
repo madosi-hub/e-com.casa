@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { User, Package, Heart, MapPin, Settings, ChevronRight } from 'lucide-react';
+import { User, Package, Heart, MapPin, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export const metadata: Metadata = {
@@ -13,7 +13,6 @@ const LINKS = [
   { href: '/account/orders', icon: Package, title: 'My Orders', desc: 'Track deliveries and revisit past orders.' },
   { href: '/wishlist', icon: Heart, title: 'Wishlist', desc: 'Your saved pieces, stored on this device.' },
   { href: '/checkout', icon: MapPin, title: 'Addresses', desc: 'Managed at checkout — saved for this session.' },
-  { href: '/legal/cookie-settings', icon: Settings, title: 'Privacy settings', desc: 'Manage cookies and consent.' },
 ];
 
 export default function AccountPage() {

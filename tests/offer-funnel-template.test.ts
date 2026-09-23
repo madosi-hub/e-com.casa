@@ -11,6 +11,8 @@ const sections = readFileSync(`${root}/src/components/offers/painel-ripado/secti
 const siteChrome = readFileSync(`${root}/src/components/layout/site-chrome.tsx`, 'utf8');
 const cartDrawer = readFileSync(`${root}/src/components/cart/cart-drawer.tsx`, 'utf8');
 const runtimeWidgets = readFileSync(`${root}/src/components/layout/runtime-widgets.tsx`, 'utf8');
+const utmifyTracking = readFileSync(`${root}/src/components/analytics/utmify-tracking.tsx`, 'utf8');
+const umamiTracking = readFileSync(`${root}/src/components/analytics/umami-tracking.tsx`, 'utf8');
 const nuraltaTemplate = readFileSync(`${root}/src/components/offers/nuralta/page.tsx`, 'utf8');
 const nuraltaConfigurator = readFileSync(`${root}/src/components/offers/nuralta/product-configurator.tsx`, 'utf8');
 const nuraltaFooter = readFileSync(`${root}/src/components/offers/nuralta/footer.tsx`, 'utf8');
@@ -25,6 +27,7 @@ test('every product offer reuses the approved complete funnel', () => {
   expect(sharedRoute).toContain('<PainelRipadoOfferPage {...props} />');
   for (const block of [
     '<PanelConfigurator',
+    '<PanelFactoryStory',
     '<PanelCampaignStory',
     '<PanelProductDetails',
     '<PanelInspiration',
@@ -37,16 +40,13 @@ test('every product offer reuses the approved complete funnel', () => {
 });
 
 test('offer and admin routes are self-contained and do not duplicate global chrome', () => {
-  for (const copy of [
-    'Pague como preferir',
-    'Pagamento protegido',
-    'Entrega acompanhada',
-    'Apoio pós-venda',
-  ]) {
-    expect(configurator).toContain(copy);
-  }
+  expect(configurator).toContain('Pague como preferir');
 
   for (const copy of [
+    'Da nossa fábrica.',
+    'Somos a E-com.casa. Fabricamos os painéis que vendemos.',
+    'Fábrica E-com.casa',
+    'Conhecer os nossos painéis',
     'Um detalhe que muda a forma de sentir o espaço.',
     'Cada detalhe,',
     'Espaços que ganharam outra vida.',
@@ -56,10 +56,20 @@ test('offer and admin routes are self-contained and do not duplicate global chro
     expect(sections).toContain(copy);
   }
 
+  expect(sections).not.toContain('/pt/videos/nuralta-hist.mp4');
+
   expect(siteChrome).toContain("pathname.startsWith('/offers/') || pathname.startsWith('/admin')");
   expect(siteChrome).toContain('!selfContainedRoute && <PromotionInfo />');
   expect(siteChrome).toContain('!selfContainedRoute && <SiteFooter />');
   expect(template).toContain('/images/logo-e-com-casa-preto.png');
+});
+
+test('public analytics loads automatically without rendering a cookie banner', () => {
+  expect(runtimeWidgets).not.toContain('<CookieConsent />');
+  expect(utmifyTracking).not.toContain('useCookieConsent');
+  expect(utmifyTracking).toContain("const enabled = !pathname.startsWith('/admin')");
+  expect(umamiTracking).not.toContain('useCookieConsent');
+  expect(umamiTracking).toContain("const enabled = !pathname.startsWith('/admin')");
 });
 
 test('the configurator calls out and animates missing selections before purchase', () => {

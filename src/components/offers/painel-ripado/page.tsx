@@ -13,7 +13,7 @@ import { trackOfferEvent } from '@/lib/offers/analytics';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PanelConfigurator } from './configurator';
-import { PanelCampaignStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
+import { PanelCampaignStory, PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 
 export function TopTicker() {
   const items = ['Envio gratuito para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega em 8 a 12 dias úteis devido à elevada procura', 'E-com.casa'];
@@ -105,6 +105,7 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market }
     <TopTicker />
     <FloatingHeader />
     <PanelConfigurator product={product} offer={offer} market={market} />
+    <PanelFactoryStory />
     <PanelCampaignStory product={product} />
     <PanelProductDetails product={product} />
     <PanelInspiration product={product} />

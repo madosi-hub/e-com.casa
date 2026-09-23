@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { ArrowRight, Building2, Instagram, Facebook, Youtube, MapPin, Mail, PackageSearch, Phone, Warehouse } from 'lucide-react';
 import { COMPANY } from '@/lib/company';
 import { activeSocialLinks } from '@/lib/social';
-import { useCookieConsent } from '@/lib/cookie-store';
 import { useT } from '@/hooks/use-t';
 import { toast } from '@/hooks/use-toast';
 import { PaymentBrandStrip } from '@/components/payments/payment-brand-strip';
@@ -59,7 +58,6 @@ const COLUMNS: { titleKey: string; links: { labelKey: string; href: string }[] }
       { labelKey: 'legal.terms', href: '/legal/terms' },
       { labelKey: 'legal.privacy', href: '/legal/privacy' },
       { labelKey: 'legal.cookies', href: '/legal/cookies' },
-      { labelKey: 'legal.cookieSettings', href: '/legal/cookie-settings' },
       { labelKey: 'legal.returnsWithdrawal', href: '/legal/returns' },
       { labelKey: 'legal.shippingPolicy', href: '/legal/shipping' },
       { labelKey: 'help.productSafety', href: '/legal/product-safety' },
@@ -83,7 +81,6 @@ export function SiteFooter() {
   const [email, setEmail] = useState('');
   const [consent, setConsent] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
-  const reopenCookies = useCookieConsent((s) => s.reopen);
   const socials = activeSocialLinks();
 
   const subscribe = async (e: React.FormEvent) => {
@@ -191,17 +188,6 @@ export function SiteFooter() {
                   </Link>
                 </li>
               ))}
-              {col.titleKey === 'footer.colLegal' && (
-                <li>
-                  <button
-                    type="button"
-                    onClick={reopenCookies}
-                    className="text-[13px] text-[#b3b8ad] transition-colors hover:text-white"
-                  >
-                    {t('legal.cookieSettings')}
-                  </button>
-                </li>
-              )}
             </ul>
           </nav>
         ))}

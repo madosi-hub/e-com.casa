@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { LEGAL_LAST_UPDATED, getLegalDocument, legalDocuments } from '@/lib/legal-content';
-import { CookieSettingsPanel } from '@/components/legal/cookie-settings-panel';
 import { formatDate } from '@/lib/format';
 
 interface LegalDocPageProps {
@@ -30,7 +29,6 @@ export default async function LegalDocPage({ params }: LegalDocPageProps) {
   const document = getLegalDocument(doc);
   if (!document) notFound();
 
-  const isCookieSettings = document.slug === 'cookie-settings';
   const index = legalDocuments.findIndex((d) => d.slug === document.slug);
   const nextDoc = legalDocuments[(index + 1) % legalDocuments.length];
 
@@ -74,12 +72,6 @@ export default async function LegalDocPage({ params }: LegalDocPageProps) {
 
           {document.intro && (
             <p className="mt-6 text-[15.5px] leading-relaxed text-foreground">{document.intro}</p>
-          )}
-
-          {isCookieSettings && (
-            <div className="mt-8">
-              <CookieSettingsPanel />
-            </div>
           )}
 
           {document.sections.map((section, i) => (
