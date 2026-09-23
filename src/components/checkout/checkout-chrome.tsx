@@ -50,20 +50,20 @@ export function CheckoutHeader() {
       </div>
 
       <header className="border-b border-[#e6ded4] bg-[#f7f3ef]/95 backdrop-blur">
-        <div className="mx-auto grid h-12 w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:h-14 sm:px-6">
+        <div className="mx-auto grid h-[60px] w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link href={legalPage ? offerPath : `${offerPath}?carrinho=aberto`} className="flex w-fit items-center gap-1.5 text-[12px] font-medium text-[#6f6259] transition-colors hover:text-[#201a17]">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">{legalPage ? 'Voltar à oferta' : 'Voltar ao carrinho'}</span>
             <span className="sm:hidden">Voltar</span>
           </Link>
 
-          <span className="flex h-10 w-[176px] items-center justify-center overflow-hidden">
+          <span className="flex h-11 items-center justify-center">
             <Image
               src="/images/logo-e-com-casa-preto.png"
               alt="E-com.casa"
-              width={204}
-              height={68}
-              className="h-[68px] w-[204px] max-w-none shrink-0"
+              width={2172}
+              height={724}
+              className="h-11 w-auto object-contain"
             />
           </span>
 
@@ -85,7 +85,6 @@ export function CheckoutFooter() {
   return (
     <footer className="border-t border-[#e6ded4] bg-[#f7f3ef] px-4 py-5 text-center text-[11px] text-[#74685f]">
       <nav aria-label="Informação legal" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-        <Link href={informationPath('termos-e-condicoes')}>Termos e Condições</Link>
         <Link href={informationPath('privacidade')}>Privacidade</Link>
         <Link href={informationPath('trocas-e-devolucoes')}>Trocas e devoluções</Link>
         <Link href={informationPath('contacto')}>Contacto</Link>

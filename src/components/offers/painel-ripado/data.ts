@@ -55,13 +55,15 @@ export const PANEL_PRODUCT_MEDIA: PanelProductMedia[] = [
     poster: panelImage('video-painel-produto-poster.webp'),
     alt: 'Vídeo do produto',
   },
+  { type: 'image', src: panelImage('img3.webp'), alt: 'Painel Carvalho' },
+  { type: 'image', src: panelImage('img4.webp'), alt: 'Painel Carvalho' },
   { type: 'image', src: panelImage('img5.webp'), alt: 'Painel Carvalho' },
   { type: 'image', src: panelImage('img6.webp'), alt: 'Painel Carvalho' },
   { type: 'image', src: panelImage('img7.webp'), alt: 'Painel Carvalho' },
   { type: 'image', src: panelImage('img8.webp'), alt: 'Painel Carvalho' },
 ];
 
-const PANEL_IMAGE_FILES = ['img2.webp', 'img5.webp', 'img6.webp', 'img7.webp', 'img8.webp'];
+const PANEL_IMAGE_FILES = ['img2.webp', 'img3.webp', 'img4.webp', 'img5.webp', 'img6.webp', 'img7.webp', 'img8.webp'];
 
 export function panelProductMediaForColor(colorIndex: number | null): PanelProductMedia[] {
   const color = colorIndex === null ? null : PANEL_COLORS[colorIndex];

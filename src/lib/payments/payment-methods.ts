@@ -146,6 +146,16 @@ export const PAYMENT_METHODS: Record<PaymentMethodType, PaymentMethodDefinition>
     dynamic: true,
     sortOrder: 2,
   },
+  amazon_pay: {
+    method: 'amazon_pay',
+    displayName: 'Amazon Pay',
+    logo: null,
+    countries: ['*'],
+    currencies: ['EUR', 'GBP', 'DKK', 'SEK', 'PLN', 'CZK', 'HUF', 'RON', 'BGN'],
+    requiresGatewaySupport: true,
+    dynamic: true,
+    sortOrder: 3,
+  },
   link: {
     method: 'link',
     displayName: 'Link',
@@ -154,7 +164,7 @@ export const PAYMENT_METHODS: Record<PaymentMethodType, PaymentMethodDefinition>
     currencies: ['EUR'],
     requiresGatewaySupport: true,
     dynamic: true,
-    sortOrder: 3,
+    sortOrder: 4,
   },
   paypal: {
     method: 'paypal',
@@ -164,7 +174,7 @@ export const PAYMENT_METHODS: Record<PaymentMethodType, PaymentMethodDefinition>
     currencies: ['EUR'],
     requiresGatewaySupport: true,
     dynamic: true,
-    sortOrder: 4,
+    sortOrder: 5,
   },
   pix: {
     method: 'pix',
