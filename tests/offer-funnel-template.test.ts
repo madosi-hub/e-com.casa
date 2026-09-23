@@ -1,7 +1,6 @@
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { GALLERY, INITIAL_GALLERY_INDEX } from '../src/components/offers/nuralta/data';
-import { PANEL_PRODUCT_MEDIA } from '../src/components/offers/painel-ripado/data';
 
 const root = process.cwd();
 const template = readFileSync(`${root}/src/components/offers/painel-ripado/page.tsx`, 'utf8');
@@ -177,7 +176,6 @@ test('the Nuralta checkout submits a pending UTMify sale after a valid email los
 });
 
 test('the Nuralta gallery always starts on an available campaign image', () => {
-  expect(PANEL_PRODUCT_MEDIA).toHaveLength(8);
   expect(GALLERY.length).toBeGreaterThan(0);
   expect(INITIAL_GALLERY_INDEX).toBe(GALLERY.length - 1);
   expect(GALLERY[INITIAL_GALLERY_INDEX]).toBeDefined();

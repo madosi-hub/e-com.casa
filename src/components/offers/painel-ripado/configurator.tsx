@@ -252,7 +252,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     <section id="product" className="belmonte-product-section mx-auto max-w-6xl px-4 sm:px-6">
       <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
         <div id="product-gallery" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <div className="belmonte-product-image relative aspect-[4/5] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
+          <div className="belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
             {active.type === 'video' ? (
               <video
                 ref={activeVideoRef}
@@ -279,10 +279,6 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               <button type="button" aria-label="Próxima imagem" onClick={() => moveGallery(1)} className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#201a17] shadow-sm transition hover:bg-white sm:h-11 sm:w-11"><ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" /></button>
             </div>
             <span className="absolute left-3 top-3 rounded-full bg-[#201a17]/80 px-3 py-1.5 text-[10px] uppercase tracking-[.12em] text-[#f2e9df]">{selectedColor?.name ?? 'Escolha uma cor'}</span>
-            <span className="belmonte-mobile-counter absolute bottom-3 left-3 rounded-full bg-[#201a17]/80 px-2.5 py-1.5 text-[10px] text-[#f2e9df]">{activeIndex + 1} / {gallery.length}</span>
-            <span className="pointer-events-none absolute bottom-[-8px] left-1/2 z-20 hidden h-[86px] w-[86px] -translate-x-1/2 overflow-hidden rounded-full border-2 border-white bg-[#d6cec4] shadow-md max-sm:block">
-              <img src={selectedColor?.src ?? PANEL_COLORS[0].src} alt="" className="h-full w-full object-cover" />
-            </span>
             <button type="button" onClick={() => setProductLightboxOpen(true)} className="absolute bottom-3 right-3 z-30 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-[10px] font-semibold text-[#201a17] shadow transition hover:bg-white"><Maximize2 className="h-3.5 w-3.5" /> Ampliar</button>
           </div>
 
