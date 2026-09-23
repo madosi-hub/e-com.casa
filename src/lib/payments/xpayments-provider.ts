@@ -82,10 +82,18 @@ export class XPaymentsStripeProvider implements PaymentProvider {
   }
 
   async createPaymentIntent(input: CreatePaymentIntentInput): Promise<ProviderPaymentIntent> {
+    const portugalMethods = input.customerCountry.toUpperCase() === 'PT' && input.currency.toUpperCase() === 'EUR'
+      ? {
+          'payment_method_types[0]': 'card',
+          'payment_method_types[1]': 'mb_way',
+          'payment_method_types[2]': 'multibanco',
+          'payment_method_types[3]': 'amazon_pay',
+        }
+      : { 'automatic_payment_methods[enabled]': 'true' };
     const body = formEncode({
       amount: input.amountMinor,
       currency: input.currency.toLowerCase(),
-      'automatic_payment_methods[enabled]': 'true',
+      ...portugalMethods,
       description: input.description ?? `E-com.casa order ${input.orderNumber}`,
       ...(input.customerEmail ? { receipt_email: input.customerEmail } : {}),
       'metadata[merchant_reference]': input.orderNumber,

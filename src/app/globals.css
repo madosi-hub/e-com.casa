@@ -246,11 +246,13 @@
   .belmonte-product-section {
     gap: 1.25rem;
     padding-top: 0;
-    padding-bottom: 0;
+    padding-bottom: 0.75rem;
   }
-  .belmonte-product-info,
+  .belmonte-product-info {
+    gap: 0.75rem;
+  }
   .belmonte-configurator {
-    gap: 0.9rem;
+    gap: 1rem;
   }
   .belmonte-product-image {
     aspect-ratio: 4 / 3;
@@ -278,7 +280,7 @@
   }
   .belmonte-option-card {
     min-height: 0;
-    padding: 0.7rem;
+    padding: 0.65rem;
   }
   .belmonte-mobile-buy-bar {
     display: flex;

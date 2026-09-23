@@ -9,7 +9,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
@@ -20,6 +19,7 @@ import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
+import { ExpressCheckout } from '@/components/payments/express-checkout';
 import {
   PROMO_CODES,
 } from '@/lib/constants';
@@ -53,7 +53,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const router = useRouter();
   const offerPath = panelOfferPath(offerSlug);
   const checkoutPath = panelOfferPath(offerSlug, '/checkout');
-  const informationPath = (slug: string) => panelOfferPath(offerSlug, `/informacao/${slug}`);
   const cart = useCart();
   const [mounted, setMounted] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -68,7 +67,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     city: '',
     postalCode: '',
     country: 'PT',
-    termsAccepted: false,
   });
   const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
   const shippingQuoteTimer = useRef<number | null>(null);
@@ -77,21 +75,16 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     if (shippingQuoteTimer.current !== null) window.clearTimeout(shippingQuoteTimer.current);
   }, []);
 
-  // Restore the offer checkout draft after hydration. Legal consent is never
-  // carried over from an abandoned checkout.
+  // Restore the offer checkout draft after hydration.
   useEffect(() => {
     document.documentElement.lang = 'pt-PT';
     try {
       const raw = window.localStorage.getItem(CHECKOUT_DRAFT_KEY);
       if (raw) {
-        const { marketingOptIn: _legacyMarketingOptIn, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean };
+        const { marketingOptIn: _legacyMarketingOptIn, termsAccepted: _legacyTermsAccepted, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean; termsAccepted?: boolean };
         // Draft restoration is a one-time client hydration step from localStorage.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setForm((current) => ({
-          ...current,
-          ...saved,
-          termsAccepted: false,
-        }));
+        setForm((current) => ({ ...current, ...saved }));
         if (typeof saved.email === 'string') setPendingEmail(validPendingEmail(saved.email));
       }
     } catch {
@@ -115,8 +108,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   useEffect(() => {
     if (!draftHydrated) return;
     try {
-      const { termsAccepted: _termsAccepted, ...draft } = form;
-      window.localStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(draft));
+      window.localStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(form));
     } catch {
       // Persistence is best effort; checkout remains fully functional.
     }
@@ -129,7 +121,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const shipping = shippingPrice(form.country, subtotal - discount, 'standard');
   const total = Math.max(0, subtotal - discount + shipping);
 
-  const set = (key: keyof typeof form, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const deliveryAddressComplete =
     form.address.trim().length > 0 &&
     form.city.trim().length > 0 &&
@@ -212,10 +204,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.termsAccepted) {
-      toast({ title: t('checkout.toastTerms'), variant: 'destructive' });
-      return;
-    }
     if (cart.lines.length === 0) {
       toast({ title: t('checkout.toastEmpty'), variant: 'destructive' });
       return;
@@ -405,28 +393,39 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             )}
 
             {session.elements && (
-              <PaymentElement
-                elements={session.elements}
-                className="mt-5"
-                ariaLabel="Dados de pagamento seguros"
-                loadingLabel="A carregar o pagamento seguro…"
-              />
+              <>
+                <ExpressCheckout
+                  stripe={session.stripe}
+                  elements={session.elements}
+                  className="mt-5"
+                  onBeforeConfirm={async () => {
+                    if (!detailsValid || !payload) throw new Error('Preencha os dados de entrega para continuar.');
+                    const synced = await session.syncOrder({
+                      ...payload,
+                      email: form.email.trim(),
+                      firstName: form.firstName.trim(),
+                      lastName: form.firstName.trim(),
+                      address: form.address.trim(),
+                      address2: form.address2.trim() || null,
+                      city: form.city.trim(),
+                      postalCode: form.postalCode.trim(),
+                    });
+                    if (!synced.ok) throw new Error(synced.errorMessage ?? 'Não foi possível atualizar a encomenda.');
+                  }}
+                  onConfirm={async () => {
+                    const result = await session.confirmPayment();
+                    if (!result.ok) throw new Error(result.errorMessage ?? t('checkout.errorPayment'));
+                  }}
+                />
+                <PaymentElement
+                  elements={session.elements}
+                  className="mt-5"
+                  ariaLabel="Dados de pagamento seguros"
+                  loadingLabel="A carregar o pagamento seguro…"
+                />
+              </>
             )}
 
-            <div className="mt-5 flex items-start gap-2.5">
-              <Checkbox
-                id="co-terms"
-                checked={form.termsAccepted}
-                onCheckedChange={(v) => set('termsAccepted', v === true)}
-                className="mt-0.5"
-              />
-              <Label htmlFor="co-terms" className="block min-w-0 text-[13px] font-normal leading-relaxed text-[#70707a]">
-                Li e aceito os{' '}
-                <Link href={informationPath('termos-e-condicoes')} className="underline underline-offset-2">{t('checkout.termsShort')}</Link> e a{' '}
-                <Link href={informationPath('privacidade')} className="underline underline-offset-2">{t('checkout.privacyShort')}</Link>. Confirmo que li o{' '}
-                <Link href={informationPath('livre-resolucao')} className="underline underline-offset-2">direito de livre resolução</Link> (14 dias).
-              </Label>
-            </div>
             <button
               type="submit"
               disabled={payDisabled}

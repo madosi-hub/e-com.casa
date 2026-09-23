@@ -4,7 +4,7 @@ import { useLiveProduct } from '@/hooks/use-live-product';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
 import { type TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, Truck, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
@@ -252,7 +252,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     <section id="product" className="belmonte-product-section mx-auto max-w-6xl px-4 sm:px-6">
       <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
         <div id="product-gallery" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <div className="belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
+          <div className="belmonte-product-image relative aspect-[4/5] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
             {active.type === 'video' ? (
               <video
                 ref={activeVideoRef}
@@ -280,6 +280,9 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             </div>
             <span className="absolute left-3 top-3 rounded-full bg-[#201a17]/80 px-3 py-1.5 text-[10px] uppercase tracking-[.12em] text-[#f2e9df]">{selectedColor?.name ?? 'Escolha uma cor'}</span>
             <span className="belmonte-mobile-counter absolute bottom-3 left-3 rounded-full bg-[#201a17]/80 px-2.5 py-1.5 text-[10px] text-[#f2e9df]">{activeIndex + 1} / {gallery.length}</span>
+            <span className="pointer-events-none absolute bottom-[-8px] left-1/2 z-20 hidden h-[86px] w-[86px] -translate-x-1/2 overflow-hidden rounded-full border-2 border-white bg-[#d6cec4] shadow-md max-sm:block">
+              <img src={selectedColor?.src ?? PANEL_COLORS[0].src} alt="" className="h-full w-full object-cover" />
+            </span>
             <button type="button" onClick={() => setProductLightboxOpen(true)} className="absolute bottom-3 right-3 z-30 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-[10px] font-semibold text-[#201a17] shadow transition hover:bg-white"><Maximize2 className="h-3.5 w-3.5" /> Ampliar</button>
           </div>
 
@@ -287,14 +290,14 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
 
         <div className="belmonte-product-info flex min-w-0 flex-col gap-6 pt-3 sm:pt-0">
           <div id="product-intro" className="min-w-0">
-            <h1 className="belmonte-serif break-words text-[28px] leading-[1.04] sm:text-5xl">{offer.headline || 'Painel Ripado Acústico'}</h1>
-            <p className="mt-3 overflow-hidden text-ellipsis text-sm leading-relaxed text-[#5c5049] sm:text-base">{offer.subheadline || 'Design que transforma. Instalação que simplifica.'}</p>
+            <h1 className="belmonte-serif break-words text-[28px] leading-[1.04] sm:text-5xl">Painel Ripado Decorativo</h1>
+            <p className="mt-1.5 overflow-hidden text-ellipsis text-sm leading-relaxed text-[#5c5049] sm:mt-3 sm:text-base">Design que transforma. Instalação que simplifica.</p>
           </div>
 
           <div id="product-rating" className="flex min-w-0 flex-wrap items-center gap-2">
-            <StarRow value={PANEL_REVIEW_RATING} size={16} />
-            <strong className="text-base">{PANEL_REVIEW_RATING.toFixed(1).replace('.', ',')}</strong>
-            <a href="#avaliacoes" className="text-base text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4">{PANEL_REVIEW_TOTAL} avaliações</a>
+            <StarRow value={PANEL_REVIEW_RATING} size={14} />
+            <strong className="text-sm">{PANEL_REVIEW_RATING.toFixed(1).replace('.', ',')}</strong>
+            <a href="#avaliacoes" className="text-sm text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4">{PANEL_REVIEW_TOTAL} avaliações</a>
           </div>
 
           <div id="configurar-painel" className="belmonte-configurator flex flex-col gap-6" style={{ scrollMarginTop: 72 }}>
@@ -303,11 +306,13 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                 <strong className="belmonte-serif text-4xl font-normal">{displayedPrice}</strong>
                 <span className="text-sm text-[#7d6f64]">por painel</span>
               </div>
+              <strong className="mt-1 block text-sm text-[#8a5a2b]">Preço direto da fábrica</strong>
               {!selectedSize && <p className="mt-1 text-xs text-[#7d6f64]">Painel de {PANEL_SIZES[0].label}. O preço varia consoante o tamanho.</p>}
+              <a href="#fabrico-proprio" className="mt-2 inline-block py-2 text-xs text-[#5c5049] underline underline-offset-4">Como conseguimos este preço?</a>
             </div>
 
             <div id="product-color" className={`belmonte-color-option ${selectionGuidanceVisible && colorIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
-              <div className="mb-3 flex flex-wrap items-baseline gap-2"><strong className="text-sm">Cor:</strong><span className="text-sm text-[#7d6f64]">{selectedColor?.name ?? 'Escolha uma opção'}</span>{selectionGuidanceVisible && colorIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
+              <div className="mb-2 flex flex-wrap items-baseline gap-2"><strong className="text-sm">Cor:</strong><span className="text-sm text-[#7d6f64]">{selectedColor?.name ?? 'Escolha uma opção'}</span>{selectionGuidanceVisible && colorIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
               <div className="belmonte-color-selector flex items-center rounded-full border border-[#e0d6cb] bg-[#fdfbf9] px-4 py-2">
                 <div className="relative min-w-0 flex-1 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-8 after:bg-gradient-to-l after:from-[#fdfbf9] after:to-transparent">
                   <div className="belmonte-color-swatches no-scrollbar flex min-w-0 gap-2 overflow-x-auto py-0.5 pr-6">
@@ -322,12 +327,12 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             </div>
 
             <div id="product-size" className={`min-w-0 ${selectionGuidanceVisible && sizeIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
-              <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+              <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong>{selectionGuidanceVisible && sizeIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
                   <span className="mt-1 block text-sm text-[#7d6f64]">{selectedSize?.label ?? 'Escolha uma opção'}</span>
                 </div>
-                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso? Calcule aqui</span></button>
+                <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso?</span></button>
               </div>
               <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
                 {PANEL_SIZES.map((size, index) => {
@@ -377,12 +382,15 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   ))}
                 </div>
               </div>
-              <div className="border-t border-[#e6ded4] pt-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-[#201a17]">Entrega por</span>
-                  <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 86, height: 'auto' }} />
+              <div className="flex items-center gap-3 rounded-xl border border-[#e0d6cb] bg-[#fdfbf9] px-4 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#efe7de] text-[#8a5a2b]"><Truck className="h-4.5 w-4.5" /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#201a17]">Entrega por</span>
+                    <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 78, height: 'auto' }} />
+                  </div>
+                  <p className="mt-1 text-[11px] leading-4 text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
               </div>
             </div>
           </div>

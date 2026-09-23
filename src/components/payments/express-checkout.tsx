@@ -35,6 +35,15 @@ export function ExpressCheckout({ stripe, elements, onBeforeConfirm, onConfirm, 
     if (!stripe || !elements || !containerRef.current) return;
     let cancelled = false;
     const express = elements.create('expressCheckout', {
+      paymentMethods: {
+        amazonPay: 'auto',
+        applePay: 'always',
+        googlePay: 'always',
+        link: 'never',
+        paypal: 'never',
+        klarna: 'never',
+      },
+      paymentMethodOrder: ['apple_pay', 'google_pay', 'amazon_pay'],
       buttonType: {
         googlePay: 'buy',
         applePay: 'buy',
@@ -57,14 +66,21 @@ export function ExpressCheckout({ stripe, elements, onBeforeConfirm, onConfirm, 
     });
 
     express.on('click', (event) => {
-      // Wallets may provide contact/billing details — give the host a
-      // chance to persist them onto the pending order before confirming.
-      void confirmRef.current.onBeforeConfirm();
       event.resolve();
     });
 
-    express.on('confirm', () => {
-      void confirmRef.current.onConfirm();
+    express.on('confirm', (event) => {
+      void (async () => {
+        try {
+          await confirmRef.current.onBeforeConfirm();
+          await confirmRef.current.onConfirm();
+        } catch (error) {
+          event.paymentFailed({
+            reason: 'fail',
+            message: error instanceof Error ? error.message : 'Não foi possível concluir o pagamento.',
+          });
+        }
+      })();
     });
 
     express.mount(containerRef.current);
@@ -80,12 +96,10 @@ export function ExpressCheckout({ stripe, elements, onBeforeConfirm, onConfirm, 
     };
   }, [stripe, elements]);
 
-  if (!available) return null;
-
   return (
-    <div className={className}>
+    <div className={`${available ? '' : 'hidden'} ${className}`}>
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        Express checkout
+        Pagamento rápido
       </p>
       <div ref={containerRef} aria-label="Express checkout wallets" />
     </div>

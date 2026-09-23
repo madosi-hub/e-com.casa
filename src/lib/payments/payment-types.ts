@@ -7,7 +7,7 @@ export type PaymentProviderName = 'xpayments_stripe';
 
 export type PaymentMethodType =
   | 'card' | 'mb_way' | 'multibanco' | 'bizum' | 'blik' | 'bancontact'
-  | 'apple_pay' | 'google_pay' | 'link' | 'paypal' | 'pix' | 'other';
+  | 'amazon_pay' | 'apple_pay' | 'google_pay' | 'link' | 'paypal' | 'pix' | 'other';
 
 export type PaymentStatus =
   | 'CREATED' | 'REQUIRES_PAYMENT_METHOD' | 'REQUIRES_ACTION' | 'PROCESSING'
