@@ -382,7 +382,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   <span className="text-sm font-semibold text-[#201a17]">Entrega por</span>
                   <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 86, height: 'auto' }} />
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-[#7d6f64]">8 a 12 dias úteis devido à elevada procura · Envio gratuito para Portugal Continental</p>
+                <p className="mt-2 text-xs leading-relaxed text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-[#6f635b]">
                   <span>Pagamento protegido</span>
                   <span>Entrega acompanhada</span>

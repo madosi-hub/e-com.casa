@@ -369,7 +369,7 @@ export function ProductConfigurator({ product, offer }: { product: CatalogProduc
                   />
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-[#7d6f64]">
-                  8 a 12 dias úteis devido à elevada procura · Envio gratuito para Portugal Continental ·
+                  Envio gratuito para Portugal Continental ·
                   Acompanhamento pela Nuralta
                 </p>
               </div>
