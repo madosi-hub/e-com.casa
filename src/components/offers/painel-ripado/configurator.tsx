@@ -382,10 +382,11 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#efe7de] text-[#8a5a2b]"><Truck className="h-4.5 w-4.5" /></span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#201a17]">Entrega por</span>
+                    <span className="text-xs font-semibold text-[#201a17]">Envio por</span>
                     <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 78, height: 'auto' }} />
                   </div>
                   <p className="mt-1 text-[11px] leading-4 text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
+                  <p className="text-[11px] leading-4 text-[#7d6f64]">Acompanhe a entrega com o código de rastreio</p>
                 </div>
               </div>
             </div>
