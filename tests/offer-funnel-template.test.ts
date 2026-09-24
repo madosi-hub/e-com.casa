@@ -131,7 +131,7 @@ test('the Nuralta slug uses the same approved funnel as the painel-ripado alias'
   expect(nuraltaConfigurator).toContain('nuralta-panel-c${color}-s${size}');
   expect(nuraltaCart).toContain('O meu carrinho');
   expect(nuraltaCart).toContain('Finalizar encomenda');
-  expect(nuraltaCart).toContain('router.push(panelOfferPath(offerSlug, "/checkout"))');
+  expect(nuraltaCart).toContain('router.push(withOfferAttribution(panelOfferPath(offerSlug, "/checkout"), offerSlug))');
   expect(nuraltaCart).toContain('Kit de instalação completo');
   expect(nuraltaCart).toContain('Fita LED Nuralta + Controlo RGB');
   expect(nuraltaFooter).toContain('Nuralta Interiores, Unipessoal Lda. · NIF 517 946 327');
