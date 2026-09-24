@@ -13,6 +13,7 @@ import { ChevronLeft, Minus, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { AccessoryDetailModal } from "@/components/cart/accessory-detail-modal";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-store";
+import { withOfferAttribution } from "@/lib/offers/attribution";
 import { applyBundleOffer } from "@/lib/catalog/bundle";
 import { cartStockLimit } from "@/lib/catalog/inventory";
 import { nuraltaCartImage } from "@/lib/catalog/nuralta-media";
@@ -245,7 +246,7 @@ function NuraltaCartOverlay({ open, onClose }: { open: boolean; onClose: () => v
             <div className="flex justify-between"><dt>Envio</dt><dd>Grátis</dd></div>
             <div className="flex justify-between border-t border-[#e6ded4] pt-3 text-lg font-bold"><dt>Total</dt><dd>{formatPrice(subtotal.toFixed(2))}</dd></div>
           </dl>
-          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push(panelOfferPath(offerSlug, "/checkout")); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
+          <button type="button" disabled={!lines.length} onClick={() => { onClose(); router.push(withOfferAttribution(panelOfferPath(offerSlug, "/checkout"), offerSlug)); }} className="mt-5 w-full rounded-full bg-[#201a17] py-4 font-semibold text-white disabled:opacity-40">Finalizar encomenda</button>
           <p className="mt-3 text-center text-xs text-[#7d6f64]">Escolha a forma de pagamento no passo seguinte</p>
           <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="Métodos de pagamento">
             {PAYMENT_METHODS.map((method) => <span key={method.alt} className="inline-flex h-8 items-center rounded border border-zinc-200 px-2"><img src={method.src} alt={method.alt} style={{ width: method.width, maxHeight: 17 }} /></span>)}

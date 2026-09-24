@@ -2,6 +2,8 @@
 
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
+import { captureOfferAttribution } from '@/lib/offers/attribution';
 
 // Public pixel configuration from the supplied UTMify script.
 const UTMIFY_PIXEL_ID = '6a990085ab8032da69cbb97d';
@@ -10,6 +12,10 @@ const UTMIFY_PIXEL_ID = '6a990085ab8032da69cbb97d';
 export function UtmifyTracking() {
   const pathname = usePathname();
   const enabled = !pathname.startsWith('/admin');
+
+  useEffect(() => {
+    if (enabled) captureOfferAttribution(pathname.split('/')[2] || 'storefront');
+  }, [enabled, pathname]);
 
   if (!enabled) return null;
 

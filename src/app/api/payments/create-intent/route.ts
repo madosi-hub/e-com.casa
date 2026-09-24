@@ -72,12 +72,24 @@ export async function POST(req: NextRequest) {
     const paymentProfile = 'automatic-v2';
     const idempotencyKey = `order:${order.orderNumber}:payment:${order.pricingHash ?? '1'}:${paymentProfile}`;
     const existing = order.payments[0] ?? null;
+    const trackingMetadata = Object.fromEntries(
+      Object.entries(trackingParameters ?? {}).filter(([, value]) => typeof value === 'string' && value.length > 0)
+        .map(([key, value]) => [`tracking_${key}`, String(value)]),
+    );
     let intent;
 
     stage = 'reuse_intent';
     if (existing?.paymentIntentId && REUSABLE.includes(existing.status as PaymentStatus)) {
       try { intent = await provider.retrievePaymentIntent(existing.paymentIntentId); } catch { intent = null; }
       if (intent && intent.amountMinor === amountMinor && intent.currency === order.currency.toUpperCase() && REUSABLE.includes(intent.status)) {
+        const saved = (intent.raw as { metadata?: Record<string, string> } | undefined)?.metadata ?? {};
+        // Preserve the attribution already attached to this payment. Repair
+        // missing fields on legacy/reused intents without clearing known UTMs.
+        const missing = Object.fromEntries(Object.entries(trackingMetadata).filter(([key]) => !saved[key]));
+        if (Object.keys(missing).length) {
+          stage = 'update_provider_tracking';
+          intent = await provider.updateTrackingMetadata(intent.id, missing);
+        }
         await db.payment.update({ where: { id: existing.id }, data: { status: intent.status, provider: provider.name, providerAccount: intent.xpaymentsTransactionId ?? existing.providerAccount } });
         return NextResponse.json({
           publishableKey: config.publishableKey,
@@ -95,10 +107,6 @@ export async function POST(req: NextRequest) {
     stage = 'cancel_previous_intent';
     if (existing?.paymentIntentId) { try { await provider.cancelPaymentIntent(existing.paymentIntentId); } catch { /* best effort */ } }
 
-    const trackingMetadata = Object.fromEntries(
-      Object.entries(trackingParameters ?? {}).filter(([, value]) => typeof value === 'string' && value.length > 0)
-        .map(([key, value]) => [`tracking_${key}`, String(value)]),
-    );
     stage = 'create_provider_intent';
     intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}`, metadata: trackingMetadata });
 

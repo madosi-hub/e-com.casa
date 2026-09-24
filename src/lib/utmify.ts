@@ -104,18 +104,21 @@ export async function sendUtmifyOrder(
     },
   };
 
-  try {
-    const response = await fetch(process.env.UTMIFY_API_URL?.trim() || UTMIFY_ORDERS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-token': token },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!response.ok) {
-      console.error('UTMify order sync failed', response.status, (await response.text()).slice(0, 300));
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(process.env.UTMIFY_API_URL?.trim() || UTMIFY_ORDERS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-token': token },
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (response.ok) return;
+      console.error('UTMify order sync failed', { orderId: order.orderNumber, status, httpStatus: response.status, attempt: attempt + 1 });
+      if (response.status !== 429 && response.status < 500) return;
+    } catch (error) {
+      console.error('UTMify order sync unavailable', { orderId: order.orderNumber, status, attempt: attempt + 1, error: error instanceof Error ? error.name : 'unknown' });
     }
-  } catch (error) {
-    console.error('UTMify order sync unavailable', error instanceof Error ? error.message : 'unknown');
+    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
   }
 }
