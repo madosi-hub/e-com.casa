@@ -31,17 +31,6 @@ const schema = z.object({
   }).nullable().optional(),
 });
 const REUSABLE: PaymentStatus[] = ['CREATED', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING'];
-const PORTUGAL_PAYMENT_METHODS = ['amazon_pay', 'card', 'mb_way', 'multibanco'];
-
-function matchesPortugalPaymentProfile(intent: { raw?: unknown }, restricted: boolean): boolean {
-  if (!restricted) return true;
-  const raw = intent.raw as { payment_method_types?: unknown } | undefined;
-  const methods = Array.isArray(raw?.payment_method_types)
-    ? raw.payment_method_types.filter((method): method is string => typeof method === 'string').sort()
-    : [];
-  return methods.length === PORTUGAL_PAYMENT_METHODS.length
-    && methods.every((method, index) => method === PORTUGAL_PAYMENT_METHODS[index]);
-}
 
 export async function POST(req: NextRequest) {
   const limit = rateLimit(req, 'create-intent', 20, 60_000);
@@ -78,8 +67,9 @@ export async function POST(req: NextRequest) {
     const provider = getPaymentProvider();
     const capabilities = resolvePaymentCapabilities(order.country, order.currency);
     const amountMinor = toMinorUnit(order.total, order.currency);
-    const portugalPaymentProfile = order.country.toUpperCase() === 'PT' && order.currency.toUpperCase() === 'EUR';
-    const paymentProfile = portugalPaymentProfile ? 'pt-wallets-v1' : 'automatic';
+    // Version the corrected request contract; retries keep a stable key without
+    // replaying a failed request made with the old top-level tracking fields.
+    const paymentProfile = 'automatic-v2';
     const idempotencyKey = `order:${order.orderNumber}:payment:${order.pricingHash ?? '1'}:${paymentProfile}`;
     const existing = order.payments[0] ?? null;
     let intent;
@@ -87,7 +77,7 @@ export async function POST(req: NextRequest) {
     stage = 'reuse_intent';
     if (existing?.paymentIntentId && REUSABLE.includes(existing.status as PaymentStatus)) {
       try { intent = await provider.retrievePaymentIntent(existing.paymentIntentId); } catch { intent = null; }
-      if (intent && intent.amountMinor === amountMinor && REUSABLE.includes(intent.status) && matchesPortugalPaymentProfile(intent, portugalPaymentProfile)) {
+      if (intent && intent.amountMinor === amountMinor && intent.currency === order.currency.toUpperCase() && REUSABLE.includes(intent.status)) {
         await db.payment.update({ where: { id: existing.id }, data: { status: intent.status, provider: provider.name, providerAccount: intent.xpaymentsTransactionId ?? existing.providerAccount } });
         return NextResponse.json({
           publishableKey: config.publishableKey,
@@ -144,6 +134,7 @@ export async function POST(req: NextRequest) {
       stage,
       code: perr?.code ?? rawCode ?? 'UNKNOWN_ERROR',
       providerCode: perr?.providerCode,
+      providerParam: perr?.providerParam,
       name,
       message,
     });

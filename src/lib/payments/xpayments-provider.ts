@@ -82,26 +82,23 @@ export class XPaymentsStripeProvider implements PaymentProvider {
   }
 
   async createPaymentIntent(input: CreatePaymentIntentInput): Promise<ProviderPaymentIntent> {
-    const portugalMethods = input.customerCountry.toUpperCase() === 'PT' && input.currency.toUpperCase() === 'EUR'
-      ? {
-          'payment_method_types[0]': 'card',
-          'payment_method_types[1]': 'mb_way',
-          'payment_method_types[2]': 'multibanco',
-          'payment_method_types[3]': 'amazon_pay',
-        }
-      : { 'automatic_payment_methods[enabled]': 'true' };
+    // https://www.xpayments.digital/doc/stripe: let the Store and Payment
+    // Element resolve the methods available for this buyer and currency.
+    const metadata = Object.fromEntries(
+      Object.entries(input.metadata ?? {}).map(([key, value]) => [`metadata[${key}]`, value]),
+    );
     const body = formEncode({
       amount: input.amountMinor,
       currency: input.currency.toLowerCase(),
-      ...portugalMethods,
+      'automatic_payment_methods[enabled]': 'true',
       description: input.description ?? `E-com.casa order ${input.orderNumber}`,
       ...(input.customerEmail && input.customerEmail !== 'checkout@e-com.casa' ? { receipt_email: input.customerEmail } : {}),
+      ...metadata,
       'metadata[merchant_reference]': input.orderNumber,
       'metadata[order_number]': input.orderNumber,
       'metadata[customer_country]': input.customerCountry,
       'metadata[store]': 'e-com.casa',
       ...(this.cfg.storeId ? { 'metadata[store_id]': this.cfg.storeId } : {}),
-      ...input.metadata,
     });
     const intent = await this.request<StripeLikeIntent>('POST', '/payment_intents', { body, idempotencyKey: input.idempotencyKey });
     return toProviderIntent(intent);
