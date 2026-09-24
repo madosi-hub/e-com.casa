@@ -10,6 +10,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { getPaymentConfig } from '@/lib/payments/payments-config';
 import { applyProviderIntent } from '@/lib/payments/reconcile-payment';
+import { getPaymentProvider } from '@/lib/payments/xpayments-provider';
 import { toMinorUnit } from '@/lib/payments/amounts';
 import type { PaymentStatus, ProviderPaymentIntent } from '@/lib/payments/payment-types';
 
@@ -76,8 +77,11 @@ export async function POST(req: NextRequest) {
   const eventId = idFor(event);
   try {
     await db.webhookEvent.create({ data: { id: eventId, provider: 'xpayments_stripe', type: eventType, payloadJson: rawBody.slice(0, 20_000) } });
-  } catch {
-    return NextResponse.json({ received: true, duplicate: true });
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002') {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    return NextResponse.json({ error: 'Event storage unavailable' }, { status: 500 });
   }
 
   try {
@@ -85,7 +89,13 @@ export async function POST(req: NextRequest) {
       where: { providerAccount: transactionId },
       include: { order: true },
     });
-    if (!payment) return NextResponse.json({ received: true, unknownTransaction: true });
+    // The callback may beat local payment persistence; allow provider retry.
+    if (!payment) throw new Error('Payment not yet available');
+
+    // Merchant callbacks do not include Stripe metadata. Read the existing
+    // intent before applying success, so attribution survives browser closure.
+    const storedIntent = await getPaymentProvider().retrievePaymentIntent(payment.paymentIntentId);
+    if (storedIntent.id !== payment.paymentIntentId) throw new Error('PaymentIntent mismatch');
 
     const amountMinor =
       typeof event.amount === 'number' && Number.isInteger(event.amount) && event.amount >= 0
@@ -100,6 +110,7 @@ export async function POST(req: NextRequest) {
       currency: String(event.currency ?? payment.order.currency).toUpperCase(),
       paymentMethodType: event.method ?? payment.paymentMethodType ?? null,
       xpaymentsTransactionId: transactionId,
+      raw: storedIntent.raw,
     };
 
     const timestamp = event.timestamp ? new Date(event.timestamp) : undefined;

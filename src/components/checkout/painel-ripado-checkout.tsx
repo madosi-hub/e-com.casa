@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
-import { getOfferAttribution } from '@/lib/offers/attribution';
+import { offerTrackingParameters } from '@/lib/offers/attribution';
 import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
@@ -82,17 +82,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     } catch {
       // A blocked or malformed local draft must never prevent checkout.
     }
-    const attribution = getOfferAttribution();
-    const params = new URLSearchParams(window.location.search);
-    setTrackingParameters({
-      src: params.get('src') ?? attribution?.utm_source ?? null,
-      sck: params.get('sck') ?? null,
-      utm_source: params.get('utm_source') ?? attribution?.utm_source ?? null,
-      utm_medium: params.get('utm_medium') ?? attribution?.utm_medium ?? null,
-      utm_campaign: params.get('utm_campaign') ?? attribution?.utm_campaign ?? null,
-      utm_content: params.get('utm_content') ?? attribution?.utm_content ?? null,
-      utm_term: params.get('utm_term') ?? attribution?.utm_term ?? null,
-    });
+    setTrackingParameters(offerTrackingParameters(offerSlug));
     setDraftHydrated(true);
     setMounted(true);
   }, []);

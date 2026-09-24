@@ -4,7 +4,7 @@
 // XPayments API key and merchant webhook secret.
 
 import 'server-only';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHash, createHmac, timingSafeEqual } from 'crypto';
 import { getPaymentConfig, type PaymentConfig } from './payments-config';
 import { normaliseGatewayError, PaymentError, toPaymentError } from './payment-errors';
 import type { CreatePaymentIntentInput, PaymentStatus, ProviderPaymentIntent, StripeLikeIntent, WebhookVerification } from './payment-types';
@@ -106,6 +106,15 @@ export class XPaymentsStripeProvider implements PaymentProvider {
 
   async retrievePaymentIntent(paymentIntentId: string): Promise<ProviderPaymentIntent> {
     return toProviderIntent(await this.request<StripeLikeIntent>('GET', `/payment_intents/${encodeURIComponent(paymentIntentId)}`));
+  }
+
+  async updateTrackingMetadata(paymentIntentId: string, metadata: Record<string, string>): Promise<ProviderPaymentIntent> {
+    const body = formEncode(Object.fromEntries(Object.entries(metadata).sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => [`metadata[${key}]`, value])));
+    const digest = createHash('sha256').update(body).digest('hex');
+    return toProviderIntent(await this.request<StripeLikeIntent>('POST', `/payment_intents/${encodeURIComponent(paymentIntentId)}`, {
+      body, idempotencyKey: `tracking:${paymentIntentId}:${digest}`,
+    }));
   }
 
   async cancelPaymentIntent(paymentIntentId: string): Promise<ProviderPaymentIntent> {

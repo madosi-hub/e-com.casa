@@ -74,6 +74,21 @@ test('uses automatic methods outside Portugal and omits placeholder receipt emai
   await p.createPaymentIntent({ ...input, customerCountry: 'ES', customerEmail: 'checkout@e-com.casa' });
 });
 
+test('repairs reused intent metadata without changing payment amount or creating another intent', async () => {
+  const requests = [];
+  const p = provider(async (url, options) => {
+    requests.push({ url, ...options });
+    const form = new URLSearchParams(options.body);
+    assert.equal(form.get('metadata[tracking_utm_campaign]'), 'Camp|123');
+    assert.equal(form.has('amount'), false);
+    return Response.json({ id: 'pi_fixture', amount: 2500, currency: 'eur', metadata: { tracking_utm_campaign: 'Camp|123' } });
+  });
+  await p.updateTrackingMetadata('pi_fixture', { tracking_utm_campaign: 'Camp|123', tracking_sck: 'click' });
+  await p.updateTrackingMetadata('pi_fixture', { tracking_sck: 'click', tracking_utm_campaign: 'Camp|123' });
+  assert.equal(requests[0].url, 'https://api.xpayments.digital/api/stripe/v1/payment_intents/pi_fixture');
+  assert.equal(requests[0].headers['Idempotency-Key'], requests[1].headers['Idempotency-Key']);
+});
+
 test('retains the rejected field for diagnostics without putting provider text in the customer message', async () => {
   const p = provider(async () => Response.json({ error: {
     type: 'invalid_request_error', code: 'parameter_unknown', param: 'tracking_utm_source',
