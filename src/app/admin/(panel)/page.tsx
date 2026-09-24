@@ -1,3 +1,4 @@
+import { placedOrderWhere } from '@/lib/order-visibility';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { PageHeader, StatCard, StatusBadge, money } from '../_components/ui';
@@ -12,7 +13,7 @@ export default async function AdminDashboardPage() {
     activeFunnels,
     totalOrders,
     paidOrders,
-    pendingOrders,
+    pendingCheckouts,
     contacts,
     recentOrders,
     paidTotals,
@@ -20,11 +21,11 @@ export default async function AdminDashboardPage() {
     db.product.count(),
     db.product.count({ where: { published: true } }),
     db.productOffer.count({ where: { enabled: true, startsAt: { lte: now }, endsAt: { gt: now } } }),
-    db.order.count(),
+    db.order.count({ where: placedOrderWhere }),
     db.order.count({ where: { paymentStatus: { in: ['PAID', 'PARTIALLY_REFUNDED'] } } }),
     db.order.count({ where: { paymentStatus: { in: ['PENDING_PAYMENT', 'PAYMENT_PROCESSING'] } } }),
     db.contactMessage.count(),
-    db.order.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }),
+    db.order.findMany({ where: placedOrderWhere, orderBy: { createdAt: 'desc' }, take: 8 }),
     db.order.findMany({
       where: { currency: 'EUR', paymentStatus: { in: ['PAID', 'PARTIALLY_REFUNDED'] } },
       select: { total: true },
@@ -39,7 +40,7 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Products" value={publishedProducts} hint={`${totalProducts - publishedProducts} draft / archived`} />
         <StatCard label="Active funnels" value={activeFunnels} hint="Enabled and inside schedule" />
-        <StatCard label="Orders" value={totalOrders} hint={`${pendingOrders} awaiting payment`} />
+        <StatCard label="Orders" value={totalOrders} hint={`${pendingCheckouts} checkouts awaiting payment (not orders)`} />
         <StatCard label="Captured sales" value={money(revenue, 'EUR')} hint={`${paidOrders} paid or partially refunded orders`} />
       </div>
 

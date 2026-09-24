@@ -56,6 +56,16 @@ export function newAccessToken(): string {
   return randomBytes(24).toString('hex');
 }
 
+/** Drafts can be empty; fulfilment requires the buyer's actual contact details. */
+export function hasCheckoutContact(data: {
+  email: string; firstName: string; lastName: string; address: string; city: string; postalCode: string;
+}): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())
+    && data.email.trim().toLowerCase() !== 'checkout@e-com.casa'
+    && [data.firstName, data.lastName, data.address, data.city, data.postalCode]
+      .every(value => value.trim().length > 0 && value !== 'A preencher');
+}
+
 /**
  * Reprice a cart entirely server-side from catalogue data.
  * Returns null-safe errors via thrown CheckoutValidationError.

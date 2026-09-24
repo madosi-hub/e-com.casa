@@ -385,6 +385,12 @@ GET  /api/payments/health
 POST /api/webhooks/xpayments
 ```
 
+Checkout preparation uses the existing `Order` table as an internal draft (`status=CHECKOUT_DRAFT`, `paymentStatus=PENDING_PAYMENT`). No schema change or migration is needed. The Nuralta offer prepares its PaymentIntent without contact placeholders or a receipt email; `/api/checkout/create` accepts empty contact only with `draft: true`. Before confirming payment, the browser submits complete contact/delivery details with `draft: false` and passes the real billing email to Stripe. The server still reprices the cart and rejects updates to paid/processing checkouts.
+
+Only purchases with a paid timestamp or a paid/refunded payment status appear in order lists, customer history and order counts. Pending attempts remain accessible in the payment diagnostics and authenticated checkout status page. Verified reconciliation promotes the existing draft to `PAID`/`CONFIRMED` and applies fulfilment once; it does not create a second row. Existing records are not rewritten by deployment.
+
+Run `npm run test:checkout` for isolated checkout-draft tests (no live database, charges or email).
+
 Payment lifecycle and fulfilment lifecycle are separate.
 
 Typical payment states include:

@@ -27,6 +27,7 @@ import { useCart } from '@/lib/cart-store';
 import { translate, type Lang } from '@/lib/i18n';
 import { resetCheckoutToken } from '@/hooks/use-payment-session';
 import { formatPrice, formatDate } from '@/lib/format';
+import { isPlacedOrder } from '@/lib/order-visibility';
 import { GIFT_WRAP_PRICE } from '@/lib/constants';
 
 export interface SuccessOrderData {
@@ -125,6 +126,7 @@ export function SuccessView({
 }) {
   const uiT = useT();
   const t = language ? (key: string, vars?: Record<string, string | number>) => translate(language, key, vars) : uiT;
+  const placed = isPlacedOrder({ paymentStatus: order.status });
   const waiting = ['PENDING_PAYMENT', 'PAYMENT_PROCESSING'].includes(order.status);
 
   useEffect(() => {
@@ -214,7 +216,7 @@ export function SuccessView({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <FinaliseClientState />
+      {placed && <FinaliseClientState />}
       <div className="text-center">{header}</div>
       {waiting && <PaymentStatusPoller orderNumber={order.orderNumber} token={token} language={language} />}
 
@@ -222,7 +224,7 @@ export function SuccessView({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {t('success.orderNumber')}
+              {placed ? t('success.orderNumber') : language === 'pt' ? 'Referência do checkout' : 'Checkout reference'}
             </p>
             <p className="font-display mt-1 flex flex-wrap items-center gap-2 text-[20px] font-medium">
               {order.orderNumber}

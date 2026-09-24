@@ -135,6 +135,9 @@ export function usePaymentSession({
   });
   const inflight = useRef<AbortController | null>(null);
   const signatureRef = useRef(signature);
+  const preparedSignature = useRef<string | null>(null);
+  const preparedPricingHash = useRef<string | null>(null);
+  const confirmedContact = useRef<CheckoutOrderPayload | null>(null);
   const onCompleteRef = useRef(onComplete);
   const stateRef = useRef(state);
   useEffect(() => {
@@ -154,10 +157,10 @@ export function usePaymentSession({
       // 1. Create/update the PENDING_PAYMENT order (server-repriced)
       const checkoutToken = getCheckoutToken();
       const { response: orderRes, data: orderData } = await postWithSafeCheckoutRetry<{
-        error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string;
+        error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string; pricingHash?: string;
       }>(
         '/api/checkout/create',
-        { ...payload, checkoutToken },
+        { ...payload, checkoutToken, draft: true },
         AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
         checkoutToken,
       );
@@ -215,6 +218,9 @@ export function usePaymentSession({
         locale,
       });
 
+      preparedSignature.current = signature;
+      preparedPricingHash.current = orderData.pricingHash ?? null;
+      confirmedContact.current = null;
       setState({
         orderNumber,
         accessToken,
@@ -230,7 +236,7 @@ export function usePaymentSession({
       setPhase('error');
       setState((s) => ({ ...s, errorMessage: 'We could not start the payment. Please try again.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
     }
-  }, [payload, locale]);
+  }, [payload, locale, signature]);
 
   // Re-ensure whenever the order signature changes and the payload is valid
   useEffect(() => {
@@ -245,10 +251,33 @@ export function usePaymentSession({
     return () => clearTimeout(timer);
   }, [signature, payload !== null]);
 
+  const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
+    if (!state.orderNumber || preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
+    try {
+      const checkoutToken = getCheckoutToken();
+      const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string; orderNumber?: string; pricingHash?: string }>(
+        '/api/checkout/create', { ...nextPayload, checkoutToken, draft: false }, undefined, checkoutToken,
+      );
+      if (!response.ok) return { ok: false, errorMessage: data.error ?? 'Não foi possível guardar os dados de entrega.' };
+      if (data.orderNumber !== state.orderNumber || data.pricingHash !== preparedPricingHash.current) {
+        return { ok: false, errorMessage: 'O checkout foi atualizado. Atualize o pagamento antes de continuar.' };
+      }
+      confirmedContact.current = nextPayload;
+      return { ok: true };
+    } catch { return { ok: false, errorMessage: 'Não foi possível guardar os dados de entrega.' }; }
+  }, [state.orderNumber, signature]);
+
   const confirmPayment = useCallback(async (): Promise<{ ok: boolean; errorCode?: PaymentErrorCode; errorMessage?: string }> => {
     const { stripe, elements, orderNumber, accessToken } = state;
     if (!stripe || !elements || !orderNumber || !accessToken) {
       return { ok: false, errorCode: 'TEMPORARY_PAYMENT_ERROR', errorMessage: 'Payment is not ready yet.' };
+    }
+    if (preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
+    const contact = confirmedContact.current ?? payload;
+    if (!contact) return { ok: false, errorMessage: 'Preencha os dados de contacto e entrega.' };
+    if (!confirmedContact.current) {
+      const synced = await syncOrder(contact);
+      if (!synced.ok) return { ok: false, errorMessage: synced.errorMessage };
     }
     setPhase('confirming');
     const returnUrl = new URL(returnPath, window.location.origin);
@@ -257,7 +286,7 @@ export function usePaymentSession({
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: returnUrl.toString() },
+      confirmParams: { return_url: returnUrl.toString(), payment_method_data: { billing_details: { email: contact.email, name: `${contact.firstName} ${contact.lastName}`.trim() } } },
       redirect: 'if_required',
     });
 
@@ -284,24 +313,8 @@ export function usePaymentSession({
     }
     // requires_action etc. → redirect already scheduled by Stripe
     return { ok: true };
-  }, [state, returnPath]);
+  }, [state, returnPath, payload, signature, syncOrder]);
 
-  const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
-    try {
-      const checkoutToken = getCheckoutToken();
-      const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string }>(
-        '/api/checkout/create',
-        { ...nextPayload, checkoutToken },
-        undefined,
-        checkoutToken,
-      );
-      return response.ok
-        ? { ok: true }
-        : { ok: false, errorMessage: data.error ?? 'Não foi possível atualizar a encomenda.' };
-    } catch {
-      return { ok: false, errorMessage: 'Não foi possível atualizar a encomenda.' };
-    }
-  }, []);
 
   return {
     phase,
