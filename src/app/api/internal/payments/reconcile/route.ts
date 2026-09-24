@@ -1,3 +1,4 @@
+import { refreshCheckoutPayment } from '@/lib/payments/checkout-session';
 // Vercel Cron — background XPayments reconciliation
 // Covers delayed/asynchronous methods when the shopper closes the
 // browser and no merchant webhook is configured. This job NEVER
@@ -19,6 +20,12 @@ function authorised(req: NextRequest): boolean {
 
 export async function GET(req: NextRequest) {
   if (!authorised(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const checkouts = await db.checkoutSession.findMany({
+    where: { orderId: null, readyAt: { not: null }, paymentIntentId: { not: null }, paymentStatus: { not: 'CANCELLED' } },
+    orderBy: { updatedAt: 'asc' }, take: 10,
+  });
+  const checkoutResults = await Promise.allSettled(checkouts.map(session => refreshCheckoutPayment(session.reference)));
 
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const orders = await db.order.findMany({
@@ -62,6 +69,8 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    checkoutScanned: checkouts.length,
+    checkoutFailures: checkoutResults.filter(result => result.status === 'rejected').length,
     scanned: orders.length,
     checked,
     changed,

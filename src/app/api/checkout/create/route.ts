@@ -1,30 +1,21 @@
-// POST /api/checkout/create
-// Creates (or updates, same checkout session) an internal order
-// in PENDING_PAYMENT. Totals are repriced server-side; client
-// totals are never trusted. The order is NOT paid at creation —
-// it becomes PAID only after a verified gateway event.
-// Response carries the order access token ONCE; the browser uses
-// (orderNumber, accessToken) for every later payment call.
-
-import { after, NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'node:crypto';
+import { NextRequest, NextResponse } from 'next/server';
+import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import {
   repriceCart,
   sanitizeNotes,
-  newOrderNumber,
   newAccessToken,
   CheckoutValidationError,
 } from '@/lib/checkout';
 import { resolvePaymentCurrency } from '@/lib/payments/payment-capabilities';
 import { ORDER_NOTES_MAX } from '@/lib/constants';
-import { sendUtmifyOrder } from '@/lib/utmify';
+import { withCheckoutLock } from '@/lib/payments/checkout-session';
+import { toMinorUnit } from '@/lib/payments/amounts';
 
 export const dynamic = 'force-dynamic';
 
-const OFFER_CHECKOUT_PLACEHOLDER_EMAIL = 'checkout@e-com.casa';
 
 const orderItemSchema = z.object({
   slug: z.string().min(1),
@@ -34,13 +25,13 @@ const orderItemSchema = z.object({
 
 const createCheckoutSchema = z.object({
   checkoutToken: z.string().min(8).max(80), // client checkout-session id
-  email: z.string().email(),
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-  address: z.string().min(1).max(200),
+  email: z.union([z.string().email(), z.literal('')]).default(''),
+  firstName: z.string().max(80).default(''),
+  lastName: z.string().max(80).default(''),
+  address: z.string().max(200).default(''),
   address2: z.string().max(200).optional().nullable(),
-  city: z.string().min(1).max(100),
-  postalCode: z.string().min(1).max(20),
+  city: z.string().max(100).default(''),
+  postalCode: z.string().max(20).default(''),
   country: z.string().min(2).max(2),
   phone: z.string().max(40).optional().nullable(),
   shippingMethod: z.enum(['standard', 'express']),
@@ -108,21 +99,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Idempotent per checkout session: same checkoutToken → update the
-    // still-pending order instead of creating a new one.
-    stage = 'load_order';
-    const existing = data.checkoutToken
-      ? await db.order.findUnique({ where: { checkoutToken: data.checkoutToken } })
-      : null;
-
-    if (existing && !['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus)) {
-      // Session already finished — force a fresh order.
-      await db.order.update({
-        where: { id: existing.id },
-        data: { checkoutToken: null },
-      });
-    }
-
     const payload = {
       email: data.email,
       firstName: data.firstName,
@@ -147,36 +123,30 @@ export async function POST(req: NextRequest) {
       pricingHash: totals.pricingHash,
     };
 
-    stage = 'persist_order';
-    let order = existing && ['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus)
-      ? await db.order.update({
-          where: { id: existing.id },
-          data: {
-            ...payload,
-            paymentStatus: 'PENDING_PAYMENT',
-            paymentFailureReason: null,
-          },
-        })
-      : await db.order.create({
-          data: {
-            ...payload,
-            orderNumber: newOrderNumber(),
-            accessToken: newAccessToken(),
-            checkoutToken: data.checkoutToken,
-            status: 'PENDING',
-            paymentStatus: 'PENDING_PAYMENT',
-          },
-        });
-
-    stage = 'load_payment';
-    // If a stale PaymentIntent exists with a different pricing hash it
-    // will be cancelled by /api/payments/create-intent automatically.
-    const payment = await db.payment.findUnique({ where: { orderId: order.id } });
+    stage = 'persist_session';
+    const sessionKey = createHash('sha256').update(`${data.checkoutToken}:${totals.pricingHash}:${totals.country}:${data.shippingMethod}`).digest('hex');
+    const session = await withCheckoutLock(sessionKey, async (tx) => {
+      const existing = await tx.checkoutSession.findUnique({ where: { sessionKey } });
+      if (existing) {
+        // Once submitted, preserve the exact customer and pricing snapshot.
+        if (existing.readyAt || existing.orderId) return existing;
+        return tx.checkoutSession.update({ where: { id: existing.id }, data: {
+          snapshotJson: JSON.stringify(payload),
+          trackingJson: data.trackingParameters ? JSON.stringify(data.trackingParameters) : existing.trackingJson,
+        } });
+      }
+      return tx.checkoutSession.create({ data: {
+        reference: `CS-${randomUUID()}`, sessionKey, accessToken: newAccessToken(),
+        snapshotJson: JSON.stringify(payload),
+        trackingJson: data.trackingParameters ? JSON.stringify(data.trackingParameters) : null,
+        amountMinor: toMinorUnit(payload.total, payload.currency), currency: payload.currency, country: payload.country,
+      } });
+    });
 
     stage = 'consent';
     // Explicit marketing consent captured at checkout — consent is
     // never inferred from the order submission itself.
-    if (data.marketingConsent) {
+    if (data.marketingConsent && data.email) {
       await db.newsletterSubscriber.upsert({
         where: { email: data.email },
         update: {
@@ -194,31 +164,14 @@ export async function POST(req: NextRequest) {
       }).catch(() => undefined); // consent must never block checkout
     }
 
-    stage = 'tracking';
-    // The offer checkout may prepare its internal order and PaymentIntent with a
-    // placeholder, but UTMify should only receive a lead after the visitor has
-    // finished a real email address. Reusing the order number lets later cart
-    // changes update the same pending sale instead of creating duplicates.
-    if (data.email !== OFFER_CHECKOUT_PLACEHOLDER_EMAIL) {
-      after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
-    }
-
-    return NextResponse.json(
-      {
-        orderNumber: order.orderNumber,
-        accessToken: order.accessToken,
-        totals: {
-          subtotal: order.subtotal,
-          shipping: order.shipping,
-          discount: order.discount,
-          total: order.total,
-          currency: order.currency,
-        },
-        pricingHash: order.pricingHash,
-        intentExists: Boolean(payment && payment.paymentIntentId === order.paymentIntentId),
-      },
-      { status: existing ? 200 : 201 },
-    );
+    return NextResponse.json({
+      // Compatibility name for existing clients; this is a checkout reference, not an order.
+      orderNumber: session.reference,
+      accessToken: session.accessToken,
+      totals: { subtotal: payload.subtotal, shipping: payload.shipping, discount: payload.discount, total: payload.total, currency: payload.currency },
+      pricingHash: payload.pricingHash,
+      intentExists: Boolean(session.paymentIntentId),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     const requestId = randomUUID();
     const details = error as { code?: string; errorCode?: string; name?: string; message?: string; meta?: unknown };
