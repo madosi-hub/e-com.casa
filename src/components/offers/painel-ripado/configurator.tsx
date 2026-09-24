@@ -284,27 +284,29 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
 
         </div>
 
-        <div className="belmonte-product-info flex min-w-0 flex-col gap-6 pt-3 sm:pt-0">
-          <div id="product-intro" className="min-w-0">
-            <h1 className="belmonte-serif break-words text-[28px] leading-[1.04] sm:text-5xl">Painel Ripado Decorativo</h1>
-            <p className="mt-1.5 overflow-hidden text-ellipsis text-sm leading-relaxed text-[#5c5049] sm:mt-3 sm:text-base">Design que transforma. Instalação que simplifica.</p>
-          </div>
+        <div className="belmonte-product-info flex min-w-0 flex-col gap-6 pt-6">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div id="product-intro" className="min-w-0">
+              <h1 className="belmonte-serif break-words text-[28px] leading-[1.04] sm:text-5xl">Painel Ripado Decorativo</h1>
+              <p className="mt-1.5 text-sm leading-relaxed text-[#5c5049] sm:text-base">Design que transforma. Instalação que simplifica.</p>
+            </div>
 
-          <div id="product-rating" className="flex min-w-0 flex-wrap items-center gap-2">
-            <StarRow value={PANEL_REVIEW_RATING} size={14} />
-            <strong className="text-sm">{PANEL_REVIEW_RATING.toFixed(1).replace('.', ',')}</strong>
-            <a href="#avaliacoes" className="text-sm text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4">{PANEL_REVIEW_TOTAL} avaliações</a>
+            <div id="product-rating" className="flex min-w-0 flex-wrap items-center gap-2">
+              <StarRow value={PANEL_REVIEW_RATING} size={14} />
+              <strong className="text-sm">{PANEL_REVIEW_RATING.toFixed(1).replace('.', ',')}</strong>
+              <a href="#avaliacoes" className="text-sm text-[#7d6f64] underline decoration-[#d8cec2] underline-offset-4">{PANEL_REVIEW_TOTAL} avaliações</a>
+            </div>
           </div>
 
           <div id="configurar-painel" className="belmonte-configurator flex flex-col gap-6" style={{ scrollMarginTop: 72 }}>
-            <div id="product-price" className="border-y border-[#e6ded4] py-4">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <strong className="belmonte-serif text-4xl font-normal">{displayedPrice}</strong>
+            <div id="product-price" className="relative before:absolute before:inset-x-0 before:-top-3 before:border-t before:border-[#e6ded4] after:absolute after:inset-x-0 after:-bottom-3 after:border-t after:border-[#e6ded4]">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <strong className="belmonte-serif text-4xl font-normal leading-tight">{displayedPrice}</strong>
                 <span className="text-sm text-[#7d6f64]">por painel</span>
               </div>
               <strong className="mt-1 block text-sm text-[#8a5a2b]">Preço direto da fábrica</strong>
               {!selectedSize && <p className="mt-1 text-xs text-[#7d6f64]">Painel de {PANEL_SIZES[0].label}. O preço varia consoante o tamanho.</p>}
-              <a href="#fabrico-proprio" className="mt-2 inline-block py-2 text-xs text-[#5c5049] underline underline-offset-4">Como conseguimos este preço?</a>
+              <a href="#fabrico-proprio" className="mt-2 block w-fit pt-2 text-xs leading-5 text-[#5c5049] underline underline-offset-4">Como conseguimos este preço?</a>
             </div>
 
             <div id="product-color" className={`belmonte-color-option ${selectionGuidanceVisible && colorIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
