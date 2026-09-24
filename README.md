@@ -378,21 +378,12 @@ Relevant routes:
 
 ```text
 POST /api/checkout/create
-POST /api/checkout/submit
 POST /api/payments/create-intent
 GET  /api/payments/status
 GET  /api/payments/capabilities
 GET  /api/payments/health
 POST /api/webhooks/xpayments
 ```
-
-New checkouts are stored in `CheckoutSession`, not `Order`. `/api/checkout/create` reprices the cart on the server and returns a `CS-…` reference (the legacy response field is named `orderNumber`). The offer can prepare Stripe Elements without contact data; no placeholder email is sent to the provider. `/api/checkout/submit` validates and saves real contact/delivery details before payment confirmation.
-
-A server-to-server PaymentIntent lookup must report `SUCCEEDED` with the expected ID, amount and currency before a transaction creates the paid order, its payment record, and applies stock. Database locks serialize webhook/poll/cron promotion. Failed, cancelled and processing sessions never create orders. A paid order with insufficient stock remains `ON_HOLD` for manual fulfilment; inventory cannot go negative. Existing orders continue through the legacy reconciliation flow.
-
-Deployment: apply `prisma migrate deploy` (migration `20260924000000_checkout_sessions`) before releasing this code. Configure the merchant webhook and/or an external scheduler to call `GET /api/internal/payments/reconcile` with `Authorization: Bearer <CRON_SECRET>` regularly, so delayed payments are processed when the browser is closed. The scheduler is not provisioned by this repository. Browser polling is an additional reconciliation path. No migration rewrites or deletes existing orders.
-
-Run `npm run test:checkout` for isolated lifecycle tests; they do not contact the payment provider or a real database. Provider sandbox and PostgreSQL integration validation are still required before production rollout.
 
 Payment lifecycle and fulfilment lifecycle are separate.
 

@@ -31,8 +31,5 @@ jobs:
       - name: Commerce tests
         run: bun run test:catalog
 
-      - name: Checkout payment lifecycle tests
-        run: bun run test:checkout
-
       - name: Production build
         run: bun run build

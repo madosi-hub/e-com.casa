@@ -1,4 +1,3 @@
-import { CheckoutStatus } from './checkout-status';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
@@ -83,10 +82,6 @@ async function loadOrder(orderNumber: string, token: string): Promise<SuccessOrd
 }
 
 async function OrderContent({ orderNumber, token, offer }: { orderNumber: string; token: string; offer?: string }) {
-  if (orderNumber.startsWith('CS-')) {
-    const session = await db.checkoutSession.findUnique({ where: { reference: orderNumber } });
-    if (session && tokenMatches(session.accessToken, token)) return <CheckoutStatus reference={orderNumber} token={token} portuguese={isPanelOfferSlug(offer)} />;
-  }
   const data = await loadOrder(orderNumber, token);
   const panelOfferSlug = isPanelOfferSlug(offer) ? offer : null;
   const painelRipado = panelOfferSlug !== null;

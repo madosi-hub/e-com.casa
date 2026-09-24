@@ -87,11 +87,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Orders are created only by server-side payment reconciliation. */
+/** Order creation moved to /api/checkout/create — the mock paid-order
+ *  endpoint is gone for good. */
 export async function POST() {
   return NextResponse.json(
     {
-      error: 'Use /api/checkout/create to prepare a checkout session. Orders are created after verified payment.',
+      error: 'Order creation moved to /api/checkout/create. Orders are never marked paid at creation.',
     },
     { status: 410 },
   );
