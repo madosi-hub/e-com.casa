@@ -9,21 +9,27 @@ export class PaymentError extends Error {
   readonly httpStatus: number;
   /** Provider-side code for internal logs only — never returned raw. */
   readonly providerCode?: string;
+  /** Rejected field name for server-side diagnostics only. */
+  readonly providerParam?: string;
 
-  constructor(code: PaymentErrorCode, httpStatus = 400, providerCode?: string, message?: string) {
+  constructor(code: PaymentErrorCode, httpStatus = 400, providerCode?: string, message?: string, providerParam?: string) {
     super(message ?? code);
     this.name = 'PaymentError';
     this.code = code;
     this.httpStatus = httpStatus;
     this.providerCode = providerCode;
+    this.providerParam = providerParam;
   }
 }
 
 /** Map a gateway (Stripe-shaped) error to a safe PaymentError. */
 export function normaliseGatewayError(status: number, body: unknown): PaymentError {
-  const err = body as { error?: { type?: string; code?: string; message?: string; decline_code?: string } } | null;
+  const err = body as { error?: { type?: string; code?: string; message?: string; decline_code?: string; param?: string } } | null;
   const type = err?.error?.type ?? '';
   const code = err?.error?.code ?? err?.error?.decline_code ?? '';
+  if (code === 'parameter_unknown') {
+    return new PaymentError('PAYMENT_CONFIGURATION_ERROR', 502, code, undefined, err?.error?.param);
+  }
 
   // Configuration / authentication problems on OUR side.
   if (status === 401 || status === 403 || type === 'invalid_request_error' && /api[_ ]?key/i.test(String(code))) {
