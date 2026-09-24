@@ -192,7 +192,7 @@ export async function ensureTracking<T extends TrackableOrder>(order: T): Promis
   currentState: TrackingState;
   cancelled: boolean;
 }> {
-  if (order.paymentStatus !== 'PAID' || order.status === 'ON_HOLD') {
+  if (order.paymentStatus !== 'PAID') {
     return { order, timeline: [], currentState: 'CONFIRMED', cancelled: false };
   }
 

@@ -17,7 +17,6 @@
     "db:seed": "bun prisma/seed.ts",
     "catalog:bootstrap": "bun prisma/seed.ts",
     "offers:verify": "bun scripts/offers/verify-offers.ts",
-    "test:checkout": "node --test tests/checkout-session.test.mjs",
     "test:catalog": "bun test tests/catalog-inventory.test.ts && bun test tests/catalog-payment.test.ts && bun test tests/commerce-policy.test.ts && bun test tests/product-offers.test.ts && bun test tests/offer-funnel-template.test.ts && bun test tests/catalog-resilience.test.ts && bun test tests/offer-resilience.test.ts && bun test tests/nuralta-media.test.ts"
   },
   "dependencies": {

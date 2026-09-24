@@ -116,28 +116,6 @@ model Category {
 
 // Orders, checkout and fulfilment
 
-// A checkout is not an order. Only a verified successful payment promotes it.
-model CheckoutSession {
-  id               String   @id @default(cuid())
-  reference        String   @unique
-  sessionKey       String   @unique
-  accessToken      String   @unique
-  snapshotJson     String
-  trackingJson     String?
-  amountMinor      Int
-  currency         String
-  country          String
-  paymentIntentId  String?  @unique
-  providerAccount  String?
-  paymentStatus    String   @default("PENDING_PAYMENT")
-  readyAt          DateTime?
-  orderId          String?  @unique
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([paymentStatus, updatedAt])
-}
-
 model Order {
   id          String @id @default(cuid())
   orderNumber String @unique

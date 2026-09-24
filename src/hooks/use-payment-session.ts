@@ -3,7 +3,7 @@
 // usePaymentSession — checkout ↔ order ↔ PaymentIntent glue
 // Client orchestration of the real payment flow:
 // 1. cart valid → POST /api/checkout/create  (server-repriced
-// checkout session, without creating an order)
+// PENDING_PAYMENT order, idempotent per checkout session)
 // 2. POST /api/payments/create-intent  (XPayments client_secret)
 // 3. Stripe Elements mount (Payment + Express Checkout)
 // 4. confirmPayment → return_url (success page verifies server-side)
@@ -53,7 +53,7 @@ interface SessionState {
   errorCode: PaymentErrorCode | null;
 }
 
-const CHECKOUT_TOKEN_KEY = 'ecom-checkout-session-v2';
+const CHECKOUT_TOKEN_KEY = 'ecom-checkout-token';
 
 function getCheckoutToken(): string {
   try {
@@ -135,8 +135,6 @@ export function usePaymentSession({
   });
   const inflight = useRef<AbortController | null>(null);
   const signatureRef = useRef(signature);
-  const submittedContact = useRef<CheckoutOrderPayload | null>(null);
-  const preparedSignature = useRef<string | null>(null);
   const onCompleteRef = useRef(onComplete);
   const stateRef = useRef(state);
   useEffect(() => {
@@ -217,8 +215,6 @@ export function usePaymentSession({
         locale,
       });
 
-      preparedSignature.current = signature;
-      submittedContact.current = null;
       setState({
         orderNumber,
         accessToken,
@@ -234,7 +230,7 @@ export function usePaymentSession({
       setPhase('error');
       setState((s) => ({ ...s, errorMessage: 'We could not start the payment. Please try again.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
     }
-  }, [payload, locale, signature]);
+  }, [payload, locale]);
 
   // Re-ensure whenever the order signature changes and the payload is valid
   useEffect(() => {
@@ -254,14 +250,6 @@ export function usePaymentSession({
     if (!stripe || !elements || !orderNumber || !accessToken) {
       return { ok: false, errorCode: 'TEMPORARY_PAYMENT_ERROR', errorMessage: 'Payment is not ready yet.' };
     }
-    if (preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
-    const contact = submittedContact.current ?? payload;
-    try {
-      const res = await fetch('/api/checkout/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: orderNumber, accessToken, contact }),
-      });
-      if (!res.ok) return { ok: false, errorMessage: 'Preencha os dados de contacto e entrega antes de pagar.' };
-    } catch { return { ok: false, errorMessage: 'Não foi possível guardar os dados. Tente novamente.' }; }
     setPhase('confirming');
     const returnUrl = new URL(returnPath, window.location.origin);
     returnUrl.searchParams.set('order', orderNumber);
@@ -296,20 +284,24 @@ export function usePaymentSession({
     }
     // requires_action etc. → redirect already scheduled by Stripe
     return { ok: true };
-  }, [state, returnPath, payload, signature]);
+  }, [state, returnPath]);
 
   const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
-    if (!state.orderNumber || !state.accessToken || preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
     try {
-      const response = await fetch('/api/checkout/submit', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: state.orderNumber, accessToken: state.accessToken, contact: nextPayload }),
-      });
-      if (!response.ok) return { ok: false, errorMessage: 'Não foi possível guardar os dados de entrega.' };
-      submittedContact.current = nextPayload;
-      return { ok: true };
-    } catch { return { ok: false, errorMessage: 'Não foi possível guardar os dados de entrega.' }; }
-  }, [state.orderNumber, state.accessToken, signature]);
+      const checkoutToken = getCheckoutToken();
+      const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string }>(
+        '/api/checkout/create',
+        { ...nextPayload, checkoutToken },
+        undefined,
+        checkoutToken,
+      );
+      return response.ok
+        ? { ok: true }
+        : { ok: false, errorMessage: data.error ?? 'Não foi possível atualizar a encomenda.' };
+    } catch {
+      return { ok: false, errorMessage: 'Não foi possível atualizar a encomenda.' };
+    }
+  }, []);
 
   return {
     phase,

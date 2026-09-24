@@ -1,4 +1,3 @@
-import { prepareCheckoutPayment } from '@/lib/payments/checkout-session';
 // POST /api/payments/create-intent
 // Creates/reuses a server-priced XPayments PaymentIntent. The browser
 // receives only the publishable key and client secret.
@@ -19,7 +18,7 @@ import type { PaymentStatus } from '@/lib/payments/payment-types';
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
-  orderNumber: z.string().min(3).max(80),
+  orderNumber: z.string().min(3).max(40),
   accessToken: z.string().min(8).max(120),
   trackingParameters: z.object({
     src: z.string().max(500).nullable().optional(),
@@ -56,9 +55,6 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return NextResponse.json({ error: 'Invalid payment request' }, { status: 400 });
     const { orderNumber, accessToken, trackingParameters } = parsed.data;
-    if (orderNumber.startsWith('CS-')) {
-      return NextResponse.json(await prepareCheckoutPayment(orderNumber, accessToken), { headers: { 'Cache-Control': 'no-store' } });
-    }
     stage = 'load_order';
     const order = await db.order.findUnique({ where: { orderNumber }, include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } } });
     if (!order || !tokenMatches(order.accessToken, accessToken)) return NextResponse.json({ error: 'Order not found' }, { status: 404 });

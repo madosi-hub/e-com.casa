@@ -120,7 +120,7 @@ export default function CheckoutPage() {
   );
 
   const finishOrder = (orderNumber: string, accessToken: string) => {
-    if (!orderNumber.startsWith('CS-')) saveOrderReference(orderNumber, accessToken);
+    saveOrderReference(orderNumber, accessToken);
     router.push(`/checkout/success?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(accessToken)}`);
   };
 

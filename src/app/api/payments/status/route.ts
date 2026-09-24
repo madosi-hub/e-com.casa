@@ -1,4 +1,3 @@
-import { refreshCheckoutPayment } from '@/lib/payments/checkout-session';
 // GET /api/payments/status?order=…&token=…
 // Server-authoritative payment status for one order. Email-only
 // lookups are NOT allowed; the random access token issued at
@@ -30,16 +29,6 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get('token') ?? '';
     if (!orderNumber || !token) {
       return NextResponse.json({ error: 'Order and token are required' }, { status: 400 });
-    }
-
-    if (orderNumber.startsWith('CS-')) {
-      const checkout = await db.checkoutSession.findUnique({ where: { reference: orderNumber } });
-      if (!checkout || !tokenMatches(checkout.accessToken, token)) return NextResponse.json({ error: 'Checkout not found' }, { status: 404 });
-      const session = await refreshCheckoutPayment(orderNumber);
-      const paidOrder = session.orderId ? await db.order.findUnique({ where: { id: session.orderId } }) : null;
-      return NextResponse.json({ paymentStatus: paidOrder?.paymentStatus ?? session.paymentStatus,
-        orderNumber: paidOrder?.orderNumber ?? null, checkoutReference: session.reference,
-      }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     let order = await db.order.findUnique({
