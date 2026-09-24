@@ -1,3 +1,4 @@
+import { refreshCheckoutPayment } from '@/lib/payments/checkout-session';
 // Optional XPayments merchant webhook contract.
 // The E-com.casa checkout does NOT depend on this route: pending
 // orders are reconciled server-to-server through the PaymentIntent
@@ -81,6 +82,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const checkout = await db.checkoutSession.findFirst({ where: { OR: [
+      { providerAccount: transactionId },
+      ...(event.reference ? [{ reference: event.reference }] : []),
+    ] } });
+    if (checkout) {
+      // Read the intent server-to-server; never infer a paid amount from a callback.
+      const result = await refreshCheckoutPayment(checkout.reference);
+      return NextResponse.json({ received: true, applied: result.paymentStatus });
+    }
     const payment = await db.payment.findFirst({
       where: { providerAccount: transactionId },
       include: { order: true },
