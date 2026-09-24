@@ -1,3 +1,4 @@
+import { isPlacedOrder } from '@/lib/order-visibility';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { Notice, PageHeader, StatusBadge, inputClass, labelClass, money } from '../../../_components/ui';
@@ -22,7 +23,7 @@ export default async function OrderDetailPage({
       trackingEvents: { orderBy: { occurredAt: 'asc' } },
     },
   });
-  if (!order) notFound();
+  if (!order || !isPlacedOrder(order)) notFound();
   const items = (() => { try { return JSON.parse(order.itemsJson) as Array<Record<string, unknown>>; } catch { return []; } })();
   const payment = order.payments[0];
 

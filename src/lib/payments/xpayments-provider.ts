@@ -95,7 +95,7 @@ export class XPaymentsStripeProvider implements PaymentProvider {
       currency: input.currency.toLowerCase(),
       ...portugalMethods,
       description: input.description ?? `E-com.casa order ${input.orderNumber}`,
-      ...(input.customerEmail ? { receipt_email: input.customerEmail } : {}),
+      ...(input.customerEmail && input.customerEmail !== 'checkout@e-com.casa' ? { receipt_email: input.customerEmail } : {}),
       'metadata[merchant_reference]': input.orderNumber,
       'metadata[order_number]': input.orderNumber,
       'metadata[customer_country]': input.customerCountry,

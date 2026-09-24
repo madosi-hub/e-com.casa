@@ -1,3 +1,4 @@
+import { isPlacedOrder } from '@/lib/order-visibility';
 // GET /api/orders?order=EC-…&token=…
 // Secure single-order lookup. The historical email-only listing
 // endpoint was removed: arbitrary order histories can never be
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     }
 
     const order = await db.order.findUnique({ where: { orderNumber } });
-    if (!order || !tokenMatches(order.accessToken, token)) {
+    if (!order || !tokenMatches(order.accessToken, token) || !isPlacedOrder(order)) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 

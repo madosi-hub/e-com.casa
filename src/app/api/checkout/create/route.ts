@@ -13,6 +13,7 @@ import { db } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import {
   repriceCart,
+  hasCheckoutContact,
   sanitizeNotes,
   newOrderNumber,
   newAccessToken,
@@ -24,7 +25,7 @@ import { sendUtmifyOrder } from '@/lib/utmify';
 
 export const dynamic = 'force-dynamic';
 
-const OFFER_CHECKOUT_PLACEHOLDER_EMAIL = 'checkout@e-com.casa';
+
 
 const orderItemSchema = z.object({
   slug: z.string().min(1),
@@ -34,13 +35,14 @@ const orderItemSchema = z.object({
 
 const createCheckoutSchema = z.object({
   checkoutToken: z.string().min(8).max(80), // client checkout-session id
-  email: z.string().email(),
-  firstName: z.string().min(1).max(80),
-  lastName: z.string().min(1).max(80),
-  address: z.string().min(1).max(200),
+  draft: z.boolean().default(false),
+  email: z.union([z.string().trim().email(), z.literal('')]).default(''),
+  firstName: z.string().trim().max(80).default(''),
+  lastName: z.string().trim().max(80).default(''),
+  address: z.string().trim().max(200).default(''),
   address2: z.string().max(200).optional().nullable(),
-  city: z.string().min(1).max(100),
-  postalCode: z.string().min(1).max(20),
+  city: z.string().trim().max(100).default(''),
+  postalCode: z.string().trim().max(20).default(''),
   country: z.string().min(2).max(2),
   phone: z.string().max(40).optional().nullable(),
   shippingMethod: z.enum(['standard', 'express']),
@@ -58,6 +60,10 @@ const createCheckoutSchema = z.object({
     utm_content: z.string().max(200).nullable().optional(),
     utm_term: z.string().max(200).nullable().optional(),
   }).nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.draft && !hasCheckoutContact(data)) {
+    ctx.addIssue({ code: 'custom', path: ['email'], message: 'Complete contact and delivery details before payment confirmation' });
+  }
 });
 
 export async function POST(req: NextRequest) {
@@ -115,12 +121,8 @@ export async function POST(req: NextRequest) {
       ? await db.order.findUnique({ where: { checkoutToken: data.checkoutToken } })
       : null;
 
-    if (existing && !['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus)) {
-      // Session already finished — force a fresh order.
-      await db.order.update({
-        where: { id: existing.id },
-        data: { checkoutToken: null },
-      });
+    if (existing && (existing.paidAt || !['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus))) {
+      return NextResponse.json({ error: 'Este checkout já foi submetido. Consulte o estado do pagamento.' }, { status: 409 });
     }
 
     const payload = {
@@ -148,25 +150,21 @@ export async function POST(req: NextRequest) {
     };
 
     stage = 'persist_order';
-    let order = existing && ['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'].includes(existing.paymentStatus)
-      ? await db.order.update({
-          where: { id: existing.id },
-          data: {
-            ...payload,
-            paymentStatus: 'PENDING_PAYMENT',
-            paymentFailureReason: null,
-          },
-        })
-      : await db.order.create({
-          data: {
-            ...payload,
-            orderNumber: newOrderNumber(),
-            accessToken: newAccessToken(),
-            checkoutToken: data.checkoutToken,
-            status: 'PENDING',
-            paymentStatus: 'PENDING_PAYMENT',
-          },
-        });
+    let order;
+    if (existing) {
+      // Do not overwrite a payment confirmed concurrently by a webhook/poll.
+      const updated = await db.order.updateMany({
+        where: { id: existing.id, paidAt: null, paymentStatus: { in: ['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'] } },
+        data: { ...payload, status: 'CHECKOUT_DRAFT', paymentStatus: 'PENDING_PAYMENT', paymentFailureReason: null },
+      });
+      if (updated.count !== 1) return NextResponse.json({ error: 'O estado do pagamento mudou. Consulte o checkout.' }, { status: 409 });
+      order = await db.order.findUniqueOrThrow({ where: { id: existing.id } });
+    } else {
+      order = await db.order.create({ data: {
+        ...payload, orderNumber: newOrderNumber(), accessToken: newAccessToken(),
+        checkoutToken: data.checkoutToken, status: 'CHECKOUT_DRAFT', paymentStatus: 'PENDING_PAYMENT',
+      } });
+    }
 
     stage = 'load_payment';
     // If a stale PaymentIntent exists with a different pricing hash it
@@ -176,7 +174,7 @@ export async function POST(req: NextRequest) {
     stage = 'consent';
     // Explicit marketing consent captured at checkout — consent is
     // never inferred from the order submission itself.
-    if (data.marketingConsent) {
+    if (data.marketingConsent && data.email) {
       await db.newsletterSubscriber.upsert({
         where: { email: data.email },
         update: {
@@ -195,11 +193,8 @@ export async function POST(req: NextRequest) {
     }
 
     stage = 'tracking';
-    // The offer checkout may prepare its internal order and PaymentIntent with a
-    // placeholder, but UTMify should only receive a lead after the visitor has
-    // finished a real email address. Reusing the order number lets later cart
-    // changes update the same pending sale instead of creating duplicates.
-    if (data.email !== OFFER_CHECKOUT_PLACEHOLDER_EMAIL) {
+    // A completed contact form is a lead, not a captured order.
+    if (!data.draft && data.email) {
       after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
     }
 

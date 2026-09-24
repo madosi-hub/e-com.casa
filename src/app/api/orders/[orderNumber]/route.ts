@@ -1,18 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { NextRequest } from 'next/server';
+import { GET as lookupOrder } from '../route';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
-  try {
-    const { orderNumber } = await params;
-    const order = await db.order.findUnique({ where: { orderNumber } });
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-    return NextResponse.json({ order });
-  } catch (error) {
-    console.error('GET /api/orders/[orderNumber] error', error);
-    return NextResponse.json({ error: 'Failed to load order' }, { status: 500 });
-  }
+// Share the authenticated, paid-order lookup with the query-string endpoint.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ orderNumber: string }> }) {
+  const { orderNumber } = await params;
+  const url = new URL(req.url);
+  url.searchParams.set('order', orderNumber);
+  return lookupOrder(new NextRequest(url, { headers: req.headers }));
 }

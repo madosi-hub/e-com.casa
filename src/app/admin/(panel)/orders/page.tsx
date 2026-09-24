@@ -1,3 +1,4 @@
+import { placedOrderWhere } from '@/lib/order-visibility';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { EmptyState, PageHeader, StatusBadge, money } from '../../_components/ui';
@@ -8,6 +9,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const { q = '', payment = '' } = await searchParams;
   const orders = await db.order.findMany({
     where: {
+      AND: [placedOrderWhere],
       ...(payment ? { paymentStatus: payment } : {}),
       ...(q ? { OR: [
         { orderNumber: { contains: q, mode: 'insensitive' } },
@@ -23,10 +25,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PageHeader title="Orders" description="Checkout, payment and fulfilment records." />
+      <PageHeader title="Orders" description="Confirmed purchases, refunds and fulfilment." />
       <form className="mb-5 grid gap-2 sm:max-w-3xl sm:grid-cols-[1fr_220px_auto]">
         <input name="q" defaultValue={q} placeholder="Order, customer, email or tracking" className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm" />
-        <select name="payment" defaultValue={payment} className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"><option value="">All payment states</option><option value="PENDING_PAYMENT">Pending payment</option><option value="PAYMENT_PROCESSING">Processing</option><option value="PAID">Paid</option><option value="PAYMENT_FAILED">Failed</option><option value="REFUNDED">Refunded</option><option value="PARTIALLY_REFUNDED">Partially refunded</option></select>
+        <select name="payment" defaultValue={payment} className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"><option value="">All payment states</option><option value="PAID">Paid</option><option value="REFUNDED">Refunded</option><option value="PARTIALLY_REFUNDED">Partially refunded</option></select>
         <button className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium">Filter</button>
       </form>
 

@@ -7,6 +7,7 @@
 import 'server-only';
 
 import { db } from '@/lib/db';
+import { hasCheckoutContact } from '@/lib/checkout';
 import { getProduct } from '@/lib/catalog';
 import { assignTrackingFields } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
@@ -106,6 +107,10 @@ export async function applyProviderIntent(
   const eventId = options.eventId ?? null;
 
   if (intent.status === 'SUCCEEDED') {
+    if (order.status === 'CHECKOUT_DRAFT' && !hasCheckoutContact(order)) {
+      console.error('Paid checkout requires contact details', { orderNumber: order.orderNumber });
+      return { checked: true, changed: false, paymentStatus: order.paymentStatus, providerStatus: intent.status, reason: 'checkout_contact_missing' };
+    }
     const paidAt = order.paidAt ?? safePaidAt(options.paidAt);
     const tracking = assignTrackingFields(order.orderNumber, order.shippingMethod, order.country, paidAt);
     let transitionedToPaid = false;

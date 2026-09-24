@@ -1,3 +1,4 @@
+import { placedOrderWhere } from '@/lib/order-visibility';
 import { db } from '@/lib/db';
 import { EmptyState, PageHeader, money } from '../../_components/ui';
 
@@ -15,7 +16,7 @@ type CustomerSummary = {
 };
 
 export default async function CustomersPage() {
-  const orders = await db.order.findMany({ orderBy: { createdAt: 'desc' } });
+  const orders = await db.order.findMany({ where: placedOrderWhere, orderBy: { createdAt: 'desc' } });
   const customers = new Map<string, CustomerSummary>();
 
   for (const order of orders) {
