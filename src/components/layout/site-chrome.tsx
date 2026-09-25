@@ -13,7 +13,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const offerCheckoutRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/checkout')));
   const offerInformationRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/informacao/')));
   const offerChromeRoute = offerCheckoutRoute || offerInformationRoute;
-  const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin');
+  const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin') || pathname.startsWith('/utmify');
 
   return (
     <div className={offerChromeRoute ? 'flex min-h-screen flex-col bg-[#f7f3ef]' : 'flex min-h-screen flex-col'}>
