@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Factory, Headphones, House, PackageCheck, Play, Plus, ShieldCheck, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowRight, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight, Factory, Headphones, House, PackageCheck, Pause, Play, Plus, ShieldCheck, X } from 'lucide-react';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PaymentBrandStrip } from '@/components/payments/payment-brand-strip';
@@ -16,6 +16,25 @@ function Stars({ value = 5, size = 13 }: { value?: number; size?: number }) {
 }
 
 export function PanelFactoryStory() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlayback = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (video.paused || video.ended) {
+      try {
+        await video.play();
+      } catch {
+        setIsPlaying(false);
+      }
+      return;
+    }
+
+    video.pause();
+  };
+
   return (
     <section id="fabrico-proprio" className="bg-[#201a17] px-4 pb-6 pt-6 text-[#f7f3ef] sm:px-6 sm:py-20">
       <div className="mx-auto max-w-6xl">
@@ -26,11 +45,44 @@ export function PanelFactoryStory() {
           </p>
           <h2 className="mt-4 font-display text-4xl leading-[1.08] sm:text-5xl lg:text-6xl">
             Da nossa fábrica.
-            <span className="block text-[#d6a56f]">Para a sua casa.</span>
+            <span className="block text-[#d6a56f]">Direto para a sua casa.</span>
           </h2>
           <div className="mt-8 max-w-2xl text-sm leading-6 text-[#c5b7ab] sm:text-base sm:leading-7">
-            <p><strong className="font-semibold text-[#f7f3ef]">Somos a E-com.casa. Fabricamos os painéis que vendemos.</strong></p>
-            <p className="mt-1">Na nossa fábrica, produzimos painéis ripados para salas, quartos, escritórios e espaços comerciais. Com fabrico próprio e venda direta, o seu projeto fica ligado a quem cria o produto.</p>
+            <p><strong className="font-semibold text-[#f7f3ef]">Somos a E-com.casa — e fabricamos os painéis que vendemos.</strong></p>
+            <p className="mt-1">Produzimos cada painel na nossa própria fábrica e vendemos diretamente, sem intermediários. Assim, garantimos mais controlo sobre o acabamento, o preço e todo o processo — da nossa equipa até ao seu projeto.</p>
+          </div>
+
+          <div className="relative mt-8 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,.38)] sm:rounded-[26px]">
+            <video
+              ref={videoRef}
+              className="aspect-[79/45] w-full object-cover"
+              width={1600}
+              height={912}
+              poster="/videos/como-fazemos-painel-ripado-poster.jpg"
+              preload="metadata"
+              playsInline
+              disablePictureInPicture
+              disableRemotePlayback
+              controlsList="nofullscreen nodownload noremoteplayback"
+              aria-label="Como produzimos os painéis ripados E-com.casa"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+            >
+              <source src="/videos/como-fazemos-painel-ripado.mp4" type="video/mp4" />
+              O seu navegador não suporta a reprodução deste vídeo.
+            </video>
+
+            <button
+              type="button"
+              onClick={togglePlayback}
+              aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
+              aria-pressed={isPlaying}
+              className="absolute right-3 top-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-[#d6a56f] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[.12em] text-[#201a17] shadow-lg transition hover:bg-[#e0b37f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#201a17] sm:right-5 sm:top-5 sm:text-xs"
+            >
+              {isPlaying ? <Pause className="h-4 w-4 fill-current" aria-hidden="true" /> : <Play className="h-4 w-4 fill-current" aria-hidden="true" />}
+              <span>{isPlaying ? 'Pausar' : 'Reproduzir'}</span>
+            </button>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-5 border-y border-white/15 py-5 sm:gap-10 sm:py-6">
