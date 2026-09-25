@@ -49,7 +49,7 @@ export function PanelFactoryStory() {
           </h2>
           <div className="mt-8 max-w-2xl text-sm leading-6 text-[#c5b7ab] sm:text-base sm:leading-7">
             <p><strong className="font-semibold text-[#f7f3ef]">Somos a E-com.casa — e fabricamos os painéis que vendemos.</strong></p>
-            <p className="mt-1">Produzimos cada painel na nossa própria fábrica e vendemos diretamente, sem intermediários. Assim, garantimos mais controlo sobre o acabamento, o preço e todo o processo — da nossa equipa até ao seu projeto.</p>
+            <p className="mt-1">Produzimos cada painel na nossa fábrica, acompanhando todas as etapas — do primeiro corte ao acabamento e à expedição. Com fabrico próprio e venda direta, temos mais controlo sobre a qualidade, o preço e o acompanhamento do seu projeto.</p>
           </div>
 
           <div className="relative mt-8 overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_24px_70px_rgba(0,0,0,.38)] sm:rounded-[26px]">
