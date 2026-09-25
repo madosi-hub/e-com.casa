@@ -14,6 +14,9 @@ export type OfferAnalyticsEvent =
   | 'locale_changed'
   | 'add_to_cart'
   | 'begin_checkout'
+  | 'checkout_blocked'
+  | 'checkout_payment_attempt'
+  | 'checkout_payment_error'
   | 'purchase';
 
 export interface OfferAnalyticsPayload {
@@ -29,6 +32,7 @@ export interface OfferAnalyticsPayload {
 declare global {
   interface Window {
     dataLayer?: Array<Record<string, unknown>>;
+    ecomOfferAnalyticsQueue?: Array<{ detail: Record<string, unknown>; url: string; path: string }>;
   }
 }
 
@@ -44,6 +48,9 @@ export function trackOfferEvent(event: OfferAnalyticsEvent, payload: OfferAnalyt
     ...payload,
     timestamp: new Date().toISOString(),
   };
+  const queue = window.ecomOfferAnalyticsQueue ??= [];
+  queue.push({ detail, url: window.location.href, path: window.location.pathname });
+  if (queue.length > 100) queue.splice(0, queue.length - 100);
   window.dispatchEvent(new CustomEvent('ecom:analytics', { detail }));
   if (Array.isArray(window.dataLayer)) window.dataLayer.push(detail);
 }
