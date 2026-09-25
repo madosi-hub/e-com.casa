@@ -64,6 +64,21 @@ test('sends the XPayments form contract with nested tracking and stable retry he
   assert.equal([...form.keys()].some(key => key.startsWith('payment_method_types')), false);
 });
 
+test('limits a Portugal payment intent to card, MB WAY and Multibanco', async () => {
+  const p = provider(async (_, options) => {
+    const form = new URLSearchParams(options.body);
+    assert.deepEqual([...form.entries()].filter(([key]) => key.startsWith('payment_method_types[')), [
+      ['payment_method_types[0]', 'card'],
+      ['payment_method_types[1]', 'mb_way'],
+      ['payment_method_types[2]', 'multibanco'],
+    ]);
+    assert.equal(form.has('automatic_payment_methods[enabled]'), false);
+    assert.equal(form.get('metadata[payment_profile]'), 'pt-core-v1');
+    return Response.json({ id: 'pi_fixture' });
+  });
+  await p.createPaymentIntent({ ...input, paymentMethodTypes: ['card', 'mb_way', 'multibanco'], metadata: { payment_profile: 'pt-core-v1' } });
+});
+
 test('uses automatic methods outside Portugal and omits placeholder receipt email', async () => {
   const p = provider(async (_, options) => {
     const form = new URLSearchParams(options.body);

@@ -82,15 +82,18 @@ export class XPaymentsStripeProvider implements PaymentProvider {
   }
 
   async createPaymentIntent(input: CreatePaymentIntentInput): Promise<ProviderPaymentIntent> {
-    // https://www.xpayments.digital/doc/stripe: let the Store and Payment
-    // Element resolve the methods available for this buyer and currency.
+    // The Store resolves automatic methods unless a checkout supplies a
+    // market-specific allowlist. payment_method_types and automatic methods
+    // are alternative Stripe PaymentIntent creation modes.
     const metadata = Object.fromEntries(
       Object.entries(input.metadata ?? {}).map(([key, value]) => [`metadata[${key}]`, value]),
     );
     const body = formEncode({
       amount: input.amountMinor,
       currency: input.currency.toLowerCase(),
-      'automatic_payment_methods[enabled]': 'true',
+      ...(input.paymentMethodTypes?.length
+        ? Object.fromEntries(input.paymentMethodTypes.map((method, index) => [`payment_method_types[${index}]`, method]))
+        : { 'automatic_payment_methods[enabled]': 'true' }),
       description: input.description ?? `E-com.casa order ${input.orderNumber}`,
       ...(input.customerEmail && input.customerEmail !== 'checkout@e-com.casa' ? { receipt_email: input.customerEmail } : {}),
       ...metadata,

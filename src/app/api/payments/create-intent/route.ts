@@ -67,9 +67,12 @@ export async function POST(req: NextRequest) {
     const provider = getPaymentProvider();
     const capabilities = resolvePaymentCapabilities(order.country, order.currency);
     const amountMinor = toMinorUnit(order.total, order.currency);
-    // Version the corrected request contract; retries keep a stable key without
-    // replaying a failed request made with the old top-level tracking fields.
-    const paymentProfile = 'automatic-v2';
+    // The Portugal checkout should only offer methods relevant to local buyers.
+    // Version the profile so an earlier automatic-method intent cannot be reused.
+    const paymentMethodTypes = order.country.toUpperCase() === 'PT' && order.currency.toUpperCase() === 'EUR'
+      ? ['card', 'mb_way', 'multibanco']
+      : undefined;
+    const paymentProfile = paymentMethodTypes ? 'pt-core-v1' : 'automatic-v2';
     const idempotencyKey = `order:${order.orderNumber}:payment:${order.pricingHash ?? '1'}:${paymentProfile}`;
     const existing = order.payments[0] ?? null;
     const trackingMetadata = Object.fromEntries(
@@ -81,7 +84,10 @@ export async function POST(req: NextRequest) {
     stage = 'reuse_intent';
     if (existing?.paymentIntentId && REUSABLE.includes(existing.status as PaymentStatus)) {
       try { intent = await provider.retrievePaymentIntent(existing.paymentIntentId); } catch { intent = null; }
-      if (intent && intent.amountMinor === amountMinor && intent.currency === order.currency.toUpperCase() && REUSABLE.includes(intent.status)) {
+      const existingProfile = (intent?.raw as { metadata?: Record<string, string> } | undefined)?.metadata?.payment_profile;
+      if (intent && intent.amountMinor === amountMinor && intent.currency === order.currency.toUpperCase()
+        && REUSABLE.includes(intent.status)
+        && (existingProfile === paymentProfile || (!paymentMethodTypes && !existingProfile) || intent.status === 'PROCESSING')) {
         const saved = (intent.raw as { metadata?: Record<string, string> } | undefined)?.metadata ?? {};
         // Preserve the attribution already attached to this payment. Repair
         // missing fields on legacy/reused intents without clearing known UTMs.
@@ -104,11 +110,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    stage = 'cancel_previous_intent';
-    if (existing?.paymentIntentId) { try { await provider.cancelPaymentIntent(existing.paymentIntentId); } catch { /* best effort */ } }
-
     stage = 'create_provider_intent';
-    intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}`, metadata: trackingMetadata });
+    intent = await provider.createPaymentIntent({ amountMinor, currency: order.currency, idempotencyKey, orderNumber: order.orderNumber, customerCountry: order.country, customerEmail: order.email, description: `E-com.casa ${order.orderNumber}`, paymentMethodTypes, metadata: { ...trackingMetadata, payment_profile: paymentProfile } });
+
+    stage = 'cancel_previous_intent';
+    if (existing?.paymentIntentId && existing.paymentIntentId !== intent.id) {
+      try { await provider.cancelPaymentIntent(existing.paymentIntentId); } catch { /* best effort */ }
+    }
 
     stage = 'persist_payment';
     const payment = await db.payment.upsert({
