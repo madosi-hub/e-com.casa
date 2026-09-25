@@ -51,7 +51,7 @@ test('offer and admin routes are self-contained and do not duplicate global chro
 
   for (const copy of [
     'Da nossa fábrica.',
-    'Somos a E-com.casa. Fabricamos os painéis que vendemos.',
+    'Somos a E-com.casa — e fabricamos os painéis que vendemos.',
     'Fábrica E-com.casa',
     'Conhecer os nossos painéis',
     'Um detalhe que muda a forma de sentir o espaço.',
