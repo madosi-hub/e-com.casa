@@ -53,6 +53,8 @@ export interface CreatePaymentIntentInput {
   customerCountry: string;
   customerEmail?: string;
   description?: string;
+  /** Explicit Stripe methods for a market-specific checkout. Omit for automatic eligibility. */
+  paymentMethodTypes?: string[];
   metadata?: Record<string, string>;
 }
 
