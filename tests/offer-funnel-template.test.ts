@@ -141,7 +141,6 @@ test('the Nuralta slug uses the same approved funnel as the painel-ripado alias'
 test('both panel offer URLs keep their incoming slug through checkout and information pages', () => {
   expect(cartDrawer).toContain('panelOfferSlugFromPathname(pathname)');
   expect(cartDrawer).toContain("panelOfferPath(panelOfferSlug, '/checkout')");
-  expect(configurator).toContain("panelOfferPath(offer.slug, '/checkout')");
   expect(runtimeWidgets).toContain('panelOfferSlugFromPathname(pathname) !== null');
   expect(painelCheckout).toContain("panelOfferPath(offerSlug, '/checkout')");
   expect(dynamicCheckout).toContain('isPanelOfferSlug(slug)');

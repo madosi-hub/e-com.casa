@@ -5,11 +5,9 @@ import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
 import { type TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, Truck, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { trackOfferEvent } from '@/lib/offers/analytics';
-import { isPanelOfferSlug, panelOfferPath } from '@/lib/offers/route-policy';
 import type { CatalogProduct, ProductVariant } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { campaignEuro, isPanelVideo, panelProductMediaForColor, PANEL_COLORS, PANEL_PAYMENT_METHODS, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_SIZES } from './data';
@@ -45,7 +43,6 @@ function findConfiguredVariant(product: CatalogProduct, colorIndex: number | nul
 
 export function PanelConfigurator({ product: initialProduct, offer }: { product: CatalogProduct; offer: OfferConfig; market: OfferMarketContext }) {
   const product = useLiveProduct(initialProduct);
-  const router = useRouter();
   const add = useCart((state) => state.add);
   const openCart = useCartDrawer((state) => state.open);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -203,7 +200,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     setQty(Math.min(quantityLimit(product), qty + 1));
   };
 
-  const addCampaignLine = (buyNow: boolean) => {
+  const addCampaignLine = () => {
     if (!validate() || !selectedColor || !selectedSize || !selectedVariant || !isCatalogProductSaleable(product)) return;
     add({
       slug: product.slug,
@@ -220,7 +217,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       variantLabel: `${selectedColor.name} · ${selectedSize.label}`,
     }, qty);
 
-    trackOfferEvent(buyNow ? 'begin_checkout' : 'add_to_cart', {
+    trackOfferEvent('add_to_cart', {
       offerSlug: offer.slug,
       productSlug: product.slug,
       variantId: selectedVariant.id,
@@ -228,10 +225,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       value: (unitCents * qty) / 100,
       currency: product.currency,
     });
-    if (buyNow) {
-      router.push(isPanelOfferSlug(offer.slug) ? panelOfferPath(offer.slug, '/checkout') : '/checkout');
-    }
-    else openCart();
+    openCart();
   };
 
   const applyCalculatedQuantity = () => {
@@ -368,8 +362,8 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   {visibleSelectionMessage}
                 </div>
               )}
-              <button id="primary-buy-button" type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(true)} className="w-full rounded-full bg-[#201a17] py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">Comprar agora</button>
-              <button type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(false)} className="w-full rounded-full border border-[#201a17] py-3.5 text-sm font-semibold transition hover:bg-[#efe7de] disabled:cursor-not-allowed disabled:opacity-45">Adicionar ao carrinho</button>
+              <button id="primary-buy-button" type="button" disabled={!isCatalogProductSaleable(product)} onClick={addCampaignLine} className="w-full rounded-full bg-[#201a17] py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">Comprar agora</button>
+              <button type="button" disabled={!isCatalogProductSaleable(product)} onClick={addCampaignLine} className="w-full rounded-full border border-[#201a17] py-3.5 text-sm font-semibold transition hover:bg-[#efe7de] disabled:cursor-not-allowed disabled:opacity-45">Adicionar ao carrinho</button>
               <div>
                 <p className="mb-2 text-sm font-semibold text-[#201a17]">Pague como preferir</p>
                 <div className="flex flex-wrap items-center gap-2">

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { StripePaymentElementOptions } from '@stripe/stripe-js';
 import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +40,17 @@ const t = (key: string, vars?: Record<string, string | number>) => {
   );
 };
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
+const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
+  layout: {
+    type: 'accordion',
+    defaultCollapsed: true,
+    radios: true,
+    spacedAccordionItems: true,
+    visibleAccordionItemsCount: 0,
+  },
+  // Preference only: Stripe still determines eligibility for this PaymentIntent.
+  paymentMethodOrder: ['mb_way', 'card', 'multibanco'],
+};
 const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
 const CHECKOUT_LABEL_CLASS = 'text-[12px] font-normal leading-[16px] text-[#27272a]';
 const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#e4e4e7] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#a1a1aa] focus-visible:border-[#777781] focus-visible:ring-[#777781]/15 md:text-[16px]';
@@ -394,9 +406,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     if (!result.ok) throw new Error(result.errorMessage ?? t('checkout.errorPayment'));
                   }}
                 />
+                <h3 className="mt-5 text-[14px] font-semibold">Como prefere pagar?</h3>
+                <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                  Selecione uma opção para ver os campos e as instruções de pagamento.
+                </p>
                 <PaymentElement
                   elements={session.elements}
-                  className="mt-5"
+                  options={PAYMENT_ELEMENT_OPTIONS}
+                  className="mt-3"
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
                 />
