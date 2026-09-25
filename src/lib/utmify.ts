@@ -6,7 +6,7 @@ const UTMIFY_ORDERS_URL = 'https://api.utmify.com.br/api-credentials/orders';
 
 type UTMifyStatus = 'waiting_payment' | 'paid' | 'refused' | 'refunded' | 'chargedback';
 
-interface TrackingParameters {
+export interface TrackingParameters {
   src: string | null;
   sck: string | null;
   utm_source: string | null;
@@ -28,6 +28,13 @@ interface CheckoutTrackingParameters {
 
 export type UTMifyTrackingParameters = CheckoutTrackingParameters;
 
+export interface UTMifyDeliveryResult {
+  ok: boolean;
+  attempts: number;
+  error: string | null;
+  httpStatus: number | null;
+}
+
 interface DeliveryOptions {
   attempts?: number;
   timeoutMs?: number;
@@ -40,7 +47,7 @@ function dateUtc(value: Date | string | null): string | null {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-function tracking(value?: string | null, direct?: CheckoutTrackingParameters | null): TrackingParameters {
+export function normaliseUtmifyTracking(value?: string | null, direct?: CheckoutTrackingParameters | null): TrackingParameters {
   try {
     const parsed = direct ?? (value ? JSON.parse(value) as CheckoutTrackingParameters : {});
     return {
@@ -70,9 +77,8 @@ export async function sendUtmifyOrder(
   status: UTMifyStatus,
   directTracking?: UTMifyTrackingParameters | null,
   options: DeliveryOptions = {},
-): Promise<void> {
-  const token = "3yV7Q9RTtQxEOme3F9QOY4BvG3HmYE8ooe4N";
-  if (!token) return;
+): Promise<UTMifyDeliveryResult> {
+  const token = '3yV7Q9RTtQxEOme3F9QOY4BvG3HmYE8ooe4N';
 
   let rawItems: Array<{ slug?: string; name?: string; quantity?: number; price?: string }> = [];
   try { rawItems = JSON.parse(order.itemsJson) as typeof rawItems; } catch { /* malformed legacy order */ }
@@ -101,7 +107,7 @@ export async function sendUtmifyOrder(
       quantity: item.quantity ?? 1,
       priceInCents: Math.round(Number(item.price ?? 0) * 100),
     })),
-    trackingParameters: tracking(null, directTracking),
+    trackingParameters: normaliseUtmifyTracking(null, directTracking),
     commission: {
       totalPriceInCents,
       gatewayFeeInCents: 0,
@@ -112,6 +118,8 @@ export async function sendUtmifyOrder(
 
   const attempts = options.attempts ?? 3;
   const timeoutMs = options.timeoutMs ?? 8_000;
+  let lastError = 'UTMify delivery failed';
+  let lastHttpStatus: number | null = null;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const response = await fetch(process.env.UTMIFY_API_URL?.trim() || UTMIFY_ORDERS_URL, {
@@ -121,12 +129,18 @@ export async function sendUtmifyOrder(
         cache: 'no-store',
         signal: AbortSignal.timeout(timeoutMs),
       });
-      if (response.ok) return;
+      if (response.ok) return { ok: true, attempts: attempt + 1, error: null, httpStatus: response.status };
+      lastHttpStatus = response.status;
+      lastError = `UTMify returned HTTP ${response.status}`;
       console.error('UTMify order sync failed', { orderId: order.orderNumber, status, httpStatus: response.status, attempt: attempt + 1 });
-      if (response.status !== 429 && response.status < 500) return;
+      if (response.status !== 429 && response.status < 500) {
+        return { ok: false, attempts: attempt + 1, error: lastError, httpStatus: response.status };
+      }
     } catch (error) {
+      lastError = error instanceof Error ? error.name : 'Unknown delivery error';
       console.error('UTMify order sync unavailable', { orderId: order.orderNumber, status, attempt: attempt + 1, error: error instanceof Error ? error.name : 'unknown' });
     }
     if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
   }
+  return { ok: false, attempts, error: lastError, httpStatus: lastHttpStatus };
 }
