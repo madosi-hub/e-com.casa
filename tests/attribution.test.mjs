@@ -74,14 +74,18 @@ test(`signed webhook preserves metadata or allows retry before applying payment 
   assert.equal(applied.raw.metadata.tracking_sck, 'click-1');
 });
 }
-test('UTMify retries transient failures with the same order and attribution', async () => {
+test('payment bridge retries transient failures with the same signed order and attribution', async () => {
   const payloads = [];
-  const api = load('src/lib/utmify.ts', { 'server-only': {} }, {
+  const api = load('src/lib/payment-events.ts', { 'server-only': {} }, {
     fetch: async (_, options) => { payloads.push(JSON.parse(options.body)); return new Response('', { status: payloads.length < 3 ? 503 : 200 }); },
     setTimeout: resolve => resolve(), console: { error() {} },
   });
-  await api.sendUtmifyOrder({ orderNumber: 'test', email: 'test@example.test', firstName: 'Test', lastName: 'Buyer', total: '25', itemsJson: '[]', currency: 'EUR' }, 'paid', { utm_campaign: 'Camp|123', sck: 'click-1' });
+  await api.sendPaymentPaidEvent({
+    orderNumber: 'test', email: 'test@example.test', firstName: 'Test', lastName: 'Buyer', phone: null,
+    country: 'PT', total: '25', itemsJson: '[]', currency: 'EUR', createdAt: new Date('2026-09-25T12:00:00Z'),
+    paidAt: new Date('2026-09-25T12:01:00Z'), paymentMethodType: 'card',
+  }, { utm_campaign: 'Camp|123', sck: 'click-1' });
   assert.equal(payloads.length, 3);
   assert.deepEqual(payloads[0], payloads[2]);
-  assert.equal(payloads[2].trackingParameters.utm_campaign, 'Camp|123');
+  assert.equal(payloads[2].tracking.utm_campaign, 'Camp|123');
 });

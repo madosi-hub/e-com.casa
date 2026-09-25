@@ -73,6 +73,7 @@ test('offer and admin routes are self-contained and do not duplicate global chro
 
 test('public analytics loads automatically without rendering a cookie banner', () => {
   expect(runtimeWidgets).not.toContain('<CookieConsent />');
+  expect(runtimeWidgets).toContain('<UtmifyTracking />');
   expect(utmifyTracking).not.toContain('useCookieConsent');
   expect(utmifyTracking).toContain("const enabled = !pathname.startsWith('/admin')");
   expect(umamiTracking).not.toContain('useCookieConsent');

@@ -11,7 +11,7 @@ import { hasCheckoutContact } from '@/lib/checkout';
 import { getProduct } from '@/lib/catalog';
 import { assignTrackingFields } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
-import { sendUtmifyOrder, type UTMifyTrackingParameters } from '@/lib/utmify';
+import { sendPaymentPaidEvent, type PaymentTrackingParameters } from '@/lib/payment-events';
 import { getPaymentProvider } from './xpayments-provider';
 import { toMinorUnit } from './amounts';
 import type { ProviderPaymentIntent } from './payment-types';
@@ -40,7 +40,7 @@ function safePaidAt(value?: Date): Date {
   return value;
 }
 
-function trackingFromIntent(intent: ProviderPaymentIntent): UTMifyTrackingParameters | null {
+function trackingFromIntent(intent: ProviderPaymentIntent): PaymentTrackingParameters | null {
   const metadata = (intent.raw as { metadata?: Record<string, string | undefined> } | undefined)?.metadata;
   if (!metadata) return null;
   return {
@@ -186,8 +186,17 @@ export async function applyProviderIntent(
       }).catch((error) => {
         console.error('payment confirmation email failed after reconciliation', error instanceof Error ? error.message : 'unknown');
       });
-      await sendUtmifyOrder({ ...order, paidAt, paymentMethodType: method }, 'paid', trackingFromIntent(intent));
     }
+
+    // The analytics service is the durable integration boundary for paid
+    // events. It records revenue in Umami and owns downstream UTMify delivery.
+    // Sending for every verified SUCCEEDED observation is intentional: the
+    // receiver deduplicates by order number, so a provider retry repairs a
+    // previously unavailable analytics delivery without duplicating a sale.
+    await sendPaymentPaidEvent(
+      { ...order, paidAt, paymentMethodType: method },
+      trackingFromIntent(intent),
+    );
 
     return { checked: true, changed: transitionedToPaid, paymentStatus: 'PAID', providerStatus: intent.status };
   }

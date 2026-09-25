@@ -17,7 +17,7 @@ mock.module('@/lib/db', () => ({ db: { order: { findUnique: async () => order },
 mock.module('@/lib/catalog', () => ({ getProduct: async (slug: string) => ({ slug, stockUnlimited: slug === 'made' }) }));
 mock.module('@/lib/tracking', () => ({ assignTrackingFields: () => ({}) }));
 mock.module('@/lib/email/order-email', () => ({ sendPaymentConfirmedEmail: async () => { emails++; } }));
-mock.module('@/lib/utmify', () => ({ sendUtmifyOrder: async () => {} }));
+mock.module('@/lib/payment-events', () => ({ sendPaymentPaidEvent: async () => ({ ok: true }) }));
 mock.module('@/lib/payments/xpayments-provider', () => ({ getPaymentProvider: () => ({}) }));
 const { applyProviderIntent } = await import('../src/lib/payments/reconcile-payment');
 test('payment replay skips unlimited stock and debits finite stock only once', async () => {
