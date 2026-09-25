@@ -23,7 +23,7 @@ const checkout = load('src/lib/checkout.ts', Object.fromEntries([
 const visibility = load('src/lib/order-visibility.ts');
 const contact = { email: 'buyer@example.test', firstName: 'Buyer', lastName: 'Test', address: 'Street 1', city: 'Lisboa', postalCode: '1000-001' };
 
-function routeFixture(initial) {
+function routeFixture(initial, deliverAnalytics) {
   let record = initial;
   let updates = 0;
   const analytics = [];
@@ -47,7 +47,7 @@ function routeFixture(initial) {
     '@/lib/checkout': { ...checkout, repriceCart: async () => ({ subtotal: 25, shipping: 0, discount: 0, total: 25, lineItems: [], country: 'PT', currency: 'EUR', pricingHash: 'server-price' }) },
     '@/lib/payments/payment-capabilities': { resolvePaymentCurrency: () => ({ supported: true }) },
     '@/lib/constants': { ORDER_NOTES_MAX: 500 },
-    '@/lib/utmify': { sendUtmifyOrder: async (_, status) => analytics.push(status) },
+    '@/lib/utmify': { sendUtmifyOrder: async (_, status) => { analytics.push(status); await deliverAnalytics?.(); } },
   });
   const post = body => route.POST(new Request('https://example.test/api/checkout/create', { method: 'POST', body: JSON.stringify({
     checkoutToken: 'random-checkout-token', country: 'PT', shippingMethod: 'standard', items: [{ slug: 'panel', quantity: 1 }], ...body,
@@ -81,7 +81,23 @@ test('real contact updates the same draft without making it a placed order', asy
   assert.equal((await submitted.json()).orderNumber, initial.orderNumber);
   assert.equal(f.record().email, contact.email);
   assert.equal(f.record().paymentStatus, 'PENDING_PAYMENT');
+  assert.deepEqual(f.analytics, ['waiting_payment']);
   assert.equal(visibility.isPlacedOrder(f.record()), false);
+});
+
+test('the submitted checkout waits for the pending event before continuing to payment', async () => {
+  let deliveryStarted;
+  let releaseDelivery;
+  const started = new Promise(resolve => { deliveryStarted = resolve; });
+  const delivery = new Promise(resolve => { releaseDelivery = resolve; });
+  const f = routeFixture(undefined, () => { deliveryStarted(); return delivery; });
+  let responded = false;
+  const response = f.post(contact).then(result => { responded = true; return result; });
+  await started;
+  assert.equal(responded, false);
+  assert.deepEqual(f.analytics, ['waiting_payment']);
+  releaseDelivery();
+  assert.equal((await response).status, 201);
 });
 
 for (const state of ['PAID', 'PAYMENT_PROCESSING', 'REFUNDED']) {

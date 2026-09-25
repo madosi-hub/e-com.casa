@@ -8,12 +8,13 @@
 // Elements Appearance configuration.
 
 import { useEffect, useRef, useState } from 'react';
-import type { StripeElements } from '@stripe/stripe-js';
+import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
 import { LoaderCircle } from 'lucide-react';
 
 export interface PaymentElementProps {
   elements: StripeElements | null;
-  /** Hide the built-in payment method tabs' default spacing tweaks. */
+  /** Keep options stable so rerenders preserve the selected method and fields. */
+  options?: StripePaymentElementOptions;
   className?: string;
   ariaLabel?: string;
   loadingLabel?: string;
@@ -21,6 +22,7 @@ export interface PaymentElementProps {
 
 export function PaymentElement({
   elements,
+  options,
   className = '',
   ariaLabel = 'Secure payment details',
   loadingLabel = 'Loading secure payment…',
@@ -33,6 +35,7 @@ export function PaymentElement({
     let cancelled = false;
     const paymentElement = elements.create('payment', {
       layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: true },
+      ...options,
     });
     paymentElement.mount(containerRef.current);
     paymentElement.on('ready', () => {
@@ -48,7 +51,7 @@ export function PaymentElement({
       }
       setMounted(false);
     };
-  }, [elements]);
+  }, [elements, options]);
 
   return (
     <div className={`relative ${className}`}>

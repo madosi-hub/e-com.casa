@@ -28,6 +28,11 @@ interface CheckoutTrackingParameters {
 
 export type UTMifyTrackingParameters = CheckoutTrackingParameters;
 
+interface DeliveryOptions {
+  attempts?: number;
+  timeoutMs?: number;
+}
+
 function dateUtc(value: Date | string | null): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -64,6 +69,7 @@ export async function sendUtmifyOrder(
   order: Pick<Order, 'orderNumber' | 'email' | 'firstName' | 'lastName' | 'phone' | 'country' | 'total' | 'currency' | 'itemsJson' | 'createdAt' | 'paidAt' | 'paymentMethodType'>,
   status: UTMifyStatus,
   directTracking?: UTMifyTrackingParameters | null,
+  options: DeliveryOptions = {},
 ): Promise<void> {
   const token = "3yV7Q9RTtQxEOme3F9QOY4BvG3HmYE8ooe4N";
   if (!token) return;
@@ -104,14 +110,16 @@ export async function sendUtmifyOrder(
     },
   };
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const attempts = options.attempts ?? 3;
+  const timeoutMs = options.timeoutMs ?? 8_000;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const response = await fetch(process.env.UTMIFY_API_URL?.trim() || UTMIFY_ORDERS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-token': token },
         body: JSON.stringify(payload),
         cache: 'no-store',
-        signal: AbortSignal.timeout(8_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (response.ok) return;
       console.error('UTMify order sync failed', { orderId: order.orderNumber, status, httpStatus: response.status, attempt: attempt + 1 });
@@ -119,6 +127,6 @@ export async function sendUtmifyOrder(
     } catch (error) {
       console.error('UTMify order sync unavailable', { orderId: order.orderNumber, status, attempt: attempt + 1, error: error instanceof Error ? error.name : 'unknown' });
     }
-    if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+    if (attempt < attempts - 1) await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
   }
 }

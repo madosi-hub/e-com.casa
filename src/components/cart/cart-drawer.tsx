@@ -23,6 +23,7 @@ import type { CatalogProduct } from '@/lib/catalog/types';
 import { cartStockLimit } from '@/lib/catalog/inventory';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { panelOfferPath, panelOfferSlugFromPathname } from '@/lib/offers/route-policy';
+import { trackOfferEvent } from '@/lib/offers/analytics';
 
 export function CartDrawer() {
   const pathname = usePathname();
@@ -149,16 +150,28 @@ export function CartDrawer() {
                 <span className="text-[17px] font-semibold tabular-nums">{formatPrice(subtotal.toFixed(2))}</span>
               </div>
               <p className="mt-1 text-[11.5px] text-muted-foreground">
-                {remaining > 0 ? 'Envio calculado no checkout' : 'Envio standard gratuito aplicado no checkout'}
+                {panelOfferSlug
+                  ? 'Portes grátis para Portugal Continental'
+                  : remaining > 0 ? 'Envio calculado no checkout' : 'Envio standard gratuito aplicado no checkout'}
               </p>
+              {panelOfferSlug && <p className="mt-1 text-[11.5px] text-muted-foreground">Entrega prevista em 6 a 12 dias úteis</p>}
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link
                     href={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/checkout') : '/checkout'}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      trackOfferEvent('begin_checkout', {
+                        offerSlug: panelOfferSlug ?? undefined,
+                        quantity: count,
+                        value: subtotal,
+                        currency: 'EUR',
+                        source: 'cart_drawer',
+                      });
+                      setOpen(false);
+                    }}
                   >
                     <Lock className="h-4 w-4" strokeWidth={1.75} />
-                    Finalizar encomenda em segurança
+                    Continuar para o pagamento
                   </Link>
                 </Button>
               </div>

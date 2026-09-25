@@ -32,7 +32,7 @@ export const LEGAL_PAGES: LegalPage[] = [
       {
         kind: "ul",
         items: [
-          "Portugal Continental: 8 a 12 dias úteis após confirmação do pagamento, devido à elevada procura.",
+          "Portugal Continental: 6 a 12 dias úteis após confirmação do pagamento.",
           "Portugal Insular (Madeira e Açores): 5 a 10 dias úteis, sujeito a transporte marítimo.",
           "Espanha e restante União Europeia: 5 a 12 dias úteis, consoante o destino.",
           "Os prazos contam-se em dias úteis e iniciam-se após confirmação do pagamento e do stock.",

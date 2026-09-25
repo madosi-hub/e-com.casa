@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { StripePaymentElementOptions } from '@stripe/stripe-js';
 import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ import {
 } from '@/lib/constants';
 
 const OFFER_COPY: Record<string, string> = {
+  'checkout.title': 'Concluir encomenda',
   'checkout.payNote': 'Os dados de pagamento são tratados de forma segura pelos nossos parceiros.',
   'checkout.each': 'por unidade',
   'checkout.emptyTitle': 'O seu carrinho está vazio',
@@ -39,6 +41,17 @@ const t = (key: string, vars?: Record<string, string | number>) => {
   );
 };
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
+const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
+  layout: {
+    type: 'accordion',
+    defaultCollapsed: true,
+    radios: true,
+    spacedAccordionItems: true,
+    visibleAccordionItemsCount: 0,
+  },
+  // Preference only: Stripe still determines eligibility for this PaymentIntent.
+  paymentMethodOrder: ['mb_way', 'card', 'multibanco'],
+};
 const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
 const CHECKOUT_LABEL_CLASS = 'text-[12px] font-normal leading-[16px] text-[#27272a]';
 const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#e4e4e7] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#a1a1aa] focus-visible:border-[#777781] focus-visible:ring-[#777781]/15 md:text-[16px]';
@@ -61,6 +74,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     postalCode: '',
     country: 'PT',
   });
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
+  const [paySubmitting, setPaySubmitting] = useState(false);
+  const paySubmittingRef = useRef(false);
   const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
   const shippingQuoteTimer = useRef<number | null>(null);
 
@@ -193,36 +209,52 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       toast({ title: t('checkout.completeDetails'), variant: 'destructive' });
       return;
     }
-    if (session.phase !== 'ready') return;
+    if (session.phase !== 'ready' || !session.elements || paySubmittingRef.current) return;
+    paySubmittingRef.current = true;
+    setPaySubmitting(true);
+    try {
+      // Stripe validates the selected payment method before we create a
+      // pending sale in UTMify. An incomplete card or MB WAY form stops here.
+      const { error } = await session.elements.submit();
+      if (error) {
+        toast({ title: 'Verifique os dados de pagamento', description: error.message, variant: 'destructive' });
+        return;
+      }
 
-    const synced = await session.syncOrder({
-      ...payload!,
-      email: form.email.trim(),
-      firstName: form.firstName.trim(),
-      lastName: form.firstName.trim(),
-      address: form.address.trim(),
-      address2: form.address2.trim() || null,
-      city: form.city.trim(),
-      postalCode: form.postalCode.trim(),
-      phone: null,
-      notes: null,
-      marketingConsent: false,
-    });
-    if (!synced.ok) {
-      toast({ title: t('checkout.errorPaymentTitle'), description: synced.errorMessage, variant: 'destructive' });
-      return;
-    }
+      const synced = await session.syncOrder({
+        ...payload!,
+        email: form.email.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.firstName.trim(),
+        address: form.address.trim(),
+        address2: form.address2.trim() || null,
+        city: form.city.trim(),
+        postalCode: form.postalCode.trim(),
+        phone: null,
+        notes: null,
+        marketingConsent: false,
+      });
+      if (!synced.ok) {
+        toast({ title: t('checkout.errorPaymentTitle'), description: synced.errorMessage, variant: 'destructive' });
+        return;
+      }
 
-    const result = await session.confirmPayment();
-    if (!result.ok) {
-      const message =
-        result.errorCode === 'PAYMENT_CANCELLED'
-          ? t('checkout.errorCancelled')
-          : t('checkout.errorPayment');
-      toast({ title: t('checkout.errorPaymentTitle'), description: message, variant: 'destructive' });
+      const result = await session.confirmPayment();
+      if (!result.ok) {
+        const message =
+          result.errorCode === 'PAYMENT_CANCELLED'
+            ? t('checkout.errorCancelled')
+            : t('checkout.errorPayment');
+        toast({ title: t('checkout.errorPaymentTitle'), description: message, variant: 'destructive' });
+      }
+      // On success confirmPayment either redirects (3DS / async methods)
+      // or calls onComplete → success page (server-verified).
+    } catch {
+      toast({ title: t('checkout.errorPaymentTitle'), description: t('checkout.errorPayment'), variant: 'destructive' });
+    } finally {
+      paySubmittingRef.current = false;
+      setPaySubmitting(false);
     }
-    // On success confirmPayment either redirects (3DS / async methods)
-    // or calls onComplete → success page (server-verified).
   };
 
   if (mounted && cart.lines.length === 0) {
@@ -238,13 +270,22 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     );
   }
 
+  const validateField = (name: keyof typeof form, input: HTMLInputElement) => {
+    const message = input.required && !input.value.trim()
+      ? 'Preencha este campo para continuar.'
+      : input.validity.typeMismatch
+        ? 'Introduza um endereço de e-mail válido.'
+        : '';
+    setFieldErrors((current) => ({ ...current, [name]: message }));
+  };
+
   const field = (
     name: keyof typeof form,
     label: string,
     props: React.InputHTMLAttributes<HTMLInputElement> = {},
     half = false
   ) => (
-    <div className={half ? 'col-span-1 min-w-0' : 'col-span-2 min-w-0'}>
+    <div className={half ? 'min-w-0' : 'min-w-0 sm:col-span-2'}>
       <Label htmlFor={`co-${name}`} className={CHECKOUT_LABEL_CLASS}>
         {label}
       </Label>
@@ -253,16 +294,27 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
           id={`co-${name}`}
           required={props.required !== false}
           value={String(form[name] ?? '')}
-          onChange={(e) => set(name, e.target.value)}
-          className={`${CHECKOUT_FIELD_CLASS}${name === 'address' ? ' pr-10' : ''}`}
+          onChange={(e) => {
+            set(name, e.target.value);
+            if (fieldErrors[name]) validateField(name, e.currentTarget);
+          }}
+          className={`${CHECKOUT_FIELD_CLASS}${name === 'address' ? ' pr-10' : ''}${fieldErrors[name] ? ' border-terracotta' : ''}`}
           {...props}
+          aria-invalid={Boolean(fieldErrors[name])}
+          aria-describedby={fieldErrors[name] ? `co-${name}-error` : undefined}
+          onBlur={(event) => {
+            validateField(name, event.currentTarget);
+            props.onBlur?.(event);
+          }}
         />
         {name === 'address' && <Search aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a1a1aa]" strokeWidth={1.5} />}
       </div>
+      {fieldErrors[name] && <p id={`co-${name}-error`} className="mt-1 text-xs text-terracotta" aria-live="polite">{fieldErrors[name]}</p>}
     </div>
   );
 
   const payDisabled =
+    paySubmitting ||
     !detailsValid ||
     session.phase === 'preparing' ||
     session.phase === 'confirming' ||
@@ -288,7 +340,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <h2 id="co-delivery-title" className="text-[16px] font-bold leading-[24px]">Dados de entrega</h2>
               </div>
             </div>
-            <div className="mt-1 grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-x-2 gap-y-2.5">
+            <div className="mt-1 grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
               {field('email', 'E-mail', {
                 type: 'email',
@@ -298,7 +350,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               {field('address', t('checkout.address'), { autoComplete: 'address-line1', placeholder: 'Rua e número' })}
               {field('address2', 'Complemento da morada (opcional)', { autoComplete: 'address-line2', placeholder: 'Andar, porta ou ponto de referência', required: false })}
               {field('city', t('checkout.city'), { autoComplete: 'address-level2', placeholder: 'Lisboa' }, true)}
-              <div className="col-span-1 min-w-0">
+              <div className="min-w-0">
                 <Label htmlFor="co-postalCode" className={CHECKOUT_LABEL_CLASS}>{t('checkout.postal')}</Label>
                 <Input
                   id="co-postalCode"
@@ -306,19 +358,28 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   autoComplete="postal-code"
                   placeholder="1000-001"
                   value={form.postalCode}
-                  onChange={(event) => set('postalCode', event.target.value)}
-                  onBlur={loadShippingQuote}
-                  className={CHECKOUT_FIELD_CLASS}
+                  onChange={(event) => {
+                    set('postalCode', event.target.value);
+                    if (fieldErrors.postalCode) validateField('postalCode', event.currentTarget);
+                  }}
+                  onBlur={(event) => {
+                    validateField('postalCode', event.currentTarget);
+                    loadShippingQuote();
+                  }}
+                  aria-invalid={Boolean(fieldErrors.postalCode)}
+                  aria-describedby={fieldErrors.postalCode ? 'co-postalCode-error' : undefined}
+                  className={`${CHECKOUT_FIELD_CLASS}${fieldErrors.postalCode ? ' border-terracotta' : ''}`}
                 />
+                {fieldErrors.postalCode && <p id="co-postalCode-error" className="mt-1 text-xs text-terracotta" aria-live="polite">{fieldErrors.postalCode}</p>}
               </div>
                 {shippingQuoteStatus === 'loading' && (
-                  <div role="status" aria-live="polite" className="col-span-2 mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 text-[12px] text-[#70707a]">
+                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 text-[12px] text-[#70707a] sm:col-span-2">
                     <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-olive" aria-hidden />
                     A calcular entrega para Portugal…
                   </div>
                 )}
                 {shippingQuoteStatus === 'ready' && (
-                  <div role="status" aria-live="polite" className="col-span-2 mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-2 text-[12px] text-[#5c5049]">
+                  <div role="status" aria-live="polite" className="mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-2 text-[12px] text-[#5c5049] sm:col-span-2">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-[#65755a]" aria-hidden />
                     <span className="font-medium">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
                     <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
@@ -394,9 +455,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     if (!result.ok) throw new Error(result.errorMessage ?? t('checkout.errorPayment'));
                   }}
                 />
+                <h3 className="mt-5 text-[14px] font-semibold">Como prefere pagar?</h3>
+                <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                  Selecione uma opção para ver os campos e as instruções de pagamento.
+                </p>
                 <PaymentElement
                   elements={session.elements}
-                  className="mt-5"
+                  options={PAYMENT_ELEMENT_OPTIONS}
+                  className="mt-3"
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
                 />
@@ -408,7 +474,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               disabled={payDisabled}
               className="mt-5 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[16px] bg-[#201a17] px-4 py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#352d28] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {session.phase === 'confirming' ? (
+              {paySubmitting || session.phase === 'confirming' ? (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
               ) : !detailsValid ? (
                 <><Lock className="h-4 w-4" strokeWidth={2} /> Preencha os dados para continuar</>

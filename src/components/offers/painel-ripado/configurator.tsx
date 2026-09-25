@@ -5,11 +5,9 @@ import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
 import { type TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, Truck, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { trackOfferEvent } from '@/lib/offers/analytics';
-import { isPanelOfferSlug, panelOfferPath } from '@/lib/offers/route-policy';
 import type { CatalogProduct, ProductVariant } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { campaignEuro, isPanelVideo, panelProductMediaForColor, PANEL_COLORS, PANEL_PAYMENT_METHODS, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_SIZES } from './data';
@@ -40,18 +38,18 @@ function findConfiguredVariant(product: CatalogProduct, colorIndex: number | nul
   if (colorIndex === null || sizeIndex === null) return undefined;
   const exactId = `nuralta-panel-c${colorIndex}-s${sizeIndex}`;
   return product.variants.find((variant) => variant.id === exactId)
-    ?? product.variants.find((variant) => variant.name.includes(PANEL_COLORS[colorIndex].name) && variant.name.includes(PANEL_SIZES[sizeIndex].label));
+    ?? product.variants.find((variant) => variant.name.includes(PANEL_COLORS[colorIndex].name.replace('Cinzento', 'Cinza')) && variant.name.includes(PANEL_SIZES[sizeIndex].label));
 }
 
 export function PanelConfigurator({ product: initialProduct, offer }: { product: CatalogProduct; offer: OfferConfig; market: OfferMarketContext }) {
   const product = useLiveProduct(initialProduct);
-  const router = useRouter();
   const add = useCart((state) => state.add);
   const openCart = useCartDrawer((state) => state.open);
   const [activeIndex, setActiveIndex] = useState(0);
   const [colorIndex, setColorIndex] = useState<number | null>(null);
   const [sizeIndex, setSizeIndex] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
+  const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
   const [selectionError, setSelectionError] = useState('');
   const [selectionGuidanceVisible, setSelectionGuidanceVisible] = useState(false);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
@@ -70,15 +68,31 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const selectedSizeSoldOut = Boolean(selectedSize?.soldOut || selectedVariant?.availability === 'outOfStock');
   const hasRequiredSelections = colorIndex !== null && sizeIndex !== null;
   const missingSelectionMessage = colorIndex === null && sizeIndex === null
-    ? 'Falta selecionar a cor e o tamanho.'
+    ? 'Falta selecionar a cor e a medida.'
     : colorIndex === null
       ? 'Falta selecionar a cor.'
       : sizeIndex === null
-        ? 'Falta selecionar o tamanho.'
+        ? 'Falta selecionar a medida.'
         : '';
   const visibleSelectionMessage = selectionError || (selectionGuidanceVisible ? missingSelectionMessage : '');
   const unitCents = selectedVariant ? product.priceCents + selectedVariant.priceDeltaCents : selectedSize?.priceCents ?? PANEL_SIZES[0].priceCents;
   const displayedPrice = selectedSize ? campaignEuro(unitCents) : `Desde ${campaignEuro(PANEL_SIZES[0].priceCents)}`;
+  const displayedSize = selectedSize ?? PANEL_SIZES[0];
+  const purchaseUnavailable = !isCatalogProductSaleable(product) || selectedSizeSoldOut;
+
+  useEffect(() => {
+    const updateMobileBuyBar = () => {
+      const primaryButton = document.getElementById('primary-buy-button');
+      setShowMobileBuyBar(Boolean(primaryButton && primaryButton.getBoundingClientRect().bottom < 0));
+    };
+    updateMobileBuyBar();
+    window.addEventListener('scroll', updateMobileBuyBar, { passive: true });
+    window.addEventListener('resize', updateMobileBuyBar);
+    return () => {
+      window.removeEventListener('scroll', updateMobileBuyBar);
+      window.removeEventListener('resize', updateMobileBuyBar);
+    };
+  }, []);
 
   const moveGallery = useCallback((direction: number) => {
     setActiveIndex((index) => (index + direction + gallery.length) % gallery.length);
@@ -168,7 +182,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const validate = () => {
     setSelectionGuidanceVisible(true);
     if (colorIndex === null && sizeIndex === null) {
-      setSelectionError('Escolha uma cor e um tamanho antes de continuar.');
+      setSelectionError('Escolha uma cor e uma medida antes de continuar.');
       return false;
     }
     if (colorIndex === null) {
@@ -176,7 +190,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       return false;
     }
     if (sizeIndex === null) {
-      setSelectionError('Escolha um tamanho para continuar.');
+      setSelectionError('Escolha uma medida para continuar.');
       return false;
     }
     if (selectedSizeSoldOut || !selectedVariant) {
@@ -192,10 +206,10 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       setSelectionGuidanceVisible(true);
       setSelectionError(
         colorIndex === null && sizeIndex === null
-          ? 'Para aumentar a quantidade, falta selecionar a cor e o tamanho.'
+          ? 'Para aumentar a quantidade, falta selecionar a cor e a medida.'
           : colorIndex === null
             ? 'Para aumentar a quantidade, falta selecionar a cor.'
-            : 'Para aumentar a quantidade, falta selecionar o tamanho.',
+            : 'Para aumentar a quantidade, falta selecionar a medida.',
       );
       return;
     }
@@ -203,7 +217,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     setQty(Math.min(quantityLimit(product), qty + 1));
   };
 
-  const addCampaignLine = (buyNow: boolean) => {
+  const addCampaignLine = () => {
     if (!validate() || !selectedColor || !selectedSize || !selectedVariant || !isCatalogProductSaleable(product)) return;
     add({
       slug: product.slug,
@@ -220,7 +234,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       variantLabel: `${selectedColor.name} · ${selectedSize.label}`,
     }, qty);
 
-    trackOfferEvent(buyNow ? 'begin_checkout' : 'add_to_cart', {
+    trackOfferEvent('add_to_cart', {
       offerSlug: offer.slug,
       productSlug: product.slug,
       variantId: selectedVariant.id,
@@ -228,10 +242,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
       value: (unitCents * qty) / 100,
       currency: product.currency,
     });
-    if (buyNow) {
-      router.push(isPanelOfferSlug(offer.slug) ? panelOfferPath(offer.slug, '/checkout') : '/checkout');
-    }
-    else openCart();
+    openCart();
   };
 
   const applyCalculatedQuantity = () => {
@@ -288,7 +299,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
           <div className="flex min-w-0 flex-col gap-2">
             <div id="product-intro" className="min-w-0">
               <h1 className="belmonte-serif break-words text-[28px] leading-[1.04] sm:text-5xl">Painel Ripado Decorativo</h1>
-              <p className="mt-1.5 text-sm leading-relaxed text-[#5c5049] sm:text-base">Design que transforma. Instalação que simplifica.</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-[#5c5049] sm:text-base">Dê uma nova vida às paredes da sua casa.</p>
             </div>
 
             <div id="product-rating" className="flex min-w-0 flex-wrap items-center gap-2">
@@ -302,10 +313,10 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             <div id="product-price" className="relative before:absolute before:inset-x-0 before:-top-3 before:border-t before:border-[#e6ded4] after:absolute after:inset-x-0 after:-bottom-3 after:border-t after:border-[#e6ded4]">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <strong className="belmonte-serif text-4xl font-normal leading-tight">{displayedPrice}</strong>
-                <span className="text-sm text-[#7d6f64]">por painel</span>
+                <span className="text-sm text-[#7d6f64]">por painel · IVA incluído</span>
               </div>
+              <p className="mt-1 text-xs text-[#7d6f64]">{displayedSize.label} · Cobre {displayedSize.areaM2.toLocaleString('pt-PT')} m² por painel</p>
               <strong className="mt-1 block text-sm text-[#8a5a2b]">Preço direto da fábrica</strong>
-              {!selectedSize && <p className="mt-1 text-xs text-[#7d6f64]">Painel de {PANEL_SIZES[0].label}. O preço varia consoante o tamanho.</p>}
               <a href="#fabrico-proprio" className="mt-2 block w-fit pt-2 text-xs leading-5 text-[#5c5049] underline underline-offset-4">Como conseguimos este preço?</a>
             </div>
 
@@ -327,7 +338,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             <div id="product-size" className={`min-w-0 ${selectionGuidanceVisible && sizeIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
               <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Tamanho:</strong>{selectionGuidanceVisible && sizeIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-2"><span className="belmonte-option-number text-xs font-bold text-[#a89a8d]">01</span><strong className="text-sm">Medida do painel:</strong>{selectionGuidanceVisible && sizeIndex === null && <span className="rounded-full bg-[#8a3f2b]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.1em] text-[#8a3f2b]">Pendente</span>}</div>
                   <span className="mt-1 block text-sm text-[#7d6f64]">{selectedSize?.label ?? 'Escolha uma opção'}</span>
                 </div>
                 <button type="button" onClick={() => { setCalculatorSizeIndex(sizeIndex ?? 0); setCalculatorOpen(true); trackOfferEvent('calculator_opened', { offerSlug: offer.slug, productSlug: product.slug }); }} className="inline-flex shrink-0 items-center gap-1.5 pt-0.5 text-xs font-medium text-[#8a5a2b] transition hover:text-[#201a17] sm:text-sm"><Ruler className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" /> <span>Quantos painéis preciso?</span></button>
@@ -368,8 +379,9 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   {visibleSelectionMessage}
                 </div>
               )}
-              <button id="primary-buy-button" type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(true)} className="w-full rounded-full bg-[#201a17] py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">Comprar agora</button>
-              <button type="button" disabled={!isCatalogProductSaleable(product)} onClick={() => addCampaignLine(false)} className="w-full rounded-full border border-[#201a17] py-3.5 text-sm font-semibold transition hover:bg-[#efe7de] disabled:cursor-not-allowed disabled:opacity-45">Adicionar ao carrinho</button>
+              <button id="primary-buy-button" type="button" disabled={purchaseUnavailable} onClick={addCampaignLine} className="w-full rounded-full bg-[#201a17] px-4 py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">
+                {purchaseUnavailable ? 'Indisponível' : `Adicionar ao carrinho${hasRequiredSelections ? ` — ${campaignEuro(unitCents * qty)}` : ''}`}
+              </button>
               <div>
                 <p className="mb-2 text-sm font-semibold text-[#201a17]">Pague como preferir</p>
                 <div className="flex flex-wrap items-center gap-2">
@@ -387,14 +399,31 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                     <span className="text-xs font-semibold text-[#201a17]">Envio por</span>
                     <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 78, height: 'auto' }} />
                   </div>
-                  <p className="mt-1 text-[11px] leading-4 text-[#7d6f64]">Envio gratuito para Portugal Continental</p>
-                  <p className="text-[11px] leading-4 text-[#7d6f64]">Acompanhe a entrega com o código de rastreio</p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[#5c5049]">Portes grátis para Portugal Continental</p>
+                  <p className="text-xs leading-5 text-[#5c5049]">Entrega prevista em 6 a 12 dias úteis</p>
+                  <p className="mt-1 text-[11px] leading-4 text-[#7d6f64]">Acompanhe a entrega com o número de seguimento</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {showMobileBuyBar && (
+        <div aria-label="Resumo da seleção" className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-[#d8cec2] bg-[#f7f3ef]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(32,26,23,.14)] backdrop-blur sm:hidden">
+          <div className="min-w-0">
+            <span className="block text-[11px] text-[#7d6f64]">{hasRequiredSelections ? `${qty} ${qty === 1 ? 'painel' : 'painéis'}` : 'Por painel'}</span>
+            <strong className="text-sm tabular-nums">{hasRequiredSelections ? campaignEuro(unitCents * qty) : displayedPrice}</strong>
+          </div>
+          {hasRequiredSelections ? (
+            <button type="button" disabled={purchaseUnavailable} onClick={addCampaignLine} className="min-h-11 rounded-full bg-[#201a17] px-4 py-3 text-sm font-semibold text-white disabled:opacity-45">
+              {purchaseUnavailable ? 'Indisponível' : 'Adicionar ao carrinho'}
+            </button>
+          ) : (
+            <a href="#configurar-painel" className="min-h-11 rounded-full bg-[#201a17] px-4 py-3 text-sm font-semibold text-white">Escolher opções</a>
+          )}
+        </div>
+      )}
 
       {productLightboxOpen && (
         <div className="fixed inset-0 z-[140] flex flex-col bg-[#050505]" role="dialog" aria-modal="true" aria-label="Galeria do produto" onMouseDown={(event) => { if (event.target === event.currentTarget) setProductLightboxOpen(false); }}>
@@ -428,7 +457,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[7px]" role="dialog" aria-modal="true" aria-labelledby="panel-calculator-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setCalculatorOpen(false); }}>
           <div className="w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6" style={{ maxHeight: '90vh' }}>
             <div className="flex items-start justify-between gap-4">
-              <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#8a5a2b]">Calculadora de painéis</p><h2 id="panel-calculator-title" className="mt-1 text-xl font-bold text-[#201a17]">Qual é o tamanho da parede?</h2><p className="mt-1 text-xs leading-5 text-[#7d6f64]">Indique as medidas em metros. Já incluímos 10% de margem para cortes e ajustes.</p></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#8a5a2b]">Calculadora de painéis</p><h2 id="panel-calculator-title" className="mt-1 text-xl font-bold text-[#201a17]">Quais são as medidas da parede?</h2><p className="mt-1 text-xs leading-5 text-[#7d6f64]">Indique as medidas em metros. Já incluímos 10% de margem para cortes e ajustes.</p></div>
           <button type="button" onClick={() => { setCalculatorOpen(false); trackOfferEvent('calculator_closed', { offerSlug: offer.slug, productSlug: product.slug, reason: 'button' }); }} className="shrink-0 rounded-full p-2 text-zinc-500 hover:bg-zinc-100" aria-label="Fechar calculadora"><X className="h-5 w-5" /></button>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -436,7 +465,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               <label className="text-xs font-semibold text-zinc-700">Altura<div className="mt-1.5 flex items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3"><input type="text" inputMode="decimal" value={wallHeight} onChange={(event) => setWallHeight(event.target.value.replace(/[^\d.,]/g, ''))} placeholder="Ex.: 2,60" className="min-w-0 flex-1 bg-transparent py-3 text-base outline-none" /><span className="text-xs text-zinc-500">m</span></div></label>
             </div>
             <div className="mt-5">
-              <p className="mb-2 text-xs font-semibold text-zinc-700">Tamanho do painel</p>
+              <p className="mb-2 text-xs font-semibold text-zinc-700">Medida do painel</p>
               <div className="grid grid-cols-2 gap-2">
                 {PANEL_SIZES.map((size, index) => (
                   <button key={size.key} type="button" disabled={size.soldOut} onClick={() => setCalculatorSizeIndex(index)} className={`rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${size.soldOut ? 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400' : calculatorSizeIndex === index ? 'border-[#8a5a2b] bg-[#f1e7db] text-[#201a17]' : 'border-zinc-200 bg-white text-zinc-600'}`}>

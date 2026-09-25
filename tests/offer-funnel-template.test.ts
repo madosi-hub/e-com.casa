@@ -82,8 +82,8 @@ test('public analytics loads automatically without rendering a cookie banner', (
 test('the configurator calls out and animates missing selections before purchase', () => {
   expect(configurator).toContain('const [selectionGuidanceVisible, setSelectionGuidanceVisible] = useState(false)');
   expect(configurator).toContain('setSelectionGuidanceVisible(true)');
-  expect(configurator).toContain('Falta selecionar a cor e o tamanho.');
-  expect(configurator).toContain('Para aumentar a quantidade, falta selecionar a cor e o tamanho.');
+  expect(configurator).toContain('Falta selecionar a cor e a medida.');
+  expect(configurator).toContain('Para aumentar a quantidade, falta selecionar a cor e a medida.');
   expect(configurator).toContain("aria-disabled={!hasRequiredSelections}");
   expect(configurator).toContain('onClick={increaseQuantity}');
   expect(configurator).toContain('ecom-pending-option');
@@ -141,7 +141,6 @@ test('the Nuralta slug uses the same approved funnel as the painel-ripado alias'
 test('both panel offer URLs keep their incoming slug through checkout and information pages', () => {
   expect(cartDrawer).toContain('panelOfferSlugFromPathname(pathname)');
   expect(cartDrawer).toContain("panelOfferPath(panelOfferSlug, '/checkout')");
-  expect(configurator).toContain("panelOfferPath(offer.slug, '/checkout')");
   expect(runtimeWidgets).toContain('panelOfferSlugFromPathname(pathname) !== null');
   expect(painelCheckout).toContain("panelOfferPath(offerSlug, '/checkout')");
   expect(dynamicCheckout).toContain('isPanelOfferSlug(slug)');
@@ -157,7 +156,7 @@ test('the dedicated checkout derives the required surname and reveals CTT delive
   expect(painelCheckout).not.toContain("field('phone'");
   expect(painelCheckout).toContain('phone: null');
   expect(painelCheckout).toContain('lastName: form.firstName.trim()');
-  expect(painelCheckout).toContain('onBlur={loadShippingQuote}');
+  expect(painelCheckout).toContain('loadShippingQuote();');
   expect(painelCheckout).toContain("shippingQuoteStatus === 'loading'");
   expect(painelCheckout).toContain("shippingQuoteStatus === 'ready'");
   expect(painelCheckout).toContain('/pt/images/logo-ctt-express.svg');

@@ -11,7 +11,7 @@ export const PANEL_COLORS = [
   { name: 'Carvalho', src: panelImage('img1.webp'), galleryFolder: null },
   { name: 'Carvalho Claro', src: panelImage('var2.webp'), galleryFolder: 'light-oak' },
   { name: 'Preto', src: panelImage('var3.webp'), galleryFolder: 'black' },
-  { name: 'Cinza', src: panelImage('var4.webp'), galleryFolder: 'grey' },
+  { name: 'Cinzento', src: panelImage('var4.webp'), galleryFolder: 'grey' },
   { name: 'Nogueira', src: panelImage('var5.webp'), galleryFolder: 'walnut' },
   { name: 'Marfim', src: panelImage('var6.webp'), galleryFolder: 'ivory' },
   { name: 'Grafite', src: panelImage('var7.webp'), galleryFolder: 'graphite' },
