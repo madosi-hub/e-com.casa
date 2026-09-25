@@ -36,9 +36,9 @@ async function getVerifiedReviews(productSlug: string): Promise<OfferReviewItem[
 }
 
 export function configForProduct(product: CatalogProduct, slug: string, reviews: OfferReviewItem[] = []): OfferConfig {
-  const headline = product.slug === 'odem-painel-ripado-acustico-carvalho' ? 'Painel Ripado Acústico' : product.name;
+  const headline = product.slug === 'odem-painel-ripado-acustico-carvalho' ? 'Painel Ripado Decorativo' : product.name;
   const subheadline = product.slug === 'odem-painel-ripado-acustico-carvalho'
-    ? 'Design que transforma. Instalação que simplifica.'
+    ? 'Dê uma nova vida às paredes da sua casa.'
     : product.shortDescription;
 
   return {
@@ -78,11 +78,11 @@ function nuraltaConfig(product: CatalogProduct, slug: string): OfferConfig {
     ...base,
     announcement: 'Envio gratuito para Portugal Continental',
     eyebrow: 'Nuralta · Fabrico próprio',
-    headline: 'Painel Ripado Acústico',
-    subheadline: 'Design que transforma. Instalação que simplifica.',
+    headline: 'Painel Ripado Decorativo',
+    subheadline: 'Dê uma nova vida às paredes da sua casa.',
     seo: {
-      title: 'Painel Ripado Acústico Nuralta',
-      description: 'Painel Ripado Acústico em MDF, fabricado pela Nuralta. Configuração e encomenda online através da E-com.casa.',
+      title: 'Painel Ripado Decorativo Nuralta',
+      description: 'Painel Ripado Decorativo em MDF, fabricado pela Nuralta. Configuração e encomenda online através da E-com.casa.',
     },
   };
 }

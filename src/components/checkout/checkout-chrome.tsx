@@ -12,9 +12,9 @@ import {
 } from '@/lib/offers/route-policy';
 
 const TICKER_ITEMS = [
-  'Envio gratuito para Portugal Continental',
+  'Portes grátis para Portugal Continental',
   'Pagamento seguro com Cartão, Apple Pay, MB WAY e Multibanco',
-  'Entrega em 8 a 12 dias úteis devido à elevada procura',
+  'Entrega prevista em 6 a 12 dias úteis',
 ];
 
 export function CheckoutHeader() {

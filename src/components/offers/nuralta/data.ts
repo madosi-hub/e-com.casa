@@ -3,7 +3,7 @@
 export const TICKER_ITEMS = [
   "Envio gratuito para Portugal Continental",
   "Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco",
-  "Entrega em 8 a 12 dias úteis devido à elevada procura",
+  "Entrega prevista em 6 a 12 dias úteis",
   "Nuralta Interiores",
 ];
 
@@ -247,7 +247,7 @@ export const FAQS: Faq[] = [
     number: "02",
     question: "A que painel corresponde o preço desde 5,00 €?",
     answer:
-      "O preço desde 5,00 € corresponde ao painel de 240 × 60 cm. Os restantes tamanhos têm preços diferentes, apresentados junto a cada opção de medida.",
+      "O preço desde 5,00 € corresponde ao painel de 240 × 60 cm. As restantes medidas têm preços diferentes, apresentados junto a cada opção de medida.",
   },
   {
     number: "03",
@@ -283,7 +283,7 @@ export const FAQS: Faq[] = [
     number: "08",
     question: "Quanto tempo demora a entrega?",
     answer:
-      "A entrega é feita em 6 a 12 dias úteis devido à elevada procura, com envio gratuito para Portugal Continental e acompanhamento pela E-com.casa.",
+      "A entrega está prevista em 6 a 12 dias úteis após a confirmação do pagamento, com portes grátis para Portugal Continental. Após a expedição, recebe o número de seguimento para acompanhar a encomenda.",
   },
   {
     number: "09",

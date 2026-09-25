@@ -6,7 +6,7 @@
 // Response carries the order access token ONCE; the browser uses
 // (orderNumber, accessToken) for every later payment call.
 
-import { after, NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/lib/db';
@@ -193,9 +193,11 @@ export async function POST(req: NextRequest) {
     }
 
     stage = 'tracking';
-    // A completed contact form is a lead, not a captured order.
+    // A completed contact form submitted by the customer is a pending
+    // payment. Finish this bounded send before the browser confirms with
+    // Stripe so a fast paid event cannot overtake the pending event.
     if (!data.draft && data.email) {
-      after(() => sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters));
+      await sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters, { attempts: 2, timeoutMs: 2_000 });
     }
 
     return NextResponse.json(

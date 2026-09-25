@@ -151,9 +151,10 @@ export function CartDrawer() {
               </div>
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 {panelOfferSlug
-                  ? 'Envio gratuito para Portugal Continental'
+                  ? 'Portes grátis para Portugal Continental'
                   : remaining > 0 ? 'Envio calculado no checkout' : 'Envio standard gratuito aplicado no checkout'}
               </p>
+              {panelOfferSlug && <p className="mt-1 text-[11.5px] text-muted-foreground">Entrega prevista em 6 a 12 dias úteis</p>}
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link
@@ -170,7 +171,7 @@ export function CartDrawer() {
                     }}
                   >
                     <Lock className="h-4 w-4" strokeWidth={1.75} />
-                    Finalizar encomenda em segurança
+                    Continuar para o pagamento
                   </Link>
                 </Button>
               </div>
