@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { offerTrackingParameters } from '@/lib/offers/attribution';
+import { trackOfferEvent } from '@/lib/offers/analytics';
 import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
@@ -202,14 +203,20 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.lines.length === 0) {
+      trackOfferEvent('checkout_blocked', { offerSlug, stage: 'empty_cart' });
       toast({ title: t('checkout.toastEmpty'), variant: 'destructive' });
       return;
     }
     if (!detailsValid) {
+      trackOfferEvent('checkout_blocked', { offerSlug, stage: 'delivery_details' });
       toast({ title: t('checkout.completeDetails'), variant: 'destructive' });
       return;
     }
-    if (session.phase !== 'ready' || !session.elements || paySubmittingRef.current) return;
+    if (paySubmittingRef.current) return;
+    if (session.phase !== 'ready' || !session.elements) {
+      trackOfferEvent('checkout_blocked', { offerSlug, stage: 'payment_not_ready' });
+      return;
+    }
     paySubmittingRef.current = true;
     setPaySubmitting(true);
     try {
@@ -217,6 +224,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       // pending sale in UTMify. An incomplete card or MB WAY form stops here.
       const { error } = await session.elements.submit();
       if (error) {
+        trackOfferEvent('checkout_blocked', { offerSlug, stage: 'payment_details', reason: error.type });
         toast({ title: 'Verifique os dados de pagamento', description: error.message, variant: 'destructive' });
         return;
       }
@@ -235,12 +243,15 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         marketingConsent: false,
       });
       if (!synced.ok) {
+        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'save_delivery' });
         toast({ title: t('checkout.errorPaymentTitle'), description: synced.errorMessage, variant: 'destructive' });
         return;
       }
 
+      trackOfferEvent('checkout_payment_attempt', { offerSlug, stage: 'confirm' });
       const result = await session.confirmPayment();
       if (!result.ok) {
+        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'confirm', reason: result.errorCode ?? 'unknown' });
         const message =
           result.errorCode === 'PAYMENT_CANCELLED'
             ? t('checkout.errorCancelled')
@@ -250,6 +261,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       // On success confirmPayment either redirects (3DS / async methods)
       // or calls onComplete → success page (server-verified).
     } catch {
+      trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'unexpected' });
       toast({ title: t('checkout.errorPaymentTitle'), description: t('checkout.errorPayment'), variant: 'destructive' });
     } finally {
       paySubmittingRef.current = false;
