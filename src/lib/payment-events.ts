@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Order } from '@prisma/client';
 
 const PAYMENT_EVENTS_URL = 'https://umamim.madosi.online/ecom-dashboard/api/payment-paid';
@@ -39,8 +39,18 @@ type PaidOrder = Pick<
   | 'paymentMethodType'
 >;
 
+export function paymentEventsSecret(): string {
+  return process.env.PAYMENT_EVENTS_SECRET?.trim() || PAYMENT_EVENTS_SECRET;
+}
+
+export function verifyPaymentEventsSecret(value: string | null): boolean {
+  const received = Buffer.from(value ?? '');
+  const expected = Buffer.from(paymentEventsSecret());
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+
 function signature(timestamp: string, body: string): string {
-  const secret = process.env.PAYMENT_EVENTS_SECRET?.trim() || PAYMENT_EVENTS_SECRET;
+  const secret = paymentEventsSecret();
   return createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
 }
 
