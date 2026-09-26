@@ -21,7 +21,6 @@ import {
 } from '@/lib/checkout';
 import { resolvePaymentCurrency } from '@/lib/payments/payment-capabilities';
 import { ORDER_NOTES_MAX } from '@/lib/constants';
-import { sendUtmifyOrder } from '@/lib/utmify';
 
 export const dynamic = 'force-dynamic';
 
@@ -190,14 +189,6 @@ export async function POST(req: NextRequest) {
           country: totals.country,
         },
       }).catch(() => undefined); // consent must never block checkout
-    }
-
-    stage = 'tracking';
-    // A completed contact form submitted by the customer is a pending
-    // payment. Finish this bounded send before the browser confirms with
-    // Stripe so a fast paid event cannot overtake the pending event.
-    if (!data.draft && data.email) {
-      await sendUtmifyOrder(order, 'waiting_payment', data.trackingParameters, { attempts: 2, timeoutMs: 2_000 });
     }
 
     return NextResponse.json(
