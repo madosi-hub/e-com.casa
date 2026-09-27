@@ -57,12 +57,9 @@ export function ExpressCheckout({ stripe, elements, onBeforeConfirm, onConfirm, 
 
     express.on('ready', (event) => {
       if (cancelled) return;
-      // The runtime payload includes the wallet types the visitor's
-      // browser/device actually supports (Apple Pay, Google Pay, Link,
-      // PayPal) — the typing does not expose it, so probe defensively.
-      const types = (event as { availablePaymentTypes?: Record<string, unknown> }).availablePaymentTypes;
-      const count = types ? Object.keys(types).length : 0;
-      setAvailable(count > 0);
+      // Stripe reports eligibility as a boolean map. A present key can be
+      // false, so only show the section when at least one wallet is available.
+      setAvailable(Object.values(event.availablePaymentMethods ?? {}).some((enabled) => enabled === true));
     });
 
     express.on('click', (event) => {
