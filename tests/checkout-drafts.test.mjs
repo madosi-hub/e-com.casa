@@ -23,7 +23,13 @@ const checkout = load('src/lib/checkout.ts', Object.fromEntries([
 const visibility = load('src/lib/order-visibility.ts');
 const contact = { email: 'buyer@example.test', firstName: 'Buyer', lastName: 'Test', address: 'Street 1', city: 'Lisboa', postalCode: '1000-001' };
 
-function routeFixture(initial) {
+function deferred() {
+  let resolve;
+  const promise = new Promise(yes => { resolve = yes; });
+  return { promise, resolve };
+}
+
+function routeFixture(initial, { beforeUpdate } = {}) {
   let record = initial;
   let updates = 0;
   const db = {
@@ -33,6 +39,7 @@ function routeFixture(initial) {
       create: async ({ data }) => (record = { id: 'draft', paidAt: null, ...data }),
       updateMany: async ({ where, data }) => {
         assert.equal(where.paidAt, null);
+        await beforeUpdate?.({ where, data });
         updates++;
         record = { ...record, ...data };
         return { count: 1 };
@@ -79,6 +86,57 @@ test('real contact updates the same draft without making it a placed order', asy
   assert.equal(f.record().email, contact.email);
   assert.equal(f.record().paymentStatus, 'PENDING_PAYMENT');
   assert.equal(visibility.isPlacedOrder(f.record()), false);
+});
+
+const delivery = { ...contact, address2: 'Floor 2', phone: '+351910000000', notes: 'Ring the bell' };
+
+function assertDelivery(record, expected) {
+  for (const [field, value] of Object.entries(expected)) assert.equal(record[field], value, field);
+}
+
+test('new drafts retain supplied contact and later speculative drafts preserve all saved delivery fields', async () => {
+  const f = routeFixture();
+  assert.equal((await f.post({ draft: true, ...delivery })).status, 201);
+  assertDelivery(f.record(), delivery);
+  assert.equal((await f.post({ draft: false, ...delivery })).status, 200);
+  assert.equal((await f.post({ draft: true, ...contact, email: 'old@example.test', address2: null, phone: null, notes: '' })).status, 200);
+  assertDelivery(f.record(), delivery);
+});
+
+test('a draft read before delivery was saved cannot erase it when its write finishes last', async () => {
+  const enteredUpdate = deferred();
+  const resumeDraft = deferred();
+  let holdNextUpdate = false;
+  const f = routeFixture(undefined, { beforeUpdate: async () => {
+    if (!holdNextUpdate) return;
+    holdNextUpdate = false;
+    enteredUpdate.resolve();
+    await resumeDraft.promise;
+  } });
+  await f.post({ draft: true });
+  holdNextUpdate = true;
+  const oldDraft = f.post({ draft: true });
+  await enteredUpdate.promise;
+  try {
+    assert.equal((await f.post({ draft: false, ...delivery })).status, 200);
+    assertDelivery(f.record(), delivery);
+  } finally {
+    resumeDraft.resolve();
+  }
+  assert.equal((await oldDraft).status, 200);
+  assertDelivery(f.record(), delivery);
+  assert.equal(f.updates(), 2);
+});
+
+test('explicit delivery submissions still replace contact details and clear optional fields', async () => {
+  const f = routeFixture();
+  await f.post({ draft: false, ...delivery });
+  const edited = {
+    email: 'updated@example.test', firstName: 'Updated', lastName: 'Buyer', address: 'Other Street 2',
+    address2: null, city: 'Porto', postalCode: '4000-001', phone: null, notes: null,
+  };
+  assert.equal((await f.post({ draft: false, ...edited })).status, 200);
+  assertDelivery(f.record(), edited);
 });
 
 for (const state of ['PAID', 'PAYMENT_PROCESSING', 'REFUNDED']) {

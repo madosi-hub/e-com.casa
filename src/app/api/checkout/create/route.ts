@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este checkout já foi submetido. Consulte o estado do pagamento.' }, { status: 409 });
     }
 
-    const payload = {
+    const contactPayload = {
       email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
@@ -132,8 +132,11 @@ export async function POST(req: NextRequest) {
       address2: data.address2 || null,
       city: data.city,
       postalCode: data.postalCode,
-      country: totals.country,
       phone: data.phone || null,
+      notes: sanitizeNotes(data.notes) || null,
+    };
+    const payload = {
+      country: totals.country,
       shippingMethod: data.shippingMethod,
       subtotal: totals.subtotal.toFixed(2),
       shipping: totals.shipping.toFixed(2),
@@ -143,7 +146,6 @@ export async function POST(req: NextRequest) {
       promoCode: totals.promoCode,
       itemsJson: JSON.stringify(totals.lineItems),
       giftWrap: data.giftWrap,
-      notes: sanitizeNotes(data.notes) || null,
       currency: totals.currency,
       pricingHash: totals.pricingHash,
     };
@@ -154,13 +156,15 @@ export async function POST(req: NextRequest) {
       // Do not overwrite a payment confirmed concurrently by a webhook/poll.
       const updated = await db.order.updateMany({
         where: { id: existing.id, paidAt: null, paymentStatus: { in: ['PENDING_PAYMENT', 'PAYMENT_FAILED', 'CANCELLED'] } },
-        data: { ...payload, status: 'CHECKOUT_DRAFT', paymentStatus: 'PENDING_PAYMENT', paymentFailureReason: null },
+        // Omit contact columns for speculative drafts. Copying the earlier
+        // `existing` values would overwrite delivery saved while this request waited.
+        data: { ...payload, ...(!data.draft ? contactPayload : {}), status: 'CHECKOUT_DRAFT', paymentStatus: 'PENDING_PAYMENT', paymentFailureReason: null },
       });
       if (updated.count !== 1) return NextResponse.json({ error: 'O estado do pagamento mudou. Consulte o checkout.' }, { status: 409 });
       order = await db.order.findUniqueOrThrow({ where: { id: existing.id } });
     } else {
       order = await db.order.create({ data: {
-        ...payload, orderNumber: newOrderNumber(), accessToken: newAccessToken(),
+        ...payload, ...contactPayload, orderNumber: newOrderNumber(), accessToken: newAccessToken(),
         checkoutToken: data.checkoutToken, status: 'CHECKOUT_DRAFT', paymentStatus: 'PENDING_PAYMENT',
       } });
     }

@@ -13,6 +13,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Stripe, StripeElements } from '@stripe/stripe-js';
 import { getStripe, ELEMENTS_APPEARANCE } from '@/lib/payments/stripe-elements';
 import type { PaymentErrorCode, PaymentMethodCapability } from '@/lib/payments/payment-types';
+import {
+  acquirePreparedOfferPayment,
+  invalidatePreparedOfferPayment,
+  OfferPaymentPreparationError,
+  resetPreparedOfferPayment,
+} from '@/lib/payments/offer-payment-preparation';
 
 export type PaymentSessionPhase = 'idle' | 'preparing' | 'ready' | 'confirming' | 'unavailable' | 'error';
 
@@ -45,6 +51,7 @@ export interface CheckoutOrderPayload {
 
 interface SessionState {
   signature: string | null;
+  checkoutToken: string | null;
   orderNumber: string | null;
   accessToken: string | null;
   stripe: Stripe | null;
@@ -55,6 +62,7 @@ interface SessionState {
 }
 
 const CHECKOUT_TOKEN_KEY = 'ecom-checkout-token';
+let fallbackCheckoutToken: string | null = null;
 
 function getCheckoutToken(): string {
   try {
@@ -68,7 +76,7 @@ function getCheckoutToken(): string {
     }
     return token;
   } catch {
-    return `ct-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return fallbackCheckoutToken ??= `ct-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
 
@@ -97,10 +105,12 @@ async function postWithSafeCheckoutRetry<T extends { stage?: string }>(
 }
 
 export function resetCheckoutToken() {
+  fallbackCheckoutToken = null;
+  resetPreparedOfferPayment();
   try {
     sessionStorage.removeItem(CHECKOUT_TOKEN_KEY);
   } catch {
-    // storage unavailable — token is per-request then
+    // Storage is best effort; the in-memory token has already been cleared.
   }
 }
 
@@ -117,11 +127,13 @@ export interface UsePaymentSessionOptions {
   returnPath?: string;
   /** Contact-based checkouts debounce typing; stable cart drafts can start immediately. */
   prepareDelayMs?: number;
+  /** Reuse preparation begun in the offer cart, including a request still in flight. */
+  prepareEarly?: boolean;
   onPreparationEvent?: (event: PaymentPreparationEvent) => void;
 }
 
 export interface PaymentPreparationEvent {
-  stage: 'order' | 'intent' | 'stripe';
+  stage: 'order' | 'intent' | 'stripe' | 'session';
   status: 'started' | 'ready' | 'error';
   durationMs: number;
   reason?: string;
@@ -134,11 +146,13 @@ export function usePaymentSession({
   locale = 'auto',
   returnPath = '/checkout/success',
   prepareDelayMs = 650,
+  prepareEarly = false,
   onPreparationEvent,
 }: UsePaymentSessionOptions) {
   const [phase, setPhase] = useState<PaymentSessionPhase>('idle');
   const [state, setState] = useState<SessionState>({
     signature: null,
+    checkoutToken: null,
     orderNumber: null,
     accessToken: null,
     stripe: null,
@@ -161,7 +175,7 @@ export function usePaymentSession({
     stateRef.current = state;
   }, [onComplete, onPreparationEvent, state]);
 
-  const ensure = useCallback(async () => {
+  const ensure = useCallback(async (forceRefresh = false) => {
     if (!payload) return;
     inflight.current?.abort();
     const controller = new AbortController();
@@ -181,52 +195,78 @@ export function usePaymentSession({
       stageStarted = Date.now();
       report('started');
     };
-    startStage('order');
 
     try {
-      // 1. Create/update the PENDING_PAYMENT order (server-repriced)
-      const checkoutToken = getCheckoutToken();
-      const { response: orderRes, data: orderData } = await postWithSafeCheckoutRetry<{
-        error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string; pricingHash?: string;
-      }>(
-        '/api/checkout/create',
-        { ...payload, checkoutToken, draft: true },
-        AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
-        checkoutToken,
-      );
-      if (controller.signal.aborted) return;
-      if (!orderRes.ok || !orderData.orderNumber || !orderData.accessToken) {
-        report('error', orderRes.ok ? 'invalid_response' : `http_${orderRes.status}`);
-        setPhase('error');
-        const reference = orderData.requestId ? ` Referência: ${orderData.requestId}` : '';
-        setState((s) => ({ ...s, errorMessage: `${orderData.error ?? 'Não foi possível preparar o checkout.'}${reference}`, errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
-        return;
-      }
-      report('ready');
-      const { orderNumber, accessToken } = orderData as { orderNumber: string; accessToken: string };
+      let checkoutToken: string;
+      let orderData: { orderNumber: string; accessToken: string; pricingHash?: string | null };
+      let intentData: { clientSecret: string; publishableKey?: string; methods?: PaymentMethodCapability[] };
+      if (prepareEarly) {
+        // Unlike provider timings replayed from the cart, this measures how
+        // long the shopper actually waits for the session in the checkout.
+        startStage('session');
+        // The shared request survives cart → checkout navigation. This hook's
+        // controller only prevents an obsolete consumer from mounting Elements.
+        const prepared = await acquirePreparedOfferPayment(payload, {
+          forceRefresh,
+          onEvent: (event) => {
+            if (controller.signal.aborted) return;
+            try { onPreparationEventRef.current?.(event); } catch { /* best effort */ }
+          },
+        });
+        if (controller.signal.aborted) return;
+        report('ready');
+        checkoutToken = prepared.checkoutToken;
+        orderData = prepared;
+        intentData = prepared;
+      } else {
+        startStage('order');
+        // 1. Create/update the PENDING_PAYMENT order (server-repriced)
+        checkoutToken = getCheckoutToken();
+        const { response: orderRes, data: orderResult } = await postWithSafeCheckoutRetry<{
+          error?: string; requestId?: string; stage?: string; orderNumber?: string; accessToken?: string; pricingHash?: string;
+        }>(
+          '/api/checkout/create',
+          { ...payload, checkoutToken, draft: true },
+          AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
+          checkoutToken,
+        );
+        if (controller.signal.aborted) return;
+        if (!orderRes.ok || !orderResult.orderNumber || !orderResult.accessToken) {
+          report('error', orderRes.ok ? 'invalid_response' : `http_${orderRes.status}`);
+          setPhase('error');
+          const reference = orderResult.requestId ? ` Referência: ${orderResult.requestId}` : '';
+          setState((s) => ({ ...s, errorMessage: `${orderResult.error ?? 'Não foi possível preparar o checkout.'}${reference}`, errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
+          return;
+        }
+        report('ready');
+        orderData = { orderNumber: orderResult.orderNumber, accessToken: orderResult.accessToken, pricingHash: orderResult.pricingHash };
+        const { orderNumber, accessToken } = orderData;
 
-      // 2. Create (or reuse) the XPayments PaymentIntent
-      startStage('intent');
-      const { response: intentRes, data: intentData } = await postWithSafeCheckoutRetry<{
-        error?: string; stage?: string; clientSecret?: string; publishableKey?: string;
-        methods?: PaymentMethodCapability[];
-      }>(
-        '/api/payments/create-intent',
-        { orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null },
-        AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
-      );
-      if (controller.signal.aborted) return;
-      if (!intentRes.ok || !intentData.clientSecret) {
-        report('error', intentRes.ok ? 'invalid_response' : `http_${intentRes.status}`);
-        setPhase('unavailable');
-        setState((s) => ({
-          ...s,
-          errorMessage: 'Não foi possível carregar o pagamento seguro. Tente novamente.',
-          errorCode: 'PAYMENT_CONFIGURATION_ERROR',
-        }));
-        return;
+        // 2. Create (or reuse) the XPayments PaymentIntent
+        startStage('intent');
+        const { response: intentRes, data: intentResult } = await postWithSafeCheckoutRetry<{
+          error?: string; stage?: string; clientSecret?: string; publishableKey?: string;
+          methods?: PaymentMethodCapability[];
+        }>(
+          '/api/payments/create-intent',
+          { orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null },
+          AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
+        );
+        if (controller.signal.aborted) return;
+        if (!intentRes.ok || !intentResult.clientSecret) {
+          report('error', intentRes.ok ? 'invalid_response' : `http_${intentRes.status}`);
+          setPhase('unavailable');
+          setState((s) => ({
+            ...s,
+            errorMessage: 'Não foi possível carregar o pagamento seguro. Tente novamente.',
+            errorCode: 'PAYMENT_CONFIGURATION_ERROR',
+          }));
+          return;
+        }
+        report('ready');
+        intentData = { ...intentResult, clientSecret: intentResult.clientSecret };
       }
-      report('ready');
+      const { orderNumber, accessToken } = orderData;
       startStage('stripe');
 
       // 3. Initialise Stripe + Elements (publishable key only).
@@ -264,6 +304,7 @@ export function usePaymentSession({
       confirmedContact.current = null;
       setState({
         signature,
+        checkoutToken,
         orderNumber,
         accessToken,
         stripe,
@@ -276,14 +317,21 @@ export function usePaymentSession({
       setPhase('ready');
     } catch (error) {
       if (controller.signal.aborted) return;
+      if (error instanceof OfferPaymentPreparationError) {
+        report('error', 'preparation_failed');
+        setPhase(error.phase);
+        setState((s) => ({ ...s, errorMessage: error.message, errorCode: error.errorCode }));
+        return;
+      }
       report('error', error instanceof Error && /timeout/i.test(error.name) ? 'timeout' : 'network_or_sdk_error');
       setPhase('error');
       setState((s) => ({ ...s, errorMessage: 'O pagamento demorou mais do que o esperado ou não conseguiu carregar. Tente novamente.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
     }
-  }, [payload, locale, signature]);
+  }, [payload, locale, signature, prepareEarly]);
 
   const hasPayload = payload !== null;
-  // Cancel immediately on change/unmount, including while Stripe.js is loading.
+  // Detach this consumer on change/unmount, including while Stripe.js is loading.
+  // Shared offer preparation belongs to the cache and survives navigation.
   useEffect(() => {
     if (!hasPayload) {
       inflight.current?.abort();
@@ -295,8 +343,12 @@ export function usePaymentSession({
     }
     const changed = signatureRef.current !== signature;
     signatureRef.current = signature;
-    const timer = !changed && stateRef.current.signature === signature && stateRef.current.elements
-      ? null : setTimeout(() => void ensure(), prepareDelayMs);
+    const alreadyPrepared = !changed && stateRef.current.signature === signature && stateRef.current.elements;
+    // A new payload object can describe the same settled cart. Its previous
+    // effect cleanup detached the consumer; retain the prepared payment and
+    // renew only that local lifetime, without another request or Elements mount.
+    if (alreadyPrepared && inflight.current?.signal.aborted) inflight.current = new AbortController();
+    const timer = alreadyPrepared ? null : setTimeout(() => void ensure(), prepareDelayMs);
     return () => {
       if (timer !== null) clearTimeout(timer);
       inflight.current?.abort();
@@ -304,34 +356,52 @@ export function usePaymentSession({
   }, [signature, hasPayload, ensure, prepareDelayMs]);
 
   const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
-    if (!state.orderNumber || preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
+    const preparation = inflight.current;
+    const isCurrent = () => preparation !== null && !preparation.signal.aborted &&
+      inflight.current === preparation && state.elements !== null &&
+      stateRef.current.elements === state.elements && state.signature === signature &&
+      signatureRef.current === signature && preparedSignature.current === signature;
+    if (!state.orderNumber || !state.checkoutToken || !isCurrent()) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
     try {
-      const checkoutToken = getCheckoutToken();
+      // Saving delivery must update the very draft used for this payment.
+      const checkoutToken = state.checkoutToken;
       const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string; orderNumber?: string; pricingHash?: string }>(
         '/api/checkout/create', { ...nextPayload, checkoutToken, draft: false }, AbortSignal.timeout(15_000), checkoutToken,
       );
+      if (!isCurrent()) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
       if (!response.ok) return { ok: false, errorMessage: data.error ?? 'Não foi possível guardar os dados de entrega.' };
-      if (preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
       if (data.orderNumber !== state.orderNumber || data.pricingHash !== preparedPricingHash.current) {
-        return { ok: false, errorMessage: 'O checkout foi atualizado. Atualize o pagamento antes de continuar.' };
+        const errorMessage = 'O checkout foi atualizado. Atualize o pagamento antes de continuar.';
+        if (prepareEarly && payload) invalidatePreparedOfferPayment(payload);
+        preparedSignature.current = null;
+        confirmedContact.current = null;
+        preparation?.abort();
+        setPhase('error');
+        setState((s) => ({ ...s, signature: null, stripe: null, elements: null, errorMessage, errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
+        return { ok: false, errorMessage };
       }
       confirmedContact.current = nextPayload;
       return { ok: true };
     } catch { return { ok: false, errorMessage: 'Não foi possível guardar os dados de entrega.' }; }
-  }, [state.orderNumber, signature]);
+  }, [state, signature, prepareEarly, payload]);
 
   const confirmPayment = useCallback(async (): Promise<{ ok: boolean; errorCode?: PaymentErrorCode; errorMessage?: string }> => {
     const { stripe, elements, orderNumber, accessToken } = state;
+    const preparation = inflight.current;
+    const isCurrent = () => preparation !== null && !preparation.signal.aborted &&
+      inflight.current === preparation && stateRef.current.elements === elements &&
+      state.signature === signature && signatureRef.current === signature && preparedSignature.current === signature;
     if (!stripe || !elements || !orderNumber || !accessToken) {
       return { ok: false, errorCode: 'TEMPORARY_PAYMENT_ERROR', errorMessage: 'Payment is not ready yet.' };
     }
-    if (preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
+    if (!isCurrent()) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
     const contact = confirmedContact.current ?? payload;
     if (!contact) return { ok: false, errorMessage: 'Preencha os dados de contacto e entrega.' };
     if (!confirmedContact.current) {
       const synced = await syncOrder(contact);
       if (!synced.ok) return { ok: false, errorMessage: synced.errorMessage };
     }
+    if (!isCurrent()) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
     setPhase('confirming');
     const returnUrl = new URL(returnPath, window.location.origin);
     returnUrl.searchParams.set('order', orderNumber);
@@ -386,7 +456,7 @@ export function usePaymentSession({
     confirmPayment,
     retry: () => {
       setPhase('idle');
-      void ensure();
+      void ensure(true);
     },
   };
 }

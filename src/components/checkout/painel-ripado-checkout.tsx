@@ -16,6 +16,7 @@ import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { offerTrackingParameters } from '@/lib/offers/attribution';
 import { trackOfferEvent } from '@/lib/offers/analytics';
+import { buildPanelCheckoutPayload, CHECKOUT_DRAFT_KEY, PANEL_CHECKOUT_COUNTRY } from '@/lib/offers/panel-checkout-payload';
 import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
@@ -42,7 +43,6 @@ const t = (key: string, vars?: Record<string, string | number>) => {
     copy,
   );
 };
-const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
 const DELIVERY_FIELDS = ['firstName', 'email', 'address', 'city', 'postalCode'] as const;
 const DELIVERY_REQUIRED_MESSAGES: Record<typeof DELIVERY_FIELDS[number], string> = {
   firstName: 'Preencha o seu nome completo.',
@@ -89,7 +89,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     address2: '',
     city: '',
     postalCode: '',
-    country: 'PT',
+    country: PANEL_CHECKOUT_COUNTRY,
   });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const deliverySectionRef = useRef<HTMLElement>(null);
@@ -113,7 +113,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         const { marketingOptIn: _legacyMarketingOptIn, termsAccepted: _legacyTermsAccepted, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean; termsAccepted?: boolean };
         // Draft restoration is a one-time client hydration step from localStorage.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setForm((current) => ({ ...current, ...saved }));
+        setForm((current) => ({ ...current, ...saved, country: PANEL_CHECKOUT_COUNTRY }));
       }
     } catch {
       // A blocked or malformed local draft must never prevent checkout.
@@ -167,25 +167,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   const payload = useMemo(
     () => draftHydrated && cart.lines.length > 0
-      ? {
-          // Keep the Stripe Elements session stable while contact fields are typed.
-          email: '',
-          firstName: '',
-          lastName: '',
-          address: '',
-          address2: null,
-          city: '',
-          postalCode: '',
-          country: form.country,
-          phone: null,
-          shippingMethod: 'standard' as const,
-          promoCode: cart.promoCode,
-          giftWrap: false,
-          notes: null,
-          marketingConsent: false,
-          items: cart.lines.map((l) => ({ slug: l.slug, quantity: l.quantity, variantId: l.variantId ?? null })),
-          trackingParameters,
-        }
+      ? buildPanelCheckoutPayload(cart.lines, cart.promoCode, form.country, trackingParameters)
       : null,
     [
       cart.lines,
@@ -214,6 +196,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     locale: 'pt',
     returnPath: `${checkoutPath}/sucesso`,
     prepareDelayMs: 0,
+    prepareEarly: true,
     onPreparationEvent: ({ stage, status, durationMs, reason }) => {
       trackOfferEvent('checkout_payment_loading', { offerSlug, stage, status, duration_ms: durationMs, reason });
       if (stage === 'stripe' && status === 'ready') {
