@@ -5,21 +5,54 @@
 
 import { loadStripe, type Stripe, type StripeElements } from '@stripe/stripe-js';
 
-let stripePromise: Promise<Stripe | null> | null = null;
+const STRIPE_LOAD_TIMEOUT_MS = 15_000;
+const stripeLoads = new Map<string, Promise<Stripe | null>>();
+
+export class StripeLoadTimeoutError extends Error {
+  readonly code = 'STRIPE_LOAD_TIMEOUT';
+
+  constructor() {
+    super('O pagamento demorou demasiado a carregar. Tente novamente ou recarregue a página.');
+    this.name = 'StripeLoadTimeoutError';
+  }
+}
 
 /**
  * Read the publishable key injected during SSR (from getPaymentConfig
  * via the create-intent response) — never hardcode keys here.
  */
 export function getStripe(publishableKey: string): Promise<Stripe | null> {
-  if (!stripePromise || stripePublishableKey !== publishableKey) {
-    stripePublishableKey = publishableKey;
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
+  const existing = stripeLoads.get(publishableKey);
+  if (existing) return existing;
+
+  let timeout: ReturnType<typeof setTimeout>;
+  const loading = new Promise<Stripe | null>((resolve, reject) => {
+    timeout = setTimeout(() => reject(new StripeLoadTimeoutError()), STRIPE_LOAD_TIMEOUT_MS);
+    // Preserve the official loader and its default preload. Converting a
+    // synchronous failure into a rejection also keeps retry behaviour uniform.
+    Promise.resolve().then(() => loadStripe(publishableKey)).then(resolve, reject);
+  });
+  const attempt = loading.then(
+    (stripe) => {
+      clearTimeout(timeout);
+      if (!stripe && stripeLoads.get(publishableKey) === attempt) stripeLoads.delete(publishableKey);
+      return stripe;
+    },
+    (error: unknown) => {
+      clearTimeout(timeout);
+      if (stripeLoads.get(publishableKey) === attempt) stripeLoads.delete(publishableKey);
+      throw error;
+    },
+  );
+  stripeLoads.set(publishableKey, attempt);
+  return attempt;
 }
 
-let stripePublishableKey: string | null = null;
+// The SDK resets its own script cache on rejection, so retry reaches loadStripe
+// again after transient failures. A script that never fires load/error cannot
+// be reset through its public API: timeout ends our wait, while a permanently
+// stalled script can still require a page reload. Late results never replace
+// or clear a newer attempt, and successful instances stay cached by key.
 
 /**
  * Stripe Elements appearance themed to the E-com.casa visual

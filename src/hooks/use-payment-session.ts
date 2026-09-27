@@ -44,6 +44,7 @@ export interface CheckoutOrderPayload {
 }
 
 interface SessionState {
+  signature: string | null;
   orderNumber: string | null;
   accessToken: string | null;
   stripe: Stripe | null;
@@ -114,6 +115,16 @@ export interface UsePaymentSessionOptions {
   locale?: 'auto' | 'pt';
   /** Relative return path used after gateway authentication. */
   returnPath?: string;
+  /** Contact-based checkouts debounce typing; stable cart drafts can start immediately. */
+  prepareDelayMs?: number;
+  onPreparationEvent?: (event: PaymentPreparationEvent) => void;
+}
+
+export interface PaymentPreparationEvent {
+  stage: 'order' | 'intent' | 'stripe';
+  status: 'started' | 'ready' | 'error';
+  durationMs: number;
+  reason?: string;
 }
 
 export function usePaymentSession({
@@ -122,9 +133,12 @@ export function usePaymentSession({
   onComplete,
   locale = 'auto',
   returnPath = '/checkout/success',
+  prepareDelayMs = 650,
+  onPreparationEvent,
 }: UsePaymentSessionOptions) {
   const [phase, setPhase] = useState<PaymentSessionPhase>('idle');
   const [state, setState] = useState<SessionState>({
+    signature: null,
     orderNumber: null,
     accessToken: null,
     stripe: null,
@@ -139,19 +153,35 @@ export function usePaymentSession({
   const preparedPricingHash = useRef<string | null>(null);
   const confirmedContact = useRef<CheckoutOrderPayload | null>(null);
   const onCompleteRef = useRef(onComplete);
+  const onPreparationEventRef = useRef(onPreparationEvent);
   const stateRef = useRef(state);
   useEffect(() => {
     onCompleteRef.current = onComplete;
+    onPreparationEventRef.current = onPreparationEvent;
     stateRef.current = state;
-  }, [onComplete, state]);
+  }, [onComplete, onPreparationEvent, state]);
 
   const ensure = useCallback(async () => {
     if (!payload) return;
     inflight.current?.abort();
     const controller = new AbortController();
     inflight.current = controller;
+    preparedSignature.current = null;
+    confirmedContact.current = null;
     setPhase('preparing');
-    setState((s) => ({ ...s, errorMessage: null, errorCode: null }));
+    setState((s) => ({ ...s, signature: null, stripe: null, elements: null, errorMessage: null, errorCode: null }));
+    let stage: PaymentPreparationEvent['stage'] = 'order';
+    let stageStarted = Date.now();
+    const report = (status: PaymentPreparationEvent['status'], reason?: string) => {
+      // Diagnostics must never block payment or include contact/payment data.
+      try { onPreparationEventRef.current?.({ stage, status, durationMs: Date.now() - stageStarted, reason }); } catch { /* best effort */ }
+    };
+    const startStage = (next: PaymentPreparationEvent['stage']) => {
+      stage = next;
+      stageStarted = Date.now();
+      report('started');
+    };
+    startStage('order');
 
     try {
       // 1. Create/update the PENDING_PAYMENT order (server-repriced)
@@ -164,15 +194,19 @@ export function usePaymentSession({
         AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]),
         checkoutToken,
       );
-      if (!orderRes.ok) {
+      if (controller.signal.aborted) return;
+      if (!orderRes.ok || !orderData.orderNumber || !orderData.accessToken) {
+        report('error', orderRes.ok ? 'invalid_response' : `http_${orderRes.status}`);
         setPhase('error');
         const reference = orderData.requestId ? ` Referência: ${orderData.requestId}` : '';
         setState((s) => ({ ...s, errorMessage: `${orderData.error ?? 'Não foi possível preparar o checkout.'}${reference}`, errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
         return;
       }
+      report('ready');
       const { orderNumber, accessToken } = orderData as { orderNumber: string; accessToken: string };
 
       // 2. Create (or reuse) the XPayments PaymentIntent
+      startStage('intent');
       const { response: intentRes, data: intentData } = await postWithSafeCheckoutRetry<{
         error?: string; stage?: string; clientSecret?: string; publishableKey?: string;
         methods?: PaymentMethodCapability[];
@@ -181,15 +215,19 @@ export function usePaymentSession({
         { orderNumber, accessToken, trackingParameters: payload.trackingParameters ?? null },
         AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]),
       );
+      if (controller.signal.aborted) return;
       if (!intentRes.ok || !intentData.clientSecret) {
+        report('error', intentRes.ok ? 'invalid_response' : `http_${intentRes.status}`);
         setPhase('unavailable');
         setState((s) => ({
           ...s,
-          errorMessage: intentData.error ?? 'Online payments are temporarily unavailable.',
+          errorMessage: 'Não foi possível carregar o pagamento seguro. Tente novamente.',
           errorCode: 'PAYMENT_CONFIGURATION_ERROR',
         }));
         return;
       }
+      report('ready');
+      startStage('stripe');
 
       // 3. Initialise Stripe + Elements (publishable key only).
       // Primary source is the server response so deployments cannot drift
@@ -200,15 +238,18 @@ export function usePaymentSession({
         process.env.NEXT_PUBLIC_XPAYMENTS_STRIPE_PUBLISHABLE_KEY ??
         '';
       if (!publishableKey) {
+        report('error', 'missing_publishable_key');
         setPhase('unavailable');
-        setState((s) => ({ ...s, errorCode: 'PAYMENT_CONFIGURATION_ERROR', errorMessage: 'Payment could not be initialised.' }));
+        setState((s) => ({ ...s, errorCode: 'PAYMENT_CONFIGURATION_ERROR', errorMessage: 'Não foi possível carregar o pagamento seguro. Tente novamente.' }));
         return;
       }
 
       const stripe = await getStripe(publishableKey);
+      if (controller.signal.aborted) return;
       if (!stripe) {
+        report('error', 'sdk_unavailable');
         setPhase('unavailable');
-        setState((s) => ({ ...s, errorCode: 'PAYMENT_CONFIGURATION_ERROR', errorMessage: 'Payment could not be initialised.' }));
+        setState((s) => ({ ...s, errorCode: 'PAYMENT_CONFIGURATION_ERROR', errorMessage: 'Não foi possível carregar o pagamento seguro. Tente novamente.' }));
         return;
       }
       const elements = stripe.elements({
@@ -222,6 +263,7 @@ export function usePaymentSession({
       preparedPricingHash.current = orderData.pricingHash ?? null;
       confirmedContact.current = null;
       setState({
+        signature,
         orderNumber,
         accessToken,
         stripe,
@@ -230,35 +272,46 @@ export function usePaymentSession({
         errorMessage: null,
         errorCode: null,
       });
+      report('ready');
       setPhase('ready');
     } catch (error) {
       if (controller.signal.aborted) return;
+      report('error', error instanceof Error && /timeout/i.test(error.name) ? 'timeout' : 'network_or_sdk_error');
       setPhase('error');
-      setState((s) => ({ ...s, errorMessage: 'We could not start the payment. Please try again.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
+      setState((s) => ({ ...s, errorMessage: 'O pagamento demorou mais do que o esperado ou não conseguiu carregar. Tente novamente.', errorCode: 'TEMPORARY_PAYMENT_ERROR' }));
     }
   }, [payload, locale, signature]);
 
-  // Re-ensure whenever the order signature changes and the payload is valid
+  const hasPayload = payload !== null;
+  // Cancel immediately on change/unmount, including while Stripe.js is loading.
   useEffect(() => {
-    if (!payload) {
-      const reset = setTimeout(() => setPhase('idle'), 0);
+    if (!hasPayload) {
+      inflight.current?.abort();
+      const reset = setTimeout(() => {
+        setPhase('idle');
+        setState((s) => ({ ...s, signature: null, stripe: null, elements: null }));
+      }, 0);
       return () => clearTimeout(reset);
     }
     const changed = signatureRef.current !== signature;
     signatureRef.current = signature;
-    if (!changed && stateRef.current.elements) return;
-    const timer = setTimeout(() => void ensure(), 650); // debounce bursts of typing
-    return () => clearTimeout(timer);
-  }, [signature, payload !== null]);
+    const timer = !changed && stateRef.current.signature === signature && stateRef.current.elements
+      ? null : setTimeout(() => void ensure(), prepareDelayMs);
+    return () => {
+      if (timer !== null) clearTimeout(timer);
+      inflight.current?.abort();
+    };
+  }, [signature, hasPayload, ensure, prepareDelayMs]);
 
   const syncOrder = useCallback(async (nextPayload: CheckoutOrderPayload): Promise<{ ok: boolean; errorMessage?: string }> => {
     if (!state.orderNumber || preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
     try {
       const checkoutToken = getCheckoutToken();
       const { response, data } = await postWithSafeCheckoutRetry<{ error?: string; stage?: string; orderNumber?: string; pricingHash?: string }>(
-        '/api/checkout/create', { ...nextPayload, checkoutToken, draft: false }, undefined, checkoutToken,
+        '/api/checkout/create', { ...nextPayload, checkoutToken, draft: false }, AbortSignal.timeout(15_000), checkoutToken,
       );
       if (!response.ok) return { ok: false, errorMessage: data.error ?? 'Não foi possível guardar os dados de entrega.' };
+      if (preparedSignature.current !== signature) return { ok: false, errorMessage: 'Aguarde a atualização do pagamento.' };
       if (data.orderNumber !== state.orderNumber || data.pricingHash !== preparedPricingHash.current) {
         return { ok: false, errorMessage: 'O checkout foi atualizado. Atualize o pagamento antes de continuar.' };
       }
@@ -284,42 +337,47 @@ export function usePaymentSession({
     returnUrl.searchParams.set('order', orderNumber);
     returnUrl.searchParams.set('token', accessToken);
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: { return_url: returnUrl.toString(), payment_method_data: { billing_details: { email: contact.email, name: `${contact.firstName} ${contact.lastName}`.trim() } } },
-      redirect: 'if_required',
-    });
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: returnUrl.toString(), payment_method_data: { billing_details: { email: contact.email, name: `${contact.firstName} ${contact.lastName}`.trim() } } },
+        redirect: 'if_required',
+      });
 
-    if (error) {
-      setPhase('ready');
-      // Stripe-validated field errors surface inside the element; other
-      // errors map to a safe customer message.
-      if (error.type === 'validation_error') {
-        return { ok: false, errorCode: 'PAYMENT_REQUIRES_ACTION', errorMessage: error.message ?? undefined };
+      if (error) {
+        setPhase('ready');
+        // Stripe-validated field errors surface inside the element; other
+        // errors map to a safe customer message.
+        if (error.type === 'validation_error') {
+          return { ok: false, errorCode: 'PAYMENT_REQUIRES_ACTION', errorMessage: error.message ?? undefined };
+        }
+        const code: PaymentErrorCode =
+          error.decline_code === 'canceled' || /cancel/i.test(error.message ?? '')
+            ? 'PAYMENT_CANCELLED'
+            : 'PAYMENT_FAILED';
+        return { ok: false, errorCode: code, errorMessage: error.message ?? undefined };
       }
-      const code: PaymentErrorCode =
-        error.decline_code === 'canceled' || /cancel/i.test(error.message ?? '')
-          ? 'PAYMENT_CANCELLED'
-          : 'PAYMENT_FAILED';
-      return { ok: false, errorCode: code, errorMessage: error.message ?? undefined };
-    }
 
-    // Succeeded/processing in the browser still navigates to the status
-    // page. The server then retrieves the same intent from XPayments and
-    // reconciles the authoritative DB state before showing confirmation.
-    if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
-      onCompleteRef.current(orderNumber, accessToken);
+      // Succeeded/processing in the browser still navigates to the status
+      // page. The server then retrieves the same intent from XPayments and
+      // reconciles the authoritative DB state before showing confirmation.
+      if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
+        onCompleteRef.current(orderNumber, accessToken);
+        return { ok: true };
+      }
+      // requires_action etc. → redirect already scheduled by Stripe
       return { ok: true };
+    } catch {
+      setPhase('ready');
+      return { ok: false, errorCode: 'TEMPORARY_PAYMENT_ERROR', errorMessage: 'Não foi possível confirmar o pagamento. Verifique o estado da encomenda antes de tentar novamente.' };
     }
-    // requires_action etc. → redirect already scheduled by Stripe
-    return { ok: true };
   }, [state, returnPath, payload, signature, syncOrder]);
 
 
   return {
-    phase,
-    stripe: state.stripe,
-    elements: state.elements,
+    phase: phase === 'ready' && state.signature !== signature ? 'preparing' as const : phase,
+    stripe: state.signature === signature && hasPayload ? state.stripe : null,
+    elements: state.signature === signature && hasPayload ? state.elements : null,
     methods: state.methods,
     orderNumber: state.orderNumber,
     errorMessage: state.errorMessage,

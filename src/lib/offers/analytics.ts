@@ -17,6 +17,7 @@ export type OfferAnalyticsEvent =
   | 'checkout_blocked'
   | 'checkout_payment_attempt'
   | 'checkout_payment_error'
+  | 'checkout_payment_loading'
   | 'purchase';
 
 export interface OfferAnalyticsPayload {
