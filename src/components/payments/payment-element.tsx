@@ -9,7 +9,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
-import { LoaderCircle } from 'lucide-react';
+import { mountPaymentElement } from './payment-element-lifecycle';
+import { PaymentLoadingSkeleton } from './payment-loading-skeleton';
 
 export interface PaymentElementProps {
   elements: StripeElements | null;
@@ -18,6 +19,9 @@ export interface PaymentElementProps {
   className?: string;
   ariaLabel?: string;
   loadingLabel?: string;
+  onReady?: () => void;
+  onLoadError?: (code: string) => void;
+  onRetry?: () => void;
 }
 
 export function PaymentElement({
@@ -26,43 +30,65 @@ export function PaymentElement({
   className = '',
   ariaLabel = 'Secure payment details',
   loadingLabel = 'Loading secure payment…',
+  onReady,
+  onLoadError,
+  onRetry,
 }: PaymentElementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const callbacksRef = useRef({ onReady, onLoadError });
+
+  useEffect(() => {
+    callbacksRef.current = { onReady, onLoadError };
+  }, [onReady, onLoadError]);
 
   useEffect(() => {
     if (!elements || !containerRef.current) return;
-    let cancelled = false;
-    const paymentElement = elements.create('payment', {
-      layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: true },
-      ...options,
-    });
-    paymentElement.mount(containerRef.current);
-    paymentElement.on('ready', () => {
-      if (!cancelled) setMounted(true);
+    const dispose = mountPaymentElement({
+      elements,
+      container: containerRef.current,
+      options,
+      onReady: () => {
+        setMounted(true);
+        callbacksRef.current.onReady?.();
+      },
+      onLoadError: (code) => {
+        setMounted(false);
+        setLoadError(code);
+        callbacksRef.current.onLoadError?.(code);
+      },
     });
     return () => {
-      cancelled = true;
-      try {
-        paymentElement.unmount();
-        paymentElement.destroy();
-      } catch {
-        // element already destroyed with the elements instance
-      }
+      dispose();
       setMounted(false);
+      setLoadError(null);
     };
   }, [elements, options]);
 
   return (
-    <div className={`relative ${className}`}>
-      <div id="payment-element" ref={containerRef} aria-label={ariaLabel} />
-      {!mounted && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-md border border-border/60 bg-background/60">
-          <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
-            {loadingLabel}
-          </span>
+    <div className={`relative ${loadError ? '' : 'min-h-[216px]'} ${className}`}>
+      {/* Preserve the iframe's dimensions while the skeleton occupies normal flow. */}
+      <div
+        id="payment-element"
+        ref={containerRef}
+        aria-label={ariaLabel}
+        aria-hidden={!mounted || Boolean(loadError)}
+        inert={!mounted || Boolean(loadError)}
+        hidden={Boolean(loadError)}
+        className={mounted ? 'static opacity-100' : 'pointer-events-none absolute inset-0 opacity-0'}
+      />
+      {loadError ? (
+        <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p>Não foi possível carregar o formulário de pagamento. Tente novamente.</p>
+          {onRetry && (
+            <button type="button" onClick={onRetry} className="mt-3 rounded-md border border-current px-3 py-2 text-sm font-medium">
+              Tentar novamente
+            </button>
+          )}
         </div>
+      ) : !mounted && (
+        <PaymentLoadingSkeleton label={loadingLabel} />
       )}
     </div>
   );

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { StripePaymentElementOptions } from '@stripe/stripe-js';
+import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
 import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
+import { PaymentLoadingSkeleton } from '@/components/payments/payment-loading-skeleton';
 import { ExpressCheckout } from '@/components/payments/express-checkout';
 import {
   PROMO_CODES,
@@ -78,6 +79,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const [paySubmitting, setPaySubmitting] = useState(false);
   const paySubmittingRef = useRef(false);
+  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error' } | null>(null);
+  const elementStartedAt = useRef(0);
   const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
   const shippingQuoteTimer = useRef<number | null>(null);
 
@@ -152,7 +155,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     form.postalCode.trim().length > 0;
 
   const payload = useMemo(
-    () => cart.lines.length > 0
+    () => draftHydrated && cart.lines.length > 0
       ? {
           // Keep the Stripe Elements session stable while contact fields are typed.
           email: '',
@@ -175,6 +178,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       : null,
     [
       cart.lines,
+      draftHydrated,
       cart.promoCode,
       form.country,
       trackingParameters,
@@ -198,7 +202,17 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     onComplete: finishOrder,
     locale: 'pt',
     returnPath: `${checkoutPath}/sucesso`,
+    prepareDelayMs: 0,
+    onPreparationEvent: ({ stage, status, durationMs, reason }) => {
+      trackOfferEvent('checkout_payment_loading', { offerSlug, stage, status, duration_ms: durationMs, reason });
+      if (stage === 'stripe' && status === 'ready') {
+        elementStartedAt.current = Date.now();
+        trackOfferEvent('checkout_payment_loading', { offerSlug, stage: 'element', status: 'started', duration_ms: 0 });
+      }
+    },
   });
+  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
+  const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
 
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,7 +227,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       return;
     }
     if (paySubmittingRef.current) return;
-    if (session.phase !== 'ready' || !session.elements) {
+    if (session.phase !== 'ready' || !session.elements || !paymentReady) {
       trackOfferEvent('checkout_blocked', { offerSlug, stage: 'payment_not_ready' });
       return;
     }
@@ -328,11 +342,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const payDisabled =
     paySubmitting ||
     !detailsValid ||
-    session.phase === 'preparing' ||
-    session.phase === 'confirming' ||
-    session.phase === 'unavailable' ||
-    session.phase === 'error' ||
-    (detailsValid && session.phase === 'idle');
+    session.phase !== 'ready' ||
+    !paymentReady;
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-4 py-5 font-sans text-[#18181b] sm:px-6 sm:py-7 lg:py-9">
@@ -414,14 +425,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               {t('checkout.secureDesc')}
             </p>
 
-            {detailsValid && session.phase === 'unavailable' && (
-              <div className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
-                <p className="text-[12.5px] leading-relaxed text-muted-foreground">{t('checkout.paymentUnavailable')}</p>
-              </div>
-            )}
-
-            {detailsValid && session.phase === 'error' && (
-              <div className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
+            {(session.phase === 'error' || session.phase === 'unavailable') && (
+              <div role="alert" className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">
                   {session.errorMessage ?? t('checkout.errorPayment')}
                 </p>
@@ -432,14 +437,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 >
                   {t('checkout.paymentRetry')}
                 </button>
+                <button type="button" onClick={() => window.location.reload()} className="ml-4 text-[12.5px] underline underline-offset-2">
+                  Recarregar página
+                </button>
               </div>
             )}
 
-            {(session.phase === 'preparing' || (session.phase === 'idle' && detailsValid)) && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-4 py-4 text-[13px] text-[#70707a]">
-                <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2} />
-                {t('checkout.paymentInitializing')}
-              </div>
+            {!session.elements && (session.phase === 'preparing' || session.phase === 'idle') && (
+              <PaymentLoadingSkeleton className="mt-4" label="A carregar as opções de pagamento seguro…" />
             )}
 
             {session.elements && (
@@ -477,6 +482,15 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   className="mt-3"
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
+                  onReady={() => {
+                    setPaymentElementState({ elements: session.elements!, status: 'ready' });
+                    trackOfferEvent('checkout_payment_loading', { offerSlug, stage: 'element', status: 'ready', duration_ms: Date.now() - elementStartedAt.current });
+                  }}
+                  onLoadError={(reason) => {
+                    setPaymentElementState({ elements: session.elements!, status: 'error' });
+                    trackOfferEvent('checkout_payment_loading', { offerSlug, stage: 'element', status: 'error', duration_ms: Date.now() - elementStartedAt.current, reason });
+                  }}
+                  onRetry={session.retry}
                 />
               </>
             )}
@@ -488,12 +502,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             >
               {paySubmitting || session.phase === 'confirming' ? (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
+              ) : session.phase === 'error' || session.phase === 'unavailable' || paymentLoadFailed ? (
+                'Pagamento indisponível — tente novamente acima'
               ) : !detailsValid ? (
                 <><Lock className="h-4 w-4" strokeWidth={2} /> Preencha os dados para continuar</>
-              ) : session.phase === 'ready' ? (
+              ) : session.phase === 'ready' && paymentReady ? (
                 <><Lock className="h-4 w-4" strokeWidth={2} /> Pagar {formatPrice(money(total))}</>
-              ) : session.phase === 'unavailable' ? (
-                <><Lock className="h-4 w-4" strokeWidth={2} /> {t('checkout.paymentUnavailableShort')}</>
               ) : (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.paymentInitializing')}</>
               )}

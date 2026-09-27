@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import type { StripeElements } from '@stripe/stripe-js';
 import { Gift, Lock, LoaderCircle, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,7 @@ import { useCart } from '@/lib/cart-store';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
+import { PaymentLoadingSkeleton } from '@/components/payments/payment-loading-skeleton';
 import { ExpressCheckout } from '@/components/payments/express-checkout';
 import { PaymentBrandStrip } from '@/components/payments/payment-brand-strip';
 import {
@@ -37,6 +39,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const cart = useCart();
   const [mounted, setMounted] = useState(false);
+  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error' } | null>(null);
 
   const [form, setForm] = useState({
     email: '',
@@ -125,6 +128,8 @@ export default function CheckoutPage() {
   };
 
   const session = usePaymentSession({ payload, signature, onComplete: finishOrder });
+  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
+  const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
 
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +141,7 @@ export default function CheckoutPage() {
       toast({ title: t('checkout.toastEmpty'), variant: 'destructive' });
       return;
     }
-    if (session.phase !== 'ready') return;
+    if (session.phase !== 'ready' || !paymentReady) return;
 
     const result = await session.confirmPayment();
     if (!result.ok) {
@@ -184,7 +189,7 @@ export default function CheckoutPage() {
     </div>
   );
 
-  const payDisabled = session.phase !== 'ready' || !form.termsAccepted;
+  const payDisabled = session.phase !== 'ready' || !paymentReady || !form.termsAccepted;
 
   return (
     <div className="container-ecom py-8 lg:py-12">
@@ -364,13 +369,7 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            {detailsValid && session.phase === 'unavailable' && (
-              <div className="mt-4 rounded-md border border-terracotta/30 bg-terracotta/5 px-4 py-3">
-                <p className="text-[12.5px] leading-relaxed text-muted-foreground">{session.errorMessage ?? t('checkout.paymentUnavailable')}</p>
-              </div>
-            )}
-
-            {detailsValid && session.phase === 'error' && (
+            {detailsValid && (session.phase === 'error' || session.phase === 'unavailable') && (
               <div className="mt-4 rounded-md border border-terracotta/30 bg-terracotta/5 px-4 py-3">
                 <p className="text-[12.5px] leading-relaxed text-muted-foreground">{session.errorMessage ?? t('checkout.errorPayment')}</p>
                 <button
@@ -384,10 +383,7 @@ export default function CheckoutPage() {
             )}
 
             {(session.phase === 'preparing' || (session.phase === 'idle' && detailsValid)) && (
-              <div className="mt-4 flex items-center gap-2 rounded-md border border-border/70 bg-background/60 px-4 py-4 text-[12.5px] text-muted-foreground">
-                <LoaderCircle className="h-4 w-4 animate-spin" strokeWidth={2} />
-                {t('checkout.paymentInitializing')}
-              </div>
+              <PaymentLoadingSkeleton className="mt-4" label={t('checkout.paymentInitializing')} />
             )}
 
             {session.elements && (
@@ -413,7 +409,12 @@ export default function CheckoutPage() {
 
                 {/* Official Stripe Payment Element — all card + local
                     method UI (incl. MB WAY phone field, Multibanco flow) */}
-                <PaymentElement elements={session.elements} />
+                <PaymentElement
+                  elements={session.elements}
+                  onReady={() => setPaymentElementState({ elements: session.elements!, status: 'ready' })}
+                  onLoadError={() => setPaymentElementState({ elements: session.elements!, status: 'error' })}
+                  onRetry={session.retry}
+                />
 
                 {/* Compact brand strip — informational only; the
                     selectable methods are the Stripe Element's own */}
@@ -503,11 +504,11 @@ export default function CheckoutPage() {
                 <>
                   <LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.processing')}
                 </>
-              ) : session.phase === 'ready' ? (
+              ) : session.phase === 'ready' && paymentReady ? (
                 <>
                   <Lock className="h-4 w-4" strokeWidth={2} /> {t('checkout.pay', { amount: formatPrice(money(total)) })}
                 </>
-              ) : session.phase === 'unavailable' ? (
+              ) : session.phase === 'unavailable' || session.phase === 'error' || paymentLoadFailed ? (
                 <>
                   <Lock className="h-4 w-4" strokeWidth={2} /> {t('checkout.paymentUnavailableShort')}
                 </>
