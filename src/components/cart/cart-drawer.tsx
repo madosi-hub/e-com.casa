@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { AccessoryUpsell } from './accessory-upsell';
 import { AccessoryDetailModal } from './accessory-detail-modal';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Minus, Plus, ShoppingBag, Trash2, Lock } from 'lucide-react';
 import {
   Sheet,
@@ -24,6 +24,9 @@ import { cartStockLimit } from '@/lib/catalog/inventory';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { panelOfferPath, panelOfferSlugFromPathname } from '@/lib/offers/route-policy';
 import { trackOfferEvent } from '@/lib/offers/analytics';
+import { offerTrackingParameters } from '@/lib/offers/attribution';
+import { buildPanelCheckoutPayload, PANEL_CHECKOUT_COUNTRY } from '@/lib/offers/panel-checkout-payload';
+import { acquirePreparedOfferPayment, resetPreparedOfferPayment } from '@/lib/payments/offer-payment-preparation';
 
 export function CartDrawer() {
   const pathname = usePathname();
@@ -32,9 +35,38 @@ export function CartDrawer() {
   const isOpen = useCartDrawer((s) => s.isOpen);
   const setOpen = (v: boolean) => (v ? useCartDrawer.getState().open() : useCartDrawer.getState().close());
   const lines = useCart((s) => s.lines);
+  const promoCode = useCart((s) => s.promoCode);
+  const hydrated = useCart((s) => s.hydrated);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const [detailProduct, setDetailProduct] = useState<CatalogProduct | null>(null);
+  const hadHydratedItems = useRef(false);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (lines.length > 0) {
+      hadHydratedItems.current = true;
+    } else if (hadHydratedItems.current) {
+      hadHydratedItems.current = false;
+      resetPreparedOfferPayment();
+    }
+  }, [hydrated, lines.length]);
+
+  useEffect(() => {
+    if (!isOpen || !hydrated || !lines.length || !panelOfferSlug || pathname.replace(/\/+$/, '') !== panelOfferProductPath) return;
+    const timer = window.setTimeout(() => {
+      const payload = buildPanelCheckoutPayload(
+        lines,
+        promoCode,
+        PANEL_CHECKOUT_COUNTRY,
+        offerTrackingParameters(panelOfferSlug),
+      );
+      // A speculative failure stays silent; checkout can retry normally.
+      void acquirePreparedOfferPayment(payload).catch(() => undefined);
+    }, 650);
+    // Navigation and closing the drawer must preserve a preparation already started.
+    return () => window.clearTimeout(timer);
+  }, [isOpen, hydrated, lines, promoCode, panelOfferSlug, panelOfferProductPath, pathname]);
 
   const count = lines.reduce((a, l) => a + l.quantity, 0);
   const subtotal = lines.reduce((a, l) => a + parseFloat(l.price) * l.quantity, 0);

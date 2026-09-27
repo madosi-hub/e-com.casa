@@ -6,12 +6,16 @@ import ts from 'typescript';
 const source = ts.transpileModule(fs.readFileSync('src/hooks/use-payment-session.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+const preparationSource = ts.transpileModule(fs.readFileSync('src/lib/payments/offer-payment-preparation.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
 
 const payload = {
   email: 'buyer@example.test', firstName: 'Buyer', lastName: 'Test', address: 'Street 1',
   city: 'Lisboa', postalCode: '1000-001', country: 'PT', shippingMethod: 'standard',
   giftWrap: false, marketingConsent: false, items: [{ slug: 'panel', quantity: 1 }],
 };
+const offerPayload = { ...payload, email: '', firstName: '', lastName: '', address: '', city: '', postalCode: '' };
 
 function deferred() {
   let resolve;
@@ -37,6 +41,7 @@ function fixture({ fetchMock, stripeMock, options = {} } = {}) {
   let timerId = 0;
   let cursor = 0;
   let dirty = true;
+  let started = false;
   let unmounted = false;
   let writesAfterUnmount = 0;
   let current;
@@ -122,25 +127,31 @@ function fixture({ fetchMock, stripeMock, options = {} } = {}) {
     react,
     '@/lib/payments/stripe-elements': { getStripe, ELEMENTS_APPEARANCE: {} },
   };
-  const compiled = { exports: {} };
-  new Function('require', 'module', 'exports', 'fetch', 'setTimeout', 'clearTimeout', 'AbortSignal', 'sessionStorage', 'window', 'Date', source)(
-    id => { assert.ok(id in mocks, `Unmocked dependency: ${id}`); return mocks[id]; },
-    compiled, compiled.exports, fetch, setTimer, clearTimer, timedSignal,
-    { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-    { location: { origin: 'https://example.test' } }, { now: () => now },
-  );
+  const browserStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
+  function load(code) {
+    const compiled = { exports: {} };
+    new Function('require', 'module', 'exports', 'fetch', 'setTimeout', 'clearTimeout', 'AbortSignal', 'sessionStorage', 'window', 'Date', code)(
+      id => { assert.ok(id in mocks, `Unmocked dependency: ${id}`); return mocks[id]; },
+      compiled, compiled.exports, fetch, setTimer, clearTimer, timedSignal, browserStorage,
+      { location: { origin: 'https://example.test' }, sessionStorage: browserStorage }, { now: () => now },
+    );
+    return compiled.exports;
+  }
+  const preparation = load(preparationSource);
+  mocks['@/lib/payments/offer-payment-preparation'] = preparation;
+  const hook = load(source);
 
   function render() {
-    if (unmounted || !dirty) return;
+    if (!started || unmounted || !dirty) return;
     cursor = 0;
     dirty = false;
-    current = compiled.exports.usePaymentSession(props);
+    current = hook.usePaymentSession(props);
     while (effects.length) effects.shift()();
   }
   async function flush() {
     // Fetch, Response.json, Stripe and hook continuations have several promise
     // boundaries. Drain them without advancing the simulated wall clock.
-    for (let i = 0; i < 40; i++) { render(); await Promise.resolve(); }
+    for (let i = 0; i < 80; i++) { render(); await Promise.resolve(); }
     render();
   }
   async function advance(milliseconds) {
@@ -161,10 +172,11 @@ function fixture({ fetchMock, stripeMock, options = {} } = {}) {
     get current() { return current; },
     get writesAfterUnmount() { return writesAfterUnmount; },
     get now() { return now; },
-    requests, stripeCalls, stripe, confirmCalls, completed, diagnostics, timers,
+    requests, stripeCalls, stripe, confirmCalls, completed, diagnostics, timers, storage, preparation,
+    resetCheckoutToken: hook.resetCheckoutToken,
     flush, advance,
     async update(next) { props = { ...props, ...next }; dirty = true; await flush(); },
-    async start() { await advance(0); },
+    async start() { started = true; await advance(0); },
     unmount() { unmounted = true; for (const slot of slots) slot?.cleanup?.(); },
   };
 }
@@ -257,6 +269,7 @@ test('a new payload object with the same signature cannot strand pending prepara
   await f.start();
   assert.equal(f.current.phase, 'ready');
   assert.equal(f.requests.length, requestCount, 'A settled unchanged checkout does not prepare again');
+  assert.equal((await f.current.syncOrder(payload)).ok, true, 'The unchanged ready session must remain usable');
 });
 
 for (const delayedPath of ['/api/checkout/create', '/api/payments/create-intent']) {
@@ -380,4 +393,170 @@ test('a successful browser result navigates with the existing order and token', 
   assert.equal(returnUrl.origin, 'https://example.test');
   assert.equal(returnUrl.searchParams.get('order'), 'ORDER-A');
   assert.equal(returnUrl.searchParams.get('token'), 'token-fixture');
+});
+
+test('offer checkout reuses a completed cart preparation and its token when saving delivery', async () => {
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true } });
+  const prepared = await f.preparation.acquirePreparedOfferPayment(offerPayload);
+  assert.equal(f.requests.length, 2);
+  // A generic checkout token is intentionally unrelated to the prepared offer.
+  f.storage.set('ecom-checkout-token', 'foreign-checkout-token');
+  await f.start();
+  assert.equal(f.current.phase, 'ready');
+  assert.equal(f.requests.length, 2, 'Entering checkout must not repeat completed order/intent requests');
+  assert.equal(f.current.elements.clientSecret, prepared.clientSecret);
+  assert.equal((await f.current.syncOrder(payload)).ok, true);
+  const saved = f.requests.at(-1);
+  assert.equal(saved.data.draft, false);
+  assert.equal(saved.data.checkoutToken, prepared.checkoutToken);
+  assert.equal(saved.headers['Idempotency-Key'], prepared.checkoutToken);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+test('offer checkout joins cart preparation already in flight without another POST', async () => {
+  const intent = deferred();
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+    return url === '/api/payments/create-intent' ? intent.promise : normal(url, config);
+  } });
+  const prefetched = f.preparation.acquirePreparedOfferPayment(offerPayload);
+  await f.flush();
+  assert.equal(f.requests.length, 2);
+  await f.start();
+  assert.equal(f.current.phase, 'preparing');
+  assert.equal(f.requests.length, 2);
+  intent.resolve(Response.json({ clientSecret: 'intent-shared', publishableKey: 'pk_test_fixture', methods: [] }));
+  const prepared = await prefetched;
+  await f.flush();
+  assert.equal(f.current.phase, 'ready');
+  assert.equal(f.current.elements.clientSecret, prepared.clientSecret);
+  assert.equal(f.requests.length, 2);
+  assert.equal(f.stripeCalls.length, 1);
+});
+
+test('explicit offer retry refreshes even a valid shared cache while preserving idempotency', async () => {
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true } });
+  const prefetched = await f.preparation.acquirePreparedOfferPayment(offerPayload);
+  await f.start();
+  assert.equal(f.current.phase, 'ready');
+  assert.equal(f.requests.length, 2);
+  f.current.retry();
+  await f.start();
+  assert.equal(f.current.phase, 'ready');
+  assert.equal(f.requests.length, 4);
+  const orders = f.requests.filter(request => request.data.draft === true);
+  assert.equal(orders.length, 2);
+  assert.equal(orders[1].headers['Idempotency-Key'], prefetched.checkoutToken);
+  assert.equal(orders[1].data.checkoutToken, prefetched.checkoutToken);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+for (const returnToOriginal of [false, true]) {
+  test(`changing the cart ${returnToOriginal ? 'A → B → A' : 'A → B'} while saving delivery prevents stale confirmation`, async () => {
+    const saving = deferred();
+    const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+      if (url === '/api/checkout/create' && JSON.parse(config.body).draft === false) return saving.promise;
+      return normal(url, config);
+    } });
+    await f.start();
+    assert.equal(f.current.phase, 'ready');
+    const oldConfirmation = f.current.confirmPayment;
+    const confirming = oldConfirmation();
+    await f.flush();
+    assert.equal(f.requests.at(-1).data.draft, false);
+    await f.update({ signature: 'cart-b', payload: { ...offerPayload, items: [{ slug: 'panel', quantity: 2 }] } });
+    await f.start();
+    assert.equal(f.current.phase, 'ready');
+    if (returnToOriginal) {
+      await f.update({ signature: 'cart-a', payload: offerPayload });
+      await f.start();
+      assert.equal(f.current.phase, 'ready');
+    }
+    saving.resolve(Response.json({ orderNumber: 'ORDER-A', accessToken: 'token-fixture', pricingHash: 'price-a' }));
+    assert.equal((await confirming).ok, false);
+    assert.equal((await oldConfirmation()).ok, false, 'A stale event callback must not confirm the current cart either');
+    await f.flush();
+    assert.equal(f.confirmCalls.length, 0);
+    assert.deepEqual(f.completed, []);
+    assert.equal(f.current.phase, 'ready');
+  });
+}
+
+test('unmounting the offer consumer preserves shared preparation and suppresses its late state updates', async () => {
+  const intent = deferred();
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+    return url === '/api/payments/create-intent' ? intent.promise : normal(url, config);
+  } });
+  await f.start();
+  assert.equal(f.current.phase, 'preparing');
+  const sharedRequest = f.requests.find(request => request.url === '/api/payments/create-intent');
+  assert.ok(sharedRequest);
+  f.unmount();
+  assert.equal(sharedRequest.signal.aborted, false);
+  intent.resolve(Response.json({ clientSecret: 'intent-shared', publishableKey: 'pk_test_fixture', methods: [] }));
+  await f.flush();
+  assert.equal(f.writesAfterUnmount, 0);
+  assert.equal(f.stripeCalls.length, 0);
+  assert.equal(sharedRequest.signal.aborted, false);
+  const prepared = await f.preparation.acquirePreparedOfferPayment(offerPayload);
+  assert.equal(prepared.clientSecret, 'intent-shared');
+  assert.equal(f.requests.length, 2);
+});
+
+test('a changed server price disables stale Elements and explicit retry prepares a fresh payment', async () => {
+  let price = 'price-a';
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+    if (url === '/api/checkout/create') return Response.json({ orderNumber: 'ORDER-A', accessToken: 'token-fixture', pricingHash: price });
+    return normal(url, config);
+  } });
+  await f.start();
+  const oldElements = f.current.elements;
+  price = 'price-b';
+  assert.equal((await f.current.syncOrder(payload)).ok, false);
+  await f.flush();
+  assert.equal(f.current.phase, 'error');
+  assert.equal(f.current.elements, null);
+  assert.equal(f.current.stripe, null);
+  assert.equal((await f.current.confirmPayment()).ok, false);
+  assert.equal(f.confirmCalls.length, 0);
+  assert.equal(f.requests.filter(request => request.url === '/api/payments/create-intent').length, 1);
+  f.current.retry();
+  await f.start();
+  assert.equal(f.current.phase, 'ready');
+  assert.notEqual(f.current.elements, oldElements);
+  assert.equal(f.requests.filter(request => request.data.draft === true).length, 2);
+  assert.equal(f.requests.filter(request => request.url === '/api/payments/create-intent').length, 2);
+  assert.equal((await f.current.syncOrder(payload)).ok, true);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+test('resetCheckoutToken clears shared offer preparation as well as the generic token', async () => {
+  const f = fixture();
+  const first = await f.preparation.acquirePreparedOfferPayment(offerPayload);
+  f.storage.set('ecom-checkout-token', 'generic-checkout-token');
+  f.resetCheckoutToken();
+  assert.equal(f.storage.has('ecom-checkout-token'), false);
+  const second = await f.preparation.acquirePreparedOfferPayment(offerPayload);
+  assert.notEqual(second.checkoutToken, first.checkoutToken);
+  assert.equal(f.requests.length, 4);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+test('a shared preparation error is recoverable by explicit retry without confirming payment', async () => {
+  let fail = true;
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+    if (fail && url === '/api/payments/create-intent') return Response.json({ error: 'fixture_unavailable' }, { status: 503 });
+    return normal(url, config);
+  } });
+  await f.start();
+  assert.equal(f.current.phase, 'unavailable');
+  assert.equal(f.current.elements, null);
+  assert.equal(f.current.errorCode, 'PAYMENT_CONFIGURATION_ERROR');
+  assert.ok(f.current.errorMessage);
+  assert.equal(f.requests.length, 2);
+  fail = false;
+  f.current.retry();
+  await f.start();
+  assert.equal(f.current.phase, 'ready');
+  assert.equal(f.requests.length, 4);
+  assert.equal(f.confirmCalls.length, 0);
 });
