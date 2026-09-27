@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
-import { CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { ArrowUp, CheckCircle2, ChevronDown, Lock, LoaderCircle, Search, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -43,6 +43,21 @@ const t = (key: string, vars?: Record<string, string | number>) => {
   );
 };
 const CHECKOUT_DRAFT_KEY = 'ecom-painel-ripado-checkout-draft';
+const DELIVERY_FIELDS = ['firstName', 'email', 'address', 'city', 'postalCode'] as const;
+const DELIVERY_REQUIRED_MESSAGES: Record<typeof DELIVERY_FIELDS[number], string> = {
+  firstName: 'Preencha o seu nome completo.',
+  email: 'Preencha o seu e-mail.',
+  address: 'Preencha a morada de entrega.',
+  city: 'Preencha a localidade de entrega.',
+  postalCode: 'Preencha o código postal de entrega.',
+};
+function deliveryFieldError(name: string, value: string): string {
+  if (!value.trim()) return DELIVERY_REQUIRED_MESSAGES[name as keyof typeof DELIVERY_REQUIRED_MESSAGES] ?? '';
+  if (name === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+    return 'Introduza um endereço de e-mail válido.';
+  }
+  return '';
+}
 const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
   layout: {
     type: 'accordion',
@@ -77,6 +92,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     country: 'PT',
   });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
+  const deliverySectionRef = useRef<HTMLElement>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const paySubmittingRef = useRef(false);
   const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error' } | null>(null);
@@ -147,12 +163,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   // Real payment session
   // The draft can prepare payment before contact and delivery are filled in.
-  const detailsValid =
-    form.email.includes('@') &&
-    form.firstName.trim().length > 0 &&
-    form.address.trim().length > 0 &&
-    form.city.trim().length > 0 &&
-    form.postalCode.trim().length > 0;
+  const detailsValid = DELIVERY_FIELDS.every((name) => !deliveryFieldError(name, form[name]));
 
   const payload = useMemo(
     () => draftHydrated && cart.lines.length > 0
@@ -214,6 +225,38 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
   const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
 
+  const validateField = (name: keyof typeof form, input: HTMLInputElement) => {
+    const message = deliveryFieldError(name, input.value) ||
+      (input.validity.typeMismatch ? 'Introduza um endereço de e-mail válido.' : '');
+    setFieldErrors((current) => ({ ...current, [name]: message }));
+  };
+
+  const reviewDeliveryDetails = () => {
+    if (paySubmittingRef.current || session.phase === 'confirming') return;
+    const errors: Partial<Record<keyof typeof form, string>> = {};
+    let firstInvalid: HTMLInputElement | null = null;
+    for (const name of DELIVERY_FIELDS) {
+      const input = deliverySectionRef.current?.querySelector<HTMLInputElement>(`#co-${name}`);
+      const message = deliveryFieldError(name, input?.value ?? form[name]) ||
+        (input?.validity.typeMismatch ? 'Introduza um endereço de e-mail válido.' : '');
+      errors[name] = message;
+      if (message && input && !firstInvalid) firstInvalid = input;
+    }
+    setFieldErrors(errors);
+    if (firstInvalid) {
+      const input = firstInvalid;
+      // Let the inline error render before focusing its associated input.
+      window.requestAnimationFrame(() => {
+        if (!input.isConnected) return;
+        input.focus({ preventScroll: true });
+        input.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'center',
+        });
+      });
+    }
+  };
+
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.lines.length === 0) {
@@ -223,7 +266,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     }
     if (!detailsValid) {
       trackOfferEvent('checkout_blocked', { offerSlug, stage: 'delivery_details' });
-      toast({ title: t('checkout.completeDetails'), variant: 'destructive' });
+      reviewDeliveryDetails();
       return;
     }
     if (paySubmittingRef.current) return;
@@ -296,15 +339,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     );
   }
 
-  const validateField = (name: keyof typeof form, input: HTMLInputElement) => {
-    const message = input.required && !input.value.trim()
-      ? 'Preencha este campo para continuar.'
-      : input.validity.typeMismatch
-        ? 'Introduza um endereço de e-mail válido.'
-        : '';
-    setFieldErrors((current) => ({ ...current, [name]: message }));
-  };
-
   const field = (
     name: keyof typeof form,
     label: string,
@@ -341,9 +375,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   const payDisabled =
     paySubmitting ||
-    !detailsValid ||
-    session.phase !== 'ready' ||
-    !paymentReady;
+    session.phase === 'confirming' ||
+    (detailsValid && (session.phase !== 'ready' || !paymentReady));
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-4 py-5 font-sans text-[#18181b] sm:px-6 sm:py-7 lg:py-9">
@@ -356,7 +389,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         {/* Left: details */}
           {/* Shipping address */}
         <div className="order-2 space-y-4">
-          <section aria-labelledby="co-delivery-title" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
+          <section ref={deliverySectionRef} aria-labelledby="co-delivery-title" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
             <div className="flex items-start gap-3">
               <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black text-[12px] font-bold text-white">1</span>
               <div className="min-w-0">
@@ -496,22 +529,29 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             )}
 
             <button
-              type="submit"
+              type={detailsValid ? 'submit' : 'button'}
+              onClick={detailsValid ? undefined : reviewDeliveryDetails}
               disabled={payDisabled}
+              aria-describedby={!detailsValid ? 'co-delivery-help' : undefined}
               className="mt-5 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[16px] bg-[#201a17] px-4 py-3 text-[14px] font-medium text-white transition-colors hover:bg-[#352d28] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {paySubmitting || session.phase === 'confirming' ? (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
+              ) : !detailsValid ? (
+                <><ArrowUp className="h-4 w-4" strokeWidth={2} /> Rever dados de entrega</>
               ) : session.phase === 'error' || session.phase === 'unavailable' || paymentLoadFailed ? (
                 'Pagamento indisponível — tente novamente acima'
-              ) : !detailsValid ? (
-                <><Lock className="h-4 w-4" strokeWidth={2} /> Preencha os dados para continuar</>
               ) : session.phase === 'ready' && paymentReady ? (
                 <><Lock className="h-4 w-4" strokeWidth={2} /> Pagar {formatPrice(money(total))}</>
               ) : (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.paymentInitializing')}</>
               )}
             </button>
+            {!detailsValid && (
+              <p id="co-delivery-help" className="mt-2 text-center text-[12px] leading-5 text-muted-foreground">
+                Complete o seu nome, e-mail e morada na secção “Dados de entrega”.
+              </p>
+            )}
             <p className="mt-3 flex items-center justify-center gap-1.5 text-[11.5px] text-muted-foreground">
               <ShieldCheck className="h-3.5 w-3.5 text-olive" strokeWidth={1.5} />
               {t('checkout.payNote')}
