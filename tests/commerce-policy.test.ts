@@ -13,11 +13,11 @@ const startsAt = '2026-09-01T00:00:00.000Z';
 const endsAt = '2026-10-01T00:00:00.000Z';
 
 test('provider snapshot excludes sample records and keeps expected catalogue shape', () => {
-  expect(products).toHaveLength(355);
+  expect(products).toHaveLength(358);
   expect(products.some((item) => item.categorySlug === 'amostras' || /amostra|sample/i.test(item.name))).toBe(false);
-  expect(products.filter((item) => item.categorySlug === 'acessorios-instalacao')).toHaveLength(203);
+  expect(products.filter((item) => item.categorySlug === 'acessorios-instalacao')).toHaveLength(206);
   const nuralta = products.filter((item) => item.supplierKey === 'nuralta');
-  expect(nuralta).toHaveLength(3);
+  expect(nuralta).toHaveLength(6);
   expect(nuralta.find((item) => item.slug === 'nuralta-painel-ripado-decorativo')?.variants).toHaveLength(21);
 });
 

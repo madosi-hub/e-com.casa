@@ -7,21 +7,22 @@ import type { CatalogProduct } from '@/lib/catalog/types';
 import { useCart } from '@/lib/cart-store';
 import { cartStockLimit } from '@/lib/catalog/inventory';
 import { formatPrice } from '@/lib/format';
-
-const NURALTA_ACCESSORY_SLUGS = ['nuralta-kit-instalacao-completo', 'nuralta-fita-led-rgb-3m'];
+import { getNuraltaAccessoryPresentation, NURALTA_ACCESSORY_SLUGS, NURALTA_KIT_SLUG } from '@/lib/catalog/nuralta-accessories';
 
 function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct[] }) {
   const add = useCart(s => s.add);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [detailProduct, setDetailProduct] = useState<CatalogProduct | null>(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let live = true;
-    Promise.all(NURALTA_ACCESSORY_SLUGS.map(slug => fetch(`/api/products/${slug}`).then(r => r.ok ? r.json() : null).catch(() => null)))
-      .then(rows => { if (live) setProducts(rows.map(row => row?.product).filter(Boolean)); });
+    fetch(`/api/products/${NURALTA_KIT_SLUG}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      .then(row => { if (live) { setProducts(row?.product ? [row.product] : []); setLoading(false); } });
     return () => { live = false; };
   }, []);
 
   function addAccessory(product: CatalogProduct) {
+    if (!product.canPurchase || product.variants[0]?.availability === 'outOfStock') return;
     const variant = product.variants[0];
     const cents = product.priceCents + (variant?.priceDeltaCents ?? 0);
     add({
@@ -40,32 +41,34 @@ function NuraltaAccessoryUpsell({ cartProducts }: { cartProducts: CatalogProduct
     });
   }
 
-  return <section className="my-4 rounded-xl border border-[#e6ded4] bg-[#fdfbf9] p-4" aria-label="Complete a sua instalação">
-    <h3 className="text-sm font-bold text-[#201a17]">Complete a sua instalação</h3>
+  if (!loading && !products.length) return null;
+
+  return <section className="my-4 rounded-xl border border-[#e6ded4] bg-[#fdfbf9] p-4" aria-label="Kit de instalação completo">
+    <h3 className="text-sm font-bold text-[#201a17]">Precisa do conjunto completo?</h3>
     <div className="mt-3 divide-y divide-[#e6ded4]">
-      {products.length === 0 && <p className="py-3 text-xs text-[#7d6f64]">A carregar acessórios Nuralta…</p>}
+      {loading && <p className="py-3 text-xs text-[#7d6f64]">A carregar o kit de instalação…</p>}
       {products.map(raw => {
         const product = applyBundleOffer(raw, cartProducts);
         const variant = product.variants[0];
         const cents = product.priceCents + (variant?.priceDeltaCents ?? 0);
         const regularCents = (product.regularPriceCents ?? product.priceCents) + (variant?.regularPriceDeltaCents ?? variant?.priceDeltaCents ?? 0);
-        const installation = product.slug.includes('kit-instalacao');
+        const copy = getNuraltaAccessoryPresentation(product.slug);
         return <article key={product.slug} className="py-4 first:pt-1 last:pb-1">
           <div className="flex gap-3">
             <button type="button" onClick={() => setDetailProduct(product)} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg" aria-label={`Ver fotos e detalhes de ${product.name}`}>
               <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-[.12em] text-[#8a5a2b]">{installation ? 'Para instalar' : 'Para realçar'}</p>
-              <h4 className="mt-0.5 text-sm font-semibold text-[#201a17]">{product.name.replace(' Nuralta', '')}</h4>
-              <p className="mt-0.5 text-xs text-[#7d6f64]">{installation ? '1 kit instala até 3 painéis' : 'Cor e intensidade ajustáveis'}</p>
+              <p className="text-[10px] uppercase tracking-[.12em] text-[#8a5a2b]">{copy?.eyebrow ?? 'Acessório'}</p>
+              <h4 className="mt-0.5 text-sm font-semibold text-[#201a17]">{copy?.name ?? product.name.replace(' Nuralta', '')}</h4>
+              <p className="mt-0.5 text-xs text-[#7d6f64]">{copy?.tagline ?? product.shortDescription}</p>
               <div className="mt-1 flex items-baseline gap-2">
                 <strong className="text-sm text-[#201a17]">+{formatPrice((cents / 100).toFixed(2))}</strong>
                 {cents < regularCents && <><span className="text-[11px] text-[#8d8178] line-through">{formatPrice((regularCents / 100).toFixed(2))}</span><span className="text-[10px] font-bold text-[#4d7d44]">−{product.promoDiscountPct}%</span></>}
               </div>
               <button type="button" onClick={() => setDetailProduct(product)} className="mt-1 text-xs font-semibold underline underline-offset-4">Ver fotos e detalhes</button>
             </div>
-            <button type="button" className="self-center rounded-full border border-[#201a17] px-3 py-2 text-xs font-semibold" onClick={() => addAccessory(product)}>+ Adicionar</button>
+            <button type="button" disabled={!product.canPurchase || variant?.availability === 'outOfStock'} className="min-h-11 self-center rounded-full border border-[#201a17] px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45" onClick={() => addAccessory(product)}>{product.canPurchase && variant?.availability !== 'outOfStock' ? '+ Adicionar' : 'Indisponível'}</button>
           </div>
         </article>;
       })}
@@ -91,7 +94,7 @@ export function AccessoryUpsell() {
   const product = raw ? applyBundleOffer(raw, cartProducts) : null;
   const variant = product?.variants.find(v => v.id === variantId) ?? product?.variants[0];
   const cents = product ? product.priceCents + (variant?.priceDeltaCents ?? 0) : 0;
-  const hasNuraltaProduct = cartProducts.some(product => product.slug === 'nuralta-painel-ripado-decorativo');
+  const hasNuraltaProduct = cartProducts.some(product => product.slug === 'nuralta-painel-ripado-decorativo' || NURALTA_ACCESSORY_SLUGS.some(slug => slug === product.slug));
   async function load() {
     if (loaded || loading) return;
     setLoading(true); setStatus('');

@@ -109,8 +109,7 @@ async function OrderContent({ orderNumber, token, offer }: { orderNumber: string
       order={data}
       token={token}
       language={painelRipado ? 'pt' : undefined}
-      deliveryWindow={painelRipado ? '6–12' : undefined}
-      deliveryMessage={painelRipado ? 'A entrega está prevista em 6 a 12 dias úteis após a confirmação do pagamento.' : undefined}
+      deliveryMessage={painelRipado ? 'Receberá as atualizações da entrega por e-mail.' : undefined}
       retryPath={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/checkout') : undefined}
       continuePath={panelOfferSlug ? panelOfferPath(panelOfferSlug) : undefined}
       continueLabel={painelRipado ? 'Voltar à oferta' : undefined}

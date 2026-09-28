@@ -1,0 +1,22 @@
+{"daily_pt" : [{"day":"2026-09-25","offer_sessions":132,"added_cart":27,"clicked_checkout":20,"checkout_sessions":23,"pay_click":10,"attempts":8,"errors":2,"blocked":1,"success_page":4,"meta_offer":128,"mobile_offer":129}, 
+ {"day":"2026-09-26","offer_sessions":188,"added_cart":30,"clicked_checkout":24,"checkout_sessions":28,"pay_click":10,"attempts":10,"errors":0,"blocked":4,"success_page":6,"meta_offer":182,"mobile_offer":186}, 
+ {"day":"2026-09-27","offer_sessions":319,"added_cart":39,"clicked_checkout":31,"checkout_sessions":33,"pay_click":15,"attempts":13,"errors":0,"blocked":6,"success_page":3,"meta_offer":307,"mobile_offer":314}]}
+{"since_last_audit" : {"offer_sessions" : 104, "add_cart" : 14, "checkout" : 14, "attempts" : 6, "errors" : 0, "blocked" : 2}}
+{"payment_payload_keys" : ["event", "idempotencyKey", "order", "tracking"]}
+{"payments_daily" : [{"day":"2026-09-25","currency":"EUR","paid_orders":4,"revenue":161.0000,"utmify_all_sent":false,"first_paid":"2026-09-25T08:50:57+00:00","last_paid":"2026-09-25T17:46:15+00:00"}, 
+ {"day":"2026-09-26","currency":"EUR","paid_orders":6,"revenue":261.0000,"utmify_all_sent":false,"first_paid":"2026-09-26T06:33:03+00:00","last_paid":"2026-09-26T21:04:01.35+00:00"}, 
+ {"day":"2026-09-27","currency":"EUR","paid_orders":4,"revenue":66.0000,"utmify_all_sent":true,"first_paid":"2026-09-27T09:59:36+00:00","last_paid":"2026-09-27T17:44:13.275+00:00"}]}
+{"paid_today" : [{"paid_at":"2026-09-27T09:59:36+00:00","amount":31.0000,"currency":"EUR","country":"PT","method":null,"source":"FB","utmify_status":"sent","utmify_http_status":200,"umami_status":"sent","has_panel":true}, 
+ {"paid_at":"2026-09-27T12:24:53.12+00:00","amount":10.0000,"currency":"EUR","country":"PT","method":null,"source":"FB","utmify_status":"sent","utmify_http_status":200,"umami_status":"sent","has_panel":true}, 
+ {"paid_at":"2026-09-27T14:36:14.362+00:00","amount":20.0000,"currency":"EUR","country":"PT","method":null,"source":"FB","utmify_status":"sent","utmify_http_status":200,"umami_status":"sent","has_panel":true}, 
+ {"paid_at":"2026-09-27T17:44:13.275+00:00","amount":5.0000,"currency":"EUR","country":"PT","method":null,"source":"FB","utmify_status":"sent","utmify_http_status":200,"umami_status":"sent","has_panel":true}]}
+{"country_funnel" : [{"country":"PT","offer":319,"cart":39,"checkout":34,"attempts":13}, 
+ {"country":"BR","offer":4,"cart":1,"checkout":3,"attempts":0}, 
+ {"country":"FR","offer":3,"cart":1,"checkout":1,"attempts":0}]}
+{"meta_split" : [{"meta":false,"offer":12,"cart":2,"checkout":3,"attempts":0}, 
+ {"meta":true,"offer":307,"cart":37,"checkout":31,"attempts":13}]}
+{"checkout_dropoff" : {"checkout_sessions" : 34, "without_attempt" : 21, "blocked_sessions" : 6, "blocked_then_attempted" : 4, "blocked_without_attempt" : 2, "measured_without_attempt" : 9}}
+{"same_clock_window" : [{"day":"2026-09-26","offer":161,"cart":22,"checkout":22,"attempts":6}, 
+ {"day":"2026-09-27","offer":319,"cart":39,"checkout":34,"attempts":13}]}
+{"paid_same_clock_window" : [{"day":"2026-09-26","paid":1,"revenue":20.0000}, 
+ {"day":"2026-09-27","paid":4,"revenue":66.0000}]}

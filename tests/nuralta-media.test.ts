@@ -42,8 +42,8 @@ test('all Nuralta accessory media are bundled with the storefront', () => {
     .map((match) => match[1]);
   const missingMedia = referencedMedia.filter((mediaPath) => !existsSync(join(publicRoot, mediaPath)));
 
-  expect(referencedMedia).toHaveLength(9);
-  expect(new Set(referencedMedia).size).toBe(9);
+  expect(referencedMedia).toHaveLength(12);
+  expect(new Set(referencedMedia).size).toBe(12);
   expect(missingMedia).toEqual([]);
   expect(source).not.toContain('discordapp.com');
 });

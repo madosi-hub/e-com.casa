@@ -1,0 +1,6 @@
+{"period" : "2026-09-27 00:00-12:51 Europe/Lisbon", "cohorts" : [{"meta":true,"device":"mobile","sessions":161,"add_cart":22,"begin_checkout":16,"checkout":16,"pay_click":6,"attempt":5,"error":0,"blocked":4,"blocked_then_attempt":3}, 
+ {"meta":false,"device":"mobile","sessions":5,"add_cart":0,"begin_checkout":0,"checkout":0,"pay_click":0,"attempt":0,"error":0,"blocked":0,"blocked_then_attempt":0}]}
+{"paid_orders_in_period" : 1, "revenue_eur" : 31.0000, "utmify_all_sent" : true}
+{"daily_funnel_all_pt" : [{"day_lisbon":"2026-09-25","offer_sessions":132,"add_cart":30,"checkout_open":23,"pay_click":10,"pay_attempt":8,"pay_error":2}, 
+ {"day_lisbon":"2026-09-26","offer_sessions":188,"add_cart":35,"checkout_open":30,"pay_click":10,"pay_attempt":10,"pay_error":0}, 
+ {"day_lisbon":"2026-09-27","offer_sessions":166,"add_cart":22,"checkout_open":16,"pay_click":6,"pay_attempt":5,"pay_error":0}]}

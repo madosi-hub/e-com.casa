@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { formatPrice } from '@/lib/format';
-import { FREE_SHIPPING_THRESHOLD } from '@/lib/constants';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { cartStockLimit } from '@/lib/catalog/inventory';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
@@ -70,8 +69,7 @@ export function CartDrawer() {
 
   const count = lines.reduce((a, l) => a + l.quantity, 0);
   const subtotal = lines.reduce((a, l) => a + parseFloat(l.price) * l.quantity, 0);
-  const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-  const isAccessory = (slug: string) => slug === 'nuralta-kit-instalacao-completo' || slug === 'nuralta-fita-led-rgb-3m';
+  const isAccessory = (slug: string) => slug.startsWith('nuralta-') && slug !== 'nuralta-painel-ripado-decorativo';
   const openAccessoryDetail = async (slug: string) => {
     const response = await fetch(`/api/products/${encodeURIComponent(slug)}`);
     if (!response.ok) return;
@@ -182,11 +180,8 @@ export function CartDrawer() {
                 <span className="text-[17px] font-semibold tabular-nums">{formatPrice(subtotal.toFixed(2))}</span>
               </div>
               <p className="mt-1 text-[11.5px] text-muted-foreground">
-                {panelOfferSlug
-                  ? 'Portes grátis para Portugal Continental'
-                  : remaining > 0 ? 'Envio calculado no checkout' : 'Envio standard gratuito aplicado no checkout'}
+                Portes calculados antes do pagamento
               </p>
-              {panelOfferSlug && <p className="mt-1 text-[11.5px] text-muted-foreground">Entrega prevista em 6 a 12 dias úteis</p>}
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link
