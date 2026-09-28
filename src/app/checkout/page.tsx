@@ -37,8 +37,10 @@ import {
 const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = { wallets: { link: 'never' } };
 
 function checkoutLineLabel(line: { slug: string; name: string; quantity: number; variantLabel?: string | null }) {
-  const productName = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado') ? 'Ripado' : line.name;
-  const variantParts = line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
+  const isPanel = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado');
+  const isInstallationKit = line.slug === 'nuralta-kit-instalacao-completo';
+  const productName = isPanel ? 'Ripado' : isInstallationKit ? 'Kit de instalação' : line.name;
+  const variantParts = isInstallationKit ? [] : line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
   return [`${line.quantity}× ${productName}`, ...variantParts].join(' · ');
 }
 
@@ -486,7 +488,7 @@ export default function CheckoutPage() {
             <h2 className="font-display text-[19px] font-medium">{t('checkout.summary')}</h2>
             <ul className="mt-4 max-h-72 space-y-4 overflow-y-auto thin-scrollbar pr-1">
               {displayLines.map((l) => (
-                <li key={l.slug} className="flex gap-3">
+                <li key={`${l.slug}-${l.variantId ?? ''}`} className="flex gap-3">
                   <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-border/60">
                     <Image src={l.image} alt={l.name} fill sizes="64px" className="object-cover" />
                     <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink px-1 text-[10.5px] font-semibold text-cream">
@@ -494,9 +496,9 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-[13px] font-medium">{checkoutLineLabel(l)}</p>
+                    <p className="break-words text-[13px] font-medium">{checkoutLineLabel(l)}</p>
                   </div>
-                  <p className="text-[13px] font-semibold">{formatPrice(toNumber(l.price) * l.quantity)}</p>
+                  <p className="shrink-0 text-[13px] font-semibold tabular-nums">{formatPrice(toNumber(l.price) * l.quantity)}</p>
                 </li>
               ))}
             </ul>
@@ -513,10 +515,12 @@ export default function CheckoutPage() {
                   <dd>−{formatPrice(discount)}</dd>
                 </div>
               )}
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('checkout.shippingLabel', { method: (form.shippingMethod === 'standard' ? t('ship.standard') : t('ship.express')).toLowerCase() })}</dt>
-                <dd className="font-medium">{shipping === 0 ? <span className="text-olive">{t('common.free')}</span> : formatPrice(shipping)}</dd>
-              </div>
+              {shipping > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t('checkout.shippingLabel', { method: (form.shippingMethod === 'standard' ? t('ship.standard') : t('ship.express')).toLowerCase() })}</dt>
+                  <dd className="font-medium">{formatPrice(shipping)}</dd>
+                </div>
+              )}
               {form.giftWrap && (
                 <div className="flex justify-between text-terracotta">
                   <dt className="flex items-center gap-1.5">

@@ -52,8 +52,10 @@ const DELIVERY_REQUIRED_MESSAGES: Record<typeof DELIVERY_FIELDS[number], string>
   postalCode: 'Preencha o código postal de entrega.',
 };
 function checkoutLineLabel(line: { slug: string; name: string; quantity: number; variantLabel?: string | null }) {
-  const productName = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado') ? 'Ripado' : line.name;
-  const variantParts = line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
+  const isPanel = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado');
+  const isInstallationKit = line.slug === 'nuralta-kit-instalacao-completo';
+  const productName = isPanel ? 'Ripado' : isInstallationKit ? 'Kit de instalação' : line.name;
+  const variantParts = isInstallationKit ? [] : line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
   return [`${line.quantity}× ${productName}`, ...variantParts].join(' · ');
 }
 function deliveryFieldError(name: string, value: string): string {
@@ -589,26 +591,25 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
         {/* Order summary stays above the form and can be collapsed. */}
         <aside aria-label={t('checkout.summary')} className="order-1">
-          <details className={`${CHECKOUT_CARD_CLASS} overflow-hidden`}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 [&::-webkit-details-marker]:hidden sm:px-5">
-              <span className="min-w-0">
-                <span className="block text-[15px] font-semibold leading-5">Resumo da encomenda</span>
-                <span className="mt-1 inline-flex rounded-full bg-[#f2f2f4] px-2.5 py-1 text-[11px] font-normal leading-none text-[#666670]">
-                  {displayLines.reduce((sum, line) => sum + line.quantity, 0)} {displayLines.reduce((sum, line) => sum + line.quantity, 0) === 1 ? 'artigo' : 'artigos'}
-                </span>
-                <span className="mt-1 block max-w-[240px] truncate text-[11px] font-normal leading-4 text-[#777781]">
-                  {displayLines.map((line) => checkoutLineLabel(line)).join(' · ')}
+          <details className={`${CHECKOUT_CARD_CLASS} group overflow-hidden`}>
+            <summary className="cursor-pointer list-none px-4 py-4 [&::-webkit-details-marker]:hidden sm:px-5">
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-[15px] font-semibold leading-5">Resumo da encomenda</span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <strong className="text-[18px] font-semibold leading-tight">{formatPrice(money(total))}</strong>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-3">
-                <span className="text-right"><span className="block text-[10px] font-normal uppercase tracking-[.05em] text-[#8a8a94]">Total</span><strong className="block text-[20px] font-semibold leading-tight">{formatPrice(money(total))}</strong></span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform [details[open]_summary_&]:rotate-180" />
+              <span className="mt-2 block space-y-1 text-[12px] leading-5 text-[#5c5049] group-open:hidden">
+                {displayLines.map((line) => (
+                  <span key={`${line.slug}-${line.variantId ?? ''}`} className="block break-words">{checkoutLineLabel(line)}</span>
+                ))}
               </span>
             </summary>
             <div className="border-t border-[#e2e2e5] px-4 pb-4 pt-3 sm:px-5">
             <ul className="mt-3 max-h-64 space-y-3 overflow-y-auto thin-scrollbar pr-1">
               {displayLines.map((l) => (
-                <li key={l.slug} className="flex gap-3">
+                <li key={`${l.slug}-${l.variantId ?? ''}`} className="flex gap-3">
                   <div className="relative h-14 w-14 shrink-0">
                     <div className="absolute inset-0 overflow-hidden rounded-lg border border-[#dedfe3]">
                       <Image src={nuraltaCartImage(l.slug, l.image)} alt={l.name} fill sizes="56px" className="object-cover" />
@@ -618,9 +619,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-[13px] font-medium leading-5 text-[#18181b]">{checkoutLineLabel(l)}</p>
+                    <p className="break-words text-[13px] font-medium leading-5 text-[#18181b]">{checkoutLineLabel(l)}</p>
                   </div>
-                  <p className="text-[13px] font-medium">{formatPrice(toNumber(l.price) * l.quantity)}</p>
+                  <p className="shrink-0 text-[13px] font-medium tabular-nums">{formatPrice(toNumber(l.price) * l.quantity)}</p>
                 </li>
               ))}
             </ul>
@@ -636,10 +637,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   <dd>−{formatPrice(discount)}</dd>
                 </div>
               )}
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">Entrega por CTT</dt>
-                <dd className="font-medium">{shipping === 0 ? <span className="text-olive">{t('common.free')}</span> : formatPrice(shipping)}</dd>
-              </div>
+              {shipping > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Entrega</dt>
+                  <dd className="font-medium">{formatPrice(shipping)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">{t('checkout.vat')}</dt>
                 <dd className="text-muted-foreground">{t('checkout.vatIncludedNote')}</dd>
