@@ -101,6 +101,11 @@ export default function CheckoutPage() {
   const shipping = shippingPrice(form.country, subtotal - discount, option.id);
   const giftWrapFee = form.giftWrap ? GIFT_WRAP_PRICE : 0;
   const total = Math.max(0, subtotal - discount + shipping + giftWrapFee);
+  const paymentEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? form.email.trim() : undefined;
+  const paymentElementOptions = useMemo<StripePaymentElementOptions>(() => ({
+    ...PAYMENT_ELEMENT_OPTIONS,
+    defaultValues: { billingDetails: { email: paymentEmail } },
+  }), [paymentEmail]);
 
   const set = (key: keyof typeof form, value: string | boolean) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -445,7 +450,7 @@ export default function CheckoutPage() {
                     method UI (incl. MB WAY phone field, Multibanco flow) */}
                 <PaymentElement
                   elements={session.elements}
-                  options={PAYMENT_ELEMENT_OPTIONS}
+                  options={paymentElementOptions}
                   onReady={() => setPaymentElementState({ elements: session.elements!, status: 'ready', complete: false })}
                   onChange={(event) => setPaymentElementState((current) => current && current.elements === session.elements ? { ...current, complete: event.complete === true } : current)}
                   onLoadError={() => setPaymentElementState({ elements: session.elements!, status: 'error', complete: false })}
