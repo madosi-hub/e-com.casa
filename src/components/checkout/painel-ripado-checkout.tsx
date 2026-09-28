@@ -600,11 +600,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                 </span>
               </span>
-              <span className="mt-2 block space-y-1 text-[12px] leading-5 text-[#5c5049] group-open:hidden">
-                {displayLines.map((line) => (
-                  <span key={`${line.slug}-${line.variantId ?? ''}`} className="block break-words">{checkoutLineLabel(line)}</span>
-                ))}
-              </span>
+              {displayLines[0] && (
+                <span className="mt-2 flex min-w-0 items-center text-[12px] leading-5 text-[#5c5049] group-open:hidden">
+                  <span className="min-w-0 overflow-hidden whitespace-nowrap text-clip">{checkoutLineLabel(displayLines[0])}</span>
+                  <span className="shrink-0 pl-0.5 font-medium text-olive underline underline-offset-2">… Ver mais</span>
+                </span>
+              )}
             </summary>
             <div className="border-t border-[#e2e2e5] px-4 pb-4 pt-3 sm:px-5">
             <ul className="mt-3 max-h-64 space-y-3 overflow-y-auto thin-scrollbar pr-1">
