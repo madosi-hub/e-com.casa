@@ -51,12 +51,37 @@ const DELIVERY_REQUIRED_MESSAGES: Record<typeof DELIVERY_FIELDS[number], string>
   city: 'Preencha a localidade de entrega.',
   postalCode: 'Preencha o código postal de entrega.',
 };
+function checkoutLineLabel(line: { slug: string; name: string; quantity: number; variantLabel?: string | null }) {
+  const productName = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado') ? 'Ripado' : line.name;
+  const variantParts = line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
+  return [`${line.quantity}× ${productName}`, ...variantParts].join(' · ');
+}
 function deliveryFieldError(name: string, value: string): string {
   if (!value.trim()) return DELIVERY_REQUIRED_MESSAGES[name as keyof typeof DELIVERY_REQUIRED_MESSAGES] ?? '';
   if (name === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
     return 'Introduza um endereço de e-mail válido.';
   }
+  if (name === 'postalCode' && !/^\d{4}-\d{3}$/.test(value.trim())) return 'Introduza um código postal válido (0000-000).';
   return '';
+}
+
+function addBusinessDays(start: Date, days: number): Date {
+  const result = new Date(start);
+  let remaining = days;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (result.getDay() !== 0 && result.getDay() !== 6) remaining -= 1;
+  }
+  return result;
+}
+
+function deliveryWindowLabel(): string {
+  const start = addBusinessDays(new Date(), 6);
+  const end = addBusinessDays(new Date(), 10);
+  const month = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(end);
+  if (new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(start) === month) return `Entrega prevista entre ${start.getDate()} e ${end.getDate()} de ${month}`;
+  const fmt = (date: Date) => new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'long' }).format(date);
+  return `Entrega prevista entre ${fmt(start)} e ${fmt(end)}`;
 }
 const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
   layout: {
@@ -68,6 +93,7 @@ const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
   },
   // Preference only: Stripe still determines eligibility for this PaymentIntent.
   paymentMethodOrder: ['mb_way', 'card', 'multibanco'],
+  wallets: { link: 'never' },
 };
 const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
 const CHECKOUT_LABEL_CLASS = 'text-[12px] font-normal leading-[16px] text-[#27272a]';
@@ -95,7 +121,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const deliverySectionRef = useRef<HTMLElement>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const paySubmittingRef = useRef(false);
-  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error' } | null>(null);
+  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error'; complete: boolean } | null>(null);
   const elementStartedAt = useRef(0);
   const [shippingQuote, setShippingQuote] = useState<{ key: string; status: 'loading' | 'ready' } | null>(null);
   const shippingQuoteTimer = useRef<number | null>(null);
@@ -205,7 +231,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       }
     },
   });
-  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
+  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready' && paymentElementState.complete;
   const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
 
   const validateField = (name: keyof typeof form, input: HTMLInputElement) => {
@@ -393,12 +419,16 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <Label htmlFor="co-postalCode" className={CHECKOUT_LABEL_CLASS}>{t('checkout.postal')}</Label>
                 <Input
                   id="co-postalCode"
+                  name="postalCode"
                   required
                   autoComplete="postal-code"
+                  inputMode="numeric"
+                  maxLength={8}
                   placeholder="1000-001"
                   value={form.postalCode}
                   onChange={(event) => {
-                    set('postalCode', event.target.value);
+                    const digits = event.target.value.replace(/\D/g, '').slice(0, 7);
+                    set('postalCode', digits.length > 4 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : digits);
                     if (fieldErrors.postalCode) validateField('postalCode', event.currentTarget);
                   }}
                   onBlur={(event) => {
@@ -423,6 +453,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     <span className="font-medium">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
                     <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
                     {shipping > 0 && <span className="font-medium">· {formatPrice(shipping)}</span>}
+                    <span className="basis-full text-[#5c5049]">{deliveryWindowLabel()}</span>
                   </div>
                 )}
             </div>
@@ -499,13 +530,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
                   onReady={() => {
-                    setPaymentElementState({ elements: session.elements!, status: 'ready' });
+                    setPaymentElementState({ elements: session.elements!, status: 'ready', complete: false });
                     trackOfferEvent('checkout_payment_loading', { offerSlug, stage: 'element', status: 'ready', duration_ms: Date.now() - elementStartedAt.current });
                   }}
                   onLoadError={(reason) => {
-                    setPaymentElementState({ elements: session.elements!, status: 'error' });
+                    setPaymentElementState({ elements: session.elements!, status: 'error', complete: false });
                     trackOfferEvent('checkout_payment_loading', { offerSlug, stage: 'element', status: 'error', duration_ms: Date.now() - elementStartedAt.current, reason });
                   }}
+                  onChange={(event) => setPaymentElementState((current) => current && current.elements === session.elements ? { ...current, complete: event.complete === true } : current)}
                   onRetry={session.retry}
                 />
               </>
@@ -526,6 +558,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 'Pagamento indisponível — tente novamente acima'
               ) : session.phase === 'ready' && paymentReady ? (
                 <><Lock className="h-4 w-4" strokeWidth={2} /> Pagar {formatPrice(money(total))}</>
+              ) : session.phase === 'ready' && paymentElementState?.status === 'ready' ? (
+                'Selecione um método de pagamento'
               ) : (
                 <><LoaderCircle className="h-4 w-4 animate-spin" /> {t('checkout.paymentInitializing')}</>
               )}
@@ -551,6 +585,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <span className="mt-1 inline-flex rounded-full bg-[#f2f2f4] px-2.5 py-1 text-[11px] font-normal leading-none text-[#666670]">
                   {displayLines.reduce((sum, line) => sum + line.quantity, 0)} {displayLines.reduce((sum, line) => sum + line.quantity, 0) === 1 ? 'artigo' : 'artigos'}
                 </span>
+                <span className="mt-1 block max-w-[240px] truncate text-[11px] font-normal leading-4 text-[#777781]">
+                  {displayLines.map((line) => checkoutLineLabel(line)).join(' · ')}
+                </span>
               </span>
               <span className="flex shrink-0 items-center gap-3">
                 <span className="text-right"><span className="block text-[10px] font-normal uppercase tracking-[.05em] text-[#8a8a94]">Total</span><strong className="block text-[20px] font-semibold leading-tight">{formatPrice(money(total))}</strong></span>
@@ -570,8 +607,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-[14px] font-medium leading-5 text-[#18181b]">{l.name}</p>
-                    <p className="text-[12px] text-muted-foreground">{formatPrice(l.price)} {t('checkout.each')}</p>
+                    <p className="line-clamp-2 text-[13px] font-medium leading-5 text-[#18181b]">{checkoutLineLabel(l)}</p>
                   </div>
                   <p className="text-[13px] font-medium">{formatPrice(toNumber(l.price) * l.quantity)}</p>
                 </li>

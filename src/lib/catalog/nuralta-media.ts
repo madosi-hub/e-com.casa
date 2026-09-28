@@ -2,6 +2,9 @@ import { mirrorProviderMedia } from './media';
 
 const NURALTA_ACCESSORY_IMAGES: Record<string, string> = {
   'nuralta-kit-instalacao-completo': '/images/nuralta-accessories/kit-1.png',
+  'nuralta-cola-montagem-500g': '/images/nuralta-accessories/cola-montagem.png',
+  'nuralta-estilete-retratil': '/images/nuralta-accessories/estilete.png',
+  'nuralta-aplicador-cola-reutilizavel': '/images/nuralta-accessories/aplicador-cola.png',
   'nuralta-fita-led-rgb-3m': '/images/nuralta-accessories/fita-led-1.png',
 };
 

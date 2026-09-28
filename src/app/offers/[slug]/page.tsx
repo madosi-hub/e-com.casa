@@ -7,6 +7,8 @@ import { resolveOfferMarket } from '@/lib/offers/geo';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { toStorefrontProduct } from '@/lib/catalog/public-product';
 import { COMPANY } from '@/lib/company';
+import { getProduct } from '@/lib/catalog';
+import { NURALTA_STANDALONE_ACCESSORY_SLUGS } from '@/lib/catalog/nuralta-accessories';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +80,9 @@ export default async function OfferRoute({ params }: { params: Promise<{ slug: s
     },
   };
 
-  const page = <ProductFunnelPage offer={offer} product={publicProduct} market={market} />;
+  const accessoryProducts = await Promise.all(NURALTA_STANDALONE_ACCESSORY_SLUGS.map(getProduct));
+  const accessories = accessoryProducts.filter((item): item is NonNullable<typeof item> => item !== null).map(toStorefrontProduct);
+  const page = <ProductFunnelPage offer={offer} product={publicProduct} market={market} accessories={accessories} />;
 
   return (
     <>

@@ -9,12 +9,14 @@ export function mountPaymentElement({
   options,
   onReady,
   onLoadError,
+  onChange,
 }: {
   elements: StripeElements;
   container: HTMLElement;
   options?: StripePaymentElementOptions;
   onReady: () => void;
   onLoadError: (code: string) => void;
+  onChange?: (event: { complete?: boolean }) => void;
 }): () => void {
   let paymentElement: StripePaymentElement | undefined;
   let disposed = false;
@@ -39,6 +41,7 @@ export function mountPaymentElement({
     onReady();
   };
   const handleLoadError = () => fail('payment_element_load_error');
+  const handleChange = (event: { complete?: boolean }) => onChange?.(event);
 
   try {
     paymentElement = elements.create('payment', {
@@ -48,6 +51,7 @@ export function mountPaymentElement({
     // Stripe may emit during mount, so subscribe and start the deadline first.
     paymentElement.on('ready', handleReady);
     paymentElement.on('loaderror', handleLoadError);
+    if (onChange) paymentElement.on('change', handleChange);
     timeout = setTimeout(() => {
       if (!ready) fail('payment_element_ready_timeout');
     }, PAYMENT_ELEMENT_READY_TIMEOUT_MS);
@@ -65,6 +69,9 @@ export function mountPaymentElement({
     // Still attempt the remaining cleanup, particularly destruction after unmount.
     try { paymentElement.off('ready', handleReady); } catch { /* already destroyed */ }
     try { paymentElement.off('loaderror', handleLoadError); } catch { /* already destroyed */ }
+    if (onChange) {
+      try { paymentElement.off('change', handleChange); } catch { /* already destroyed */ }
+    }
     try { paymentElement.unmount(); } catch { /* already destroyed */ }
     try { paymentElement.destroy(); } catch { /* already destroyed */ }
   };

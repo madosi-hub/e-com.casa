@@ -12,10 +12,11 @@ import { trackOfferEvent } from '@/lib/offers/analytics';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PanelConfigurator } from './configurator';
+import { InstallationAccessories } from '@/components/home/installation-accessories';
 import { PanelCampaignStory, PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 
 export function TopTicker() {
-  const items = ['Portes grátis para Portugal Continental', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'Entrega prevista em 6 a 12 dias úteis', 'E-com.casa'];
+  const items = ['Portes calculados antes do pagamento', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'E-com.casa'];
   const group = <div className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4">{items.map((item) => <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8"><span>{item}</span><span className="opacity-40">◆</span></span>)}</div>;
   return <div className="overflow-hidden bg-[#201a17] py-1 text-[#e9dfd5] sm:py-2"><div className="ecom-panel-ticker flex w-max text-[9px] uppercase tracking-[.12em] sm:text-[11px]">{group}{group}</div></div>;
 }
@@ -52,7 +53,7 @@ export function FloatingHeader() {
   </>;
 }
 
-export function PainelRipadoOfferPage({ offer, product: initialProduct, market }: { offer: OfferConfig; product: CatalogProduct; market: OfferMarketContext }) {
+export function PainelRipadoOfferPage({ offer, product: initialProduct, market, accessories = [] }: { offer: OfferConfig; product: CatalogProduct; market: OfferMarketContext; accessories?: CatalogProduct[] }) {
   const product = useLiveProduct(initialProduct);
   const openCart = useCartDrawer((state) => state.open);
 
@@ -87,6 +88,7 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market }
     <PanelFactoryStory />
     <PanelCampaignStory product={product} />
     <PanelProductDetails product={product} />
+    <InstallationAccessories products={accessories} />
     <PanelInspiration product={product} />
     <PanelReviews />
     <PanelFaq offer={offer} />

@@ -21,6 +21,7 @@ export interface PaymentElementProps {
   loadingLabel?: string;
   onReady?: () => void;
   onLoadError?: (code: string) => void;
+  onChange?: (event: { complete?: boolean }) => void;
   onRetry?: () => void;
 }
 
@@ -32,16 +33,17 @@ export function PaymentElement({
   loadingLabel = 'Loading secure payment…',
   onReady,
   onLoadError,
+  onChange,
   onRetry,
 }: PaymentElementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const callbacksRef = useRef({ onReady, onLoadError });
+  const callbacksRef = useRef({ onReady, onLoadError, onChange });
 
   useEffect(() => {
-    callbacksRef.current = { onReady, onLoadError };
-  }, [onReady, onLoadError]);
+    callbacksRef.current = { onReady, onLoadError, onChange };
+  }, [onReady, onLoadError, onChange]);
 
   useEffect(() => {
     if (!elements || !containerRef.current) return;
@@ -58,6 +60,7 @@ export function PaymentElement({
         setLoadError(code);
         callbacksRef.current.onLoadError?.(code);
       },
+      onChange: (event) => callbacksRef.current.onChange?.(event),
     });
     return () => {
       dispose();

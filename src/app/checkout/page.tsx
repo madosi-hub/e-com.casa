@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import type { StripeElements } from '@stripe/stripe-js';
+import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
 import { Gift, Lock, LoaderCircle, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,12 +34,40 @@ import {
   ORDER_NOTES_MAX,
 } from '@/lib/constants';
 
+const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = { wallets: { link: 'never' } };
+
+function checkoutLineLabel(line: { slug: string; name: string; quantity: number; variantLabel?: string | null }) {
+  const productName = line.slug.includes('painel-ripado') || line.name.startsWith('Painel Ripado') ? 'Ripado' : line.name;
+  const variantParts = line.variantLabel?.split(' · ').map((part) => part.trim()).filter(Boolean) ?? [];
+  return [`${line.quantity}× ${productName}`, ...variantParts].join(' · ');
+}
+
+function addBusinessDays(start: Date, days: number): Date {
+  const result = new Date(start);
+  let remaining = days;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (result.getDay() !== 0 && result.getDay() !== 6) remaining -= 1;
+  }
+  return result;
+}
+
+function deliveryWindowLabel(): string {
+  const start = addBusinessDays(new Date(), 6);
+  const end = addBusinessDays(new Date(), 10);
+  const month = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(end);
+  const startMonth = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(start);
+  if (startMonth === month) return `Entrega prevista entre ${start.getDate()} e ${end.getDate()} de ${month}`;
+  const format = (date: Date) => new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'long' }).format(date);
+  return `Entrega prevista entre ${format(start)} e ${format(end)}`;
+}
+
 export default function CheckoutPage() {
   const t = useT();
   const router = useRouter();
   const cart = useCart();
   const [mounted, setMounted] = useState(false);
-  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error' } | null>(null);
+  const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'ready' | 'error'; complete: boolean } | null>(null);
 
   const [form, setForm] = useState({
     email: '',
@@ -84,7 +112,8 @@ export default function CheckoutPage() {
     form.lastName.trim().length > 0 &&
     form.address.trim().length > 0 &&
     form.city.trim().length > 0 &&
-    form.postalCode.trim().length > 0;
+    form.postalCode.trim().length > 0 &&
+    (form.country !== 'PT' || /^\d{4}-\d{3}$/.test(form.postalCode.trim()));
 
   const payload = useMemo(
     () =>
@@ -128,7 +157,7 @@ export default function CheckoutPage() {
   };
 
   const session = usePaymentSession({ payload, signature, onComplete: finishOrder });
-  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
+  const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready' && paymentElementState.complete;
   const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
 
   const onPay = async (e: React.FormEvent) => {
@@ -182,7 +211,12 @@ export default function CheckoutPage() {
         id={`co-${name}`}
         required={props.required !== false}
         value={String(form[name] ?? '')}
-        onChange={(e) => set(name, e.target.value)}
+        onChange={(e) => {
+          const value = name === 'postalCode'
+            ? (() => { const digits = e.target.value.replace(/\D/g, '').slice(0, 7); return digits.length > 4 ? `${digits.slice(0, 4)}-${digits.slice(4)}` : digits; })()
+            : e.target.value;
+          set(name, value);
+        }}
         className="mt-1.5 h-11 rounded-md"
         {...props}
       />
@@ -250,7 +284,7 @@ export default function CheckoutPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {field('postalCode', t('checkout.postal'), { autoComplete: 'postal-code' }, true)}
+              {field('postalCode', t('checkout.postal'), { autoComplete: 'postal-code', name: 'postalCode', inputMode: 'numeric', maxLength: 8, pattern: '[0-9]{4}-[0-9]{3}' }, true)}
               {field('city', t('checkout.city'), { autoComplete: 'address-level2' }, true)}
               {field('phone', t('checkout.phone'), { type: 'tel', autoComplete: 'tel', required: false }, true)}
             </div>
@@ -269,7 +303,7 @@ export default function CheckoutPage() {
               {SHIPPING_OPTIONS.map((opt) => {
                 const free = qualifiesForFreeShipping(form.country, subtotal - discount);
                 const optName = opt.id === 'standard' ? t('ship.standard') : t('ship.express');
-                const optDesc = opt.id === 'standard' ? t('ship.standardDesc') : t('ship.expressDesc');
+                const optDesc = opt.id === 'standard' ? `${t('ship.standardDesc')} · ${deliveryWindowLabel()}` : t('ship.expressDesc');
                 return (
                   <Label
                     key={opt.id}
@@ -411,8 +445,10 @@ export default function CheckoutPage() {
                     method UI (incl. MB WAY phone field, Multibanco flow) */}
                 <PaymentElement
                   elements={session.elements}
-                  onReady={() => setPaymentElementState({ elements: session.elements!, status: 'ready' })}
-                  onLoadError={() => setPaymentElementState({ elements: session.elements!, status: 'error' })}
+                  options={PAYMENT_ELEMENT_OPTIONS}
+                  onReady={() => setPaymentElementState({ elements: session.elements!, status: 'ready', complete: false })}
+                  onChange={(event) => setPaymentElementState((current) => current && current.elements === session.elements ? { ...current, complete: event.complete === true } : current)}
+                  onLoadError={() => setPaymentElementState({ elements: session.elements!, status: 'error', complete: false })}
                   onRetry={session.retry}
                 />
 
@@ -453,8 +489,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-1 text-[13px] font-medium">{l.name}</p>
-                    <p className="text-[12px] text-muted-foreground">{formatPrice(l.price)} {t('checkout.each')}</p>
+                    <p className="line-clamp-2 text-[13px] font-medium">{checkoutLineLabel(l)}</p>
                   </div>
                   <p className="text-[13px] font-semibold">{formatPrice(toNumber(l.price) * l.quantity)}</p>
                 </li>
@@ -508,6 +543,8 @@ export default function CheckoutPage() {
                 <>
                   <Lock className="h-4 w-4" strokeWidth={2} /> {t('checkout.pay', { amount: formatPrice(money(total)) })}
                 </>
+              ) : session.phase === 'ready' && paymentElementState?.status === 'ready' ? (
+                'Selecione um método de pagamento'
               ) : session.phase === 'unavailable' || session.phase === 'error' || paymentLoadFailed ? (
                 <>
                   <Lock className="h-4 w-4" strokeWidth={2} /> {t('checkout.paymentUnavailableShort')}
