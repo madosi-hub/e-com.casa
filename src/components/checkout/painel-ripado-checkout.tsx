@@ -164,6 +164,11 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const discount = calculatePromoDiscount(displayLines, promo);
   const shipping = shippingPrice(form.country, subtotal - discount, 'standard');
   const total = Math.max(0, subtotal - discount + shipping);
+  const paymentEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()) ? form.email.trim() : undefined;
+  const paymentElementOptions = useMemo<StripePaymentElementOptions>(() => ({
+    ...PAYMENT_ELEMENT_OPTIONS,
+    defaultValues: { billingDetails: { email: paymentEmail } },
+  }), [paymentEmail]);
 
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
   const deliveryAddressComplete =
@@ -531,7 +536,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 </p>
                 <PaymentElement
                   elements={session.elements}
-                  options={PAYMENT_ELEMENT_OPTIONS}
+                  options={paymentElementOptions}
                   className="mt-3"
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
