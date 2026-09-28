@@ -169,7 +169,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const deliveryAddressComplete =
     form.address.trim().length > 0 &&
     form.city.trim().length > 0 &&
-    form.postalCode.trim().length >= 4;
+    /^\d{4}-\d{3}$/.test(form.postalCode.trim());
   const shippingAddressKey = [form.country, form.address, form.city, form.postalCode]
     .map((value) => value.trim().toLowerCase())
     .join('|');
@@ -184,8 +184,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     shippingQuoteTimer.current = window.setTimeout(() => {
       setShippingQuote({ key, status: 'ready' });
       shippingQuoteTimer.current = null;
-    }, 900);
+    }, 350);
   };
+
+  // Update the CTT option as soon as the address becomes valid, without
+  // requiring the customer to leave the postal-code field.
+  useEffect(() => {
+    if (deliveryAddressComplete) loadShippingQuote();
+  }, [deliveryAddressComplete, shippingAddressKey]);
 
   // Real payment session
   // The draft can prepare payment before contact and delivery are filled in.
