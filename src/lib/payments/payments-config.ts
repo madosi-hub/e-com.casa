@@ -1,11 +1,14 @@
 // E-com.casa — XPayments payment configuration (SERVER ONLY)
 // Exact names for the XPayments Stripe-compatible LIVE contract.
 // Secrets are server-only and are never returned to the browser.
-// Merchant webhook verification is optional: when no merchant
-// callback secret is configured, pending orders are reconciled by
-// authenticated server-to-server PaymentIntent retrieval.
+// Merchant webhooks use the configured secret or a temporary server-only
+// fallback. Pending orders are also reconciled by authenticated
+// server-to-server PaymentIntent retrieval.
 
 import 'server-only';
+
+// Temporary fallback until the merchant webhook secret is configured in production.
+const TEMPORARY_XPAYMENTS_WEBHOOK_SECRET = 'whsec_d4a38423dd1e2266c9115093c61bc2848260b4c3913a1c81';
 
 export type PaymentEnvironment = 'test' | 'live';
 
@@ -29,7 +32,7 @@ export function getPaymentConfig(): PaymentConfig {
       process.env.XPAYMENTS_STRIPE_BASE_URL?.trim() ||
       'https://api.xpayments.digital/api/stripe/v1',
     secretKey: process.env.XPAYMENTS_API_KEY?.trim() || null,
-    webhookSecret: process.env.XPAYMENTS_WEBHOOK_SECRET?.trim() || null,
+    webhookSecret: process.env.XPAYMENTS_WEBHOOK_SECRET?.trim() || TEMPORARY_XPAYMENTS_WEBHOOK_SECRET,
     storeId: process.env.XPAYMENTS_STORE_ID?.trim() || null,
     publishableKey:
       process.env.NEXT_PUBLIC_XPAYMENTS_STRIPE_PUBLISHABLE_KEY?.trim() || null,
@@ -70,8 +73,7 @@ export function validatePaymentConfig(): PaymentConfigIssue[] {
     issues.push({ field: 'NEXT_PUBLIC_XPAYMENTS_STRIPE_PUBLISHABLE_KEY', problem: 'expected pk_live_ for LIVE environment' });
   }
 
-  // XPAYMENTS_WEBHOOK_SECRET is deliberately not required. If present,
-  // /api/webhooks/xpayments remains available as an additional push path;
-  // if absent, /api/payments/status securely reconciles with XPayments.
+  // The temporary fallback keeps this optional in environment configuration;
+  // /api/payments/status also securely reconciles with XPayments.
   return issues;
 }

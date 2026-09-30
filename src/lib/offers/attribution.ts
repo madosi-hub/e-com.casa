@@ -2,6 +2,7 @@
 
 export interface OfferAttribution {
   offerSlug: string;
+  fbclid?: string | null;
   src: string | null;
   sck: string | null;
   utm_source: string | null;
@@ -19,12 +20,25 @@ const STORAGE_KEY = 'ecom-casa-offer-attribution-v1';
 const TRACKING_KEYS = ['src', 'sck', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
 let memory: OfferAttribution | null = null;
 
+function facebookReferrer(referrer: string): boolean {
+  if (!referrer) return false;
+  try {
+    const host = new URL(referrer).hostname.toLowerCase();
+    return host === 'facebook.com' || host.endsWith('.facebook.com') ||
+      host === 'instagram.com' || host.endsWith('.instagram.com');
+  } catch {
+    return false;
+  }
+}
+
 export function captureOfferAttribution(offerSlug: string): OfferAttribution | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   const saved = getOfferAttribution();
+  const fbclid = params.get('fbclid');
+  const fallbackSource = (fbclid || facebookReferrer(document.referrer)) ? 'FB' : null;
   // A new campaign/source starts a new attribution set; never mix ad IDs.
-  const changed = ['utm_campaign', 'utm_source', 'sck'].some(key => {
+  const changed = Boolean(fbclid && fbclid !== saved?.fbclid) || ['utm_campaign', 'utm_source', 'sck'].some(key => {
     const value = params.get(key);
     return value && saved?.[key as keyof OfferAttribution] && value !== saved[key as keyof OfferAttribution];
   });
@@ -32,9 +46,10 @@ export function captureOfferAttribution(offerSlug: string): OfferAttribution | n
   const now = new Date().toISOString();
   const next: OfferAttribution = {
     offerSlug,
-    src: params.get('src') || previous?.src || null,
+    fbclid: fbclid || previous?.fbclid || null,
+    src: params.get('src') || previous?.src || params.get('utm_source') || fallbackSource,
     sck: params.get('sck') || previous?.sck || null,
-    utm_source: params.get('utm_source') || previous?.utm_source || null,
+    utm_source: params.get('utm_source') || previous?.utm_source || fallbackSource,
     utm_medium: params.get('utm_medium') || previous?.utm_medium || null,
     utm_campaign: params.get('utm_campaign') || previous?.utm_campaign || null,
     utm_content: params.get('utm_content') || previous?.utm_content || null,
