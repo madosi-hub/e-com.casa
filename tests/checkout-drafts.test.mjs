@@ -206,7 +206,7 @@ test('verified success promotes the same complete draft once; incomplete contact
     'server-only': {}, '@/lib/checkout': checkout,
     '@/lib/db': { db: { order: { findUnique: async () => ({ ...order }) }, $transaction: async fn => fn(tx) } },
     '@/lib/catalog': { getProduct: async () => ({ stockUnlimited: true }) },
-    '@/lib/tracking': { assignTrackingFields: () => ({}) },
+    '@/lib/tracking': { assignTrackingFields: () => ({}), ensureCancelledEvent: async () => {} },
     '@/lib/email/order-email': { sendPaymentConfirmedEmail: async () => { confirmations++; } },
     '@/lib/payment-events': { sendPaymentPaidEvent: async () => ({ ok: true }) }, './xpayments-provider': {},
     './amounts': { toMinorUnit: value => Math.round(Number(value) * 100) },

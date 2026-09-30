@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { db } from '@/lib/db';
 import { warehouseForCountry, getWarehouseById, COMPANY } from '@/lib/company';
 import { COUNTRIES } from '@/lib/countries';
+import { sendOrderStatusEmail, type OrderNotificationStatus } from '@/lib/email/order-email';
 
 export const TRACKING_STATES = [
   'CONFIRMED',
@@ -29,17 +30,15 @@ const STATE_RANK: Record<string, number> = {
 };
 
 const HOUR = 3_600_000;
+const DAY_IN_HOURS = 24;
 
 const T_OFFSETS = {
   confirmed: 0,
-  processing: 4,
-  shippedStandard: 24,
-  shippedExpress: 12,
-  inTransit: 6,
-  outForDeliveryStandard: 48,
-  outForDeliveryExpress: 24,
-  deliveredStandard: 72,
-  deliveredExpress: 36,
+  processing: 0,
+  shipped: 4 * DAY_IN_HOURS,
+  inTransit: 7 * DAY_IN_HOURS,
+  outForDelivery: 9 * DAY_IN_HOURS,
+  delivered: 10 * DAY_IN_HOURS,
 } as const;
 
 const TRACKING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -81,14 +80,12 @@ export function assignTrackingFields(
   countryIso2: string,
   paidAt: Date = new Date(),
 ): TrackingFields {
-  const express = shippingMethod === 'express';
-  const shippedOffset = express ? T_OFFSETS.shippedExpress : T_OFFSETS.shippedStandard;
-  const deliveredOffset = shippedOffset + (express ? T_OFFSETS.deliveredExpress : T_OFFSETS.deliveredStandard);
+  void shippingMethod;
   return {
     trackingNumber: generateTrackingNumber(orderNumber, paidAt),
     carrier: FULFILMENT_CARRIER,
     originWarehouse: warehouseForCountry(countryIso2).id,
-    estimatedDeliveryAt: new Date(paidAt.getTime() + deliveredOffset * HOUR),
+    estimatedDeliveryAt: new Date(paidAt.getTime() + T_OFFSETS.delivered * HOUR),
   };
 }
 
@@ -111,10 +108,7 @@ export function buildTimeline(input: {
   destinationCity: string;
   carrier: string;
 }): ComputedEvent[] {
-  const express = input.shippingMethod === 'express';
-  const shippedOffset = express ? T_OFFSETS.shippedExpress : T_OFFSETS.shippedStandard;
-  const outOffset = express ? T_OFFSETS.outForDeliveryExpress : T_OFFSETS.outForDeliveryStandard;
-  const deliveredOffset = express ? T_OFFSETS.deliveredExpress : T_OFFSETS.deliveredStandard;
+  void input.shippingMethod;
 
   const warehouse = warehouseForCountry(input.countryIso2);
   const origin = `${warehouse.name}, ${warehouse.city}`;
@@ -138,25 +132,25 @@ export function buildTimeline(input: {
       status: 'SHIPPED',
       description: `Parcel handed over to ${input.carrier} and on its way to you.`,
       location: origin,
-      occurredAt: at(shippedOffset),
+      occurredAt: at(T_OFFSETS.shipped),
     },
     {
       status: 'IN_TRANSIT',
       description: 'In transit through the carrier line-haul network towards your country.',
       location: 'Line-haul network, EU',
-      occurredAt: at(shippedOffset + T_OFFSETS.inTransit),
+      occurredAt: at(T_OFFSETS.inTransit),
     },
     {
       status: 'OUT_FOR_DELIVERY',
       description: 'Out for delivery with the local courier.',
       location: destination,
-      occurredAt: at(shippedOffset + outOffset),
+      occurredAt: at(T_OFFSETS.outForDelivery),
     },
     {
       status: 'DELIVERED',
       description: 'Delivered — we hope you enjoy your new pieces.',
       location: destination,
-      occurredAt: at(shippedOffset + deliveredOffset),
+      occurredAt: at(T_OFFSETS.delivered),
     },
   ];
 }
@@ -172,6 +166,11 @@ export function computeCurrentState(events: ComputedEvent[], now: Date = new Dat
 export interface TrackableOrder {
   id: string;
   orderNumber: string;
+  email: string;
+  firstName: string;
+  total: string;
+  currency: string;
+  itemsJson: string;
   status: string;
   paymentStatus: string;
   shippingMethod: string;
@@ -183,6 +182,55 @@ export interface TrackableOrder {
   carrier: string | null;
   originWarehouse: string | null;
   estimatedDeliveryAt: Date | null;
+}
+
+const NOTIFIABLE_TRACKING_STATES = new Set<OrderNotificationStatus>([
+  'SHIPPED',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+  'CANCELLED',
+]);
+
+function isNotifiableStatus(status: string): status is OrderNotificationStatus {
+  return NOTIFIABLE_TRACKING_STATES.has(status as OrderNotificationStatus);
+}
+
+async function createTrackingEvent(input: {
+  orderId: string;
+  status: string;
+  description: string;
+  location: string | null;
+  occurredAt: Date;
+}): Promise<boolean> {
+  try {
+    await db.trackingEvent.create({ data: input });
+    return true;
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002') return false;
+    throw error;
+  }
+}
+
+async function notifyTrackingStatus(order: TrackableOrder, status: OrderNotificationStatus): Promise<void> {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email.trim())) return;
+  await sendOrderStatusEmail({
+    status,
+    orderNumber: order.orderNumber,
+    customerEmail: order.email,
+    firstName: order.firstName,
+    total: order.total,
+    currency: order.currency,
+    itemsJson: order.itemsJson,
+    trackingNumber: order.trackingNumber,
+    originWarehouse: order.originWarehouse,
+  }).catch((error) => {
+    console.error('order status email failed', {
+      orderNumber: order.orderNumber,
+      status,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+  });
 }
 
 /** Ensure tracking fields, due events and fulfilment status are synchronized for a paid order. */
@@ -223,18 +271,16 @@ export async function ensureTracking<T extends TrackableOrder>(order: T): Promis
   });
 
   const due = timeline.filter((event) => event.occurredAt.getTime() <= now.getTime());
+  const newlyCreated: ComputedEvent[] = [];
   for (const event of due) {
-    await db.trackingEvent.upsert({
-      where: { orderId_status: { orderId: order.id, status: event.status } },
-      create: {
-        orderId: order.id,
-        status: event.status,
-        description: event.description,
-        location: event.location,
-        occurredAt: event.occurredAt,
-      },
-      update: {},
+    const created = await createTrackingEvent({
+      orderId: order.id,
+      status: event.status,
+      description: event.description,
+      location: event.location,
+      occurredAt: event.occurredAt,
     });
+    if (created) newlyCreated.push(event);
   }
 
   const currentState = computeCurrentState(timeline, now);
@@ -247,22 +293,39 @@ export async function ensureTracking<T extends TrackableOrder>(order: T): Promis
     updated = { ...working, status: dbOrder.status } as T;
   }
 
+  // A legacy/overdue order can materialise several events in one run. Persist
+  // the complete timeline, but notify only the newest buyer-relevant state.
+  const latestNotification = newlyCreated.filter((event) => isNotifiableStatus(event.status)).at(-1);
+  if (latestNotification && isNotifiableStatus(latestNotification.status)) {
+    await notifyTrackingStatus(updated, latestNotification.status);
+  }
+
   return { order: updated, timeline, currentState, cancelled: false };
 }
 
 /** Persist a cancelled fulfilment event once. */
 export async function ensureCancelledEvent(orderId: string, at: Date = new Date()): Promise<void> {
-  await db.trackingEvent.upsert({
-    where: { orderId_status: { orderId, status: 'CANCELLED' } },
-    create: {
-      orderId,
-      status: 'CANCELLED',
-      description: 'Order cancelled — no further fulfilment steps will occur.',
-      location: null,
-      occurredAt: at,
-    },
-    update: {},
+  const created = await createTrackingEvent({
+    orderId,
+    status: 'CANCELLED',
+    description: 'Order cancelled — no further fulfilment steps will occur.',
+    location: null,
+    occurredAt: at,
   });
+  if (!created) return;
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (order) await notifyTrackingStatus(order, 'CANCELLED');
+}
+
+/** Persist a manually selected fulfilment state and notify it at most once. */
+export async function recordManualTrackingEvent(orderId: string, status: TrackingState, at: Date = new Date()): Promise<void> {
+  const description = status === 'DELIVERED'
+    ? 'Delivered — confirmed by commerce operations.'
+    : `Fulfilment status updated to ${status.toLowerCase().replaceAll('_', ' ')} by commerce operations.`;
+  const created = await createTrackingEvent({ orderId, status, description, location: null, occurredAt: at });
+  if (!created || !isNotifiableStatus(status)) return;
+  const order = await db.order.findUnique({ where: { id: orderId } });
+  if (order) await notifyTrackingStatus(order, status);
 }
 
 export function warehouseView(id: string | null | undefined) {

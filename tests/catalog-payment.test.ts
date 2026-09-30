@@ -15,7 +15,7 @@ const tx = {
 };
 mock.module('@/lib/db', () => ({ db: { order: { findUnique: async () => order }, $transaction: async (fn: any) => fn(tx) } }));
 mock.module('@/lib/catalog', () => ({ getProduct: async (slug: string) => ({ slug, stockUnlimited: slug === 'made' }) }));
-mock.module('@/lib/tracking', () => ({ assignTrackingFields: () => ({}) }));
+mock.module('@/lib/tracking', () => ({ assignTrackingFields: () => ({}), ensureCancelledEvent: async () => {} }));
 mock.module('@/lib/email/order-email', () => ({ sendPaymentConfirmedEmail: async () => { emails++; } }));
 mock.module('@/lib/payment-events', () => ({ sendPaymentPaidEvent: async () => ({ ok: true }) }));
 mock.module('@/lib/payments/xpayments-provider', () => ({ getPaymentProvider: () => ({}) }));
