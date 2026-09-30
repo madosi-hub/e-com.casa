@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
       if (result.checked) checked += 1;
       else unavailable += 1;
       if (result.changed) changed += 1;
-      if (result.reason === 'amount_currency_mismatch' || result.reason === 'intent_mismatch') {
+      if (result.reason === 'amount_currency_mismatch' || result.reason === 'intent_mismatch' || result.reason === 'payment_event_delivery_failed') {
         failures.push(`${order.orderNumber}:${result.reason}`);
       }
     }
