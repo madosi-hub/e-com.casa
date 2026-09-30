@@ -1,5 +1,8 @@
-import { expect, test } from 'bun:test';
-import { assignTrackingFields, buildTimeline } from '../src/lib/tracking';
+import { expect, mock, test } from 'bun:test';
+
+mock.module('server-only', () => ({}));
+
+const { assignTrackingFields, buildTimeline } = await import('../src/lib/tracking');
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;

@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { getPaymentProvider } from './xpayments-provider';
 import { toMinorUnit, fromMinorUnit } from './amounts';
 import { PaymentError } from './payment-errors';
+import { sendOrderStatusEmail } from '@/lib/email/order-email';
 
 export interface RefundResult {
   refundId: string;
@@ -74,10 +75,31 @@ export async function refundPayment(
     }),
   ]);
 
+  const refundedAmount = fromMinorUnit(amountMinor, order.currency);
+  if (status === 'SUCCEEDED') {
+    await sendOrderStatusEmail({
+      status: refunded,
+      refundAmount: refundedAmount,
+      orderNumber: order.orderNumber,
+      customerEmail: order.email,
+      firstName: order.firstName,
+      total: order.total,
+      currency: order.currency,
+      itemsJson: order.itemsJson,
+      trackingNumber: order.trackingNumber,
+      originWarehouse: order.originWarehouse,
+    }).catch((error) => {
+      console.error('refund email failed', {
+        orderNumber: order.orderNumber,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    });
+  }
+
   return {
     refundId: result.refundId,
     status,
-    amount: fromMinorUnit(amountMinor, order.currency),
+    amount: refundedAmount,
     currency: order.currency,
     orderPaymentStatus: refunded,
   };

@@ -11,7 +11,7 @@ import {
 } from '@/lib/admin/auth';
 import { saveProductOffer } from '@/lib/offers/store';
 import { refundPayment } from '@/lib/payments/refunds';
-import { ensureCancelledEvent } from '@/lib/tracking';
+import { ensureCancelledEvent, recordManualTrackingEvent, type TrackingState } from '@/lib/tracking';
 
 function value(formData: FormData, key: string): string {
   return String(formData.get(key) ?? '').trim();
@@ -240,6 +240,9 @@ export async function updateOrderStatusAction(formData: FormData) {
 
   await db.order.update({ where: { orderNumber }, data: { status } });
   if (status === 'CANCELLED') await ensureCancelledEvent(order.id);
+  else if (['CONFIRMED', 'PROCESSING', 'SHIPPED', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(status)) {
+    await recordManualTrackingEvent(order.id, status as TrackingState);
+  }
 
   revalidatePath('/admin');
   revalidatePath('/admin/orders');

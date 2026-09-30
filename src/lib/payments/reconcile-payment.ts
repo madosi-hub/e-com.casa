@@ -9,7 +9,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { hasCheckoutContact } from '@/lib/checkout';
 import { getProduct } from '@/lib/catalog';
-import { assignTrackingFields } from '@/lib/tracking';
+import { assignTrackingFields, ensureCancelledEvent } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
 import { sendPaymentPaidEvent, type PaymentTrackingParameters } from '@/lib/payment-events';
 import { getPaymentProvider } from './xpayments-provider';
@@ -263,6 +263,7 @@ export async function applyProviderIntent(
         data: { paymentStatus: 'CANCELLED', status: 'CANCELLED', paymentMethodType: method },
       }),
     ]);
+    await ensureCancelledEvent(order.id);
     return { checked: true, changed: order.paymentStatus !== 'CANCELLED', paymentStatus: 'CANCELLED', providerStatus: intent.status };
   }
 
