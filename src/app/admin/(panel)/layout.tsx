@@ -10,6 +10,7 @@ const NAV = [
   ['Orders', '/admin/orders'],
   ['Relatórios', '/admin/reports'],
   ['Payments', '/admin/payments'],
+  ['Webhooks', '/admin/webhooks'],
   ['Customers', '/admin/customers'],
   ['Contacts', '/admin/contacts'],
 ] as const;
