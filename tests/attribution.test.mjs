@@ -48,6 +48,41 @@ test('a new campaign does not inherit previous ad identifiers', () => {
   assert.equal(result.utm_content, null);
   assert.equal(result.sck, null);
 });
+test('a Facebook click without UTMs keeps the source and clears an older campaign', () => {
+  const b = browser();
+  b.module.captureOfferAttribution('offer');
+  b.window.location = new URL('https://example.test/offers/offer?fbclid=new-facebook-click');
+  b.globals.document.referrer = 'https://l.facebook.com/';
+  const result = b.module.offerTrackingParameters('offer');
+  assert.equal(result.src, 'FB');
+  assert.equal(result.utm_source, 'FB');
+  assert.equal(result.utm_campaign, null);
+  assert.equal(result.utm_medium, null);
+  assert.equal(result.sck, null);
+  assert.equal(b.module.getOfferAttribution().fbclid, 'new-facebook-click');
+});
+test('a Facebook referral without query UTMs records only its known source', () => {
+  const b = browser();
+  b.window.location = new URL('https://example.test/offers/offer');
+  b.globals.document.referrer = 'https://m.facebook.com/';
+  const result = b.module.offerTrackingParameters('offer');
+  assert.equal(result.utm_source, 'FB');
+  assert.equal(result.utm_campaign, null);
+});
+test('merchant webhook uses its temporary server secret unless an environment secret overrides it', () => {
+  const previous = process.env.XPAYMENTS_WEBHOOK_SECRET;
+  const config = load('src/lib/payments/payments-config.ts', { 'server-only': {} });
+  try {
+    delete process.env.XPAYMENTS_WEBHOOK_SECRET;
+    assert.match(config.getPaymentConfig().webhookSecret, /^whsec_[a-f0-9]+$/);
+    assert.equal(config.isMerchantWebhookConfigured(), true);
+    process.env.XPAYMENTS_WEBHOOK_SECRET = 'whsec_override';
+    assert.equal(config.getPaymentConfig().webhookSecret, 'whsec_override');
+  } finally {
+    if (previous === undefined) delete process.env.XPAYMENTS_WEBHOOK_SECRET;
+    else process.env.XPAYMENTS_WEBHOOK_SECRET = previous;
+  }
+});
 for (const providerFails of [false, true]) {
 test(`signed webhook preserves metadata or allows retry before applying payment (provider fails: ${providerFails})`, async () => {
   let applied;
