@@ -29,17 +29,15 @@ const STATE_RANK: Record<string, number> = {
 };
 
 const HOUR = 3_600_000;
+const DAY_IN_HOURS = 24;
 
 const T_OFFSETS = {
   confirmed: 0,
-  processing: 4,
-  shippedStandard: 24,
-  shippedExpress: 12,
-  inTransit: 6,
-  outForDeliveryStandard: 48,
-  outForDeliveryExpress: 24,
-  deliveredStandard: 72,
-  deliveredExpress: 36,
+  processing: 0,
+  shipped: 4 * DAY_IN_HOURS,
+  inTransit: 7 * DAY_IN_HOURS,
+  outForDelivery: 9 * DAY_IN_HOURS,
+  delivered: 10 * DAY_IN_HOURS,
 } as const;
 
 const TRACKING_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -81,14 +79,12 @@ export function assignTrackingFields(
   countryIso2: string,
   paidAt: Date = new Date(),
 ): TrackingFields {
-  const express = shippingMethod === 'express';
-  const shippedOffset = express ? T_OFFSETS.shippedExpress : T_OFFSETS.shippedStandard;
-  const deliveredOffset = shippedOffset + (express ? T_OFFSETS.deliveredExpress : T_OFFSETS.deliveredStandard);
+  void shippingMethod;
   return {
     trackingNumber: generateTrackingNumber(orderNumber, paidAt),
     carrier: FULFILMENT_CARRIER,
     originWarehouse: warehouseForCountry(countryIso2).id,
-    estimatedDeliveryAt: new Date(paidAt.getTime() + deliveredOffset * HOUR),
+    estimatedDeliveryAt: new Date(paidAt.getTime() + T_OFFSETS.delivered * HOUR),
   };
 }
 
@@ -111,10 +107,7 @@ export function buildTimeline(input: {
   destinationCity: string;
   carrier: string;
 }): ComputedEvent[] {
-  const express = input.shippingMethod === 'express';
-  const shippedOffset = express ? T_OFFSETS.shippedExpress : T_OFFSETS.shippedStandard;
-  const outOffset = express ? T_OFFSETS.outForDeliveryExpress : T_OFFSETS.outForDeliveryStandard;
-  const deliveredOffset = express ? T_OFFSETS.deliveredExpress : T_OFFSETS.deliveredStandard;
+  void input.shippingMethod;
 
   const warehouse = warehouseForCountry(input.countryIso2);
   const origin = `${warehouse.name}, ${warehouse.city}`;
@@ -138,25 +131,25 @@ export function buildTimeline(input: {
       status: 'SHIPPED',
       description: `Parcel handed over to ${input.carrier} and on its way to you.`,
       location: origin,
-      occurredAt: at(shippedOffset),
+      occurredAt: at(T_OFFSETS.shipped),
     },
     {
       status: 'IN_TRANSIT',
       description: 'In transit through the carrier line-haul network towards your country.',
       location: 'Line-haul network, EU',
-      occurredAt: at(shippedOffset + T_OFFSETS.inTransit),
+      occurredAt: at(T_OFFSETS.inTransit),
     },
     {
       status: 'OUT_FOR_DELIVERY',
       description: 'Out for delivery with the local courier.',
       location: destination,
-      occurredAt: at(shippedOffset + outOffset),
+      occurredAt: at(T_OFFSETS.outForDelivery),
     },
     {
       status: 'DELIVERED',
       description: 'Delivered — we hope you enjoy your new pieces.',
       location: destination,
-      occurredAt: at(shippedOffset + deliveredOffset),
+      occurredAt: at(T_OFFSETS.delivered),
     },
   ];
 }

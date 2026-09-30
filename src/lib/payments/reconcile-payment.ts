@@ -181,6 +181,7 @@ export async function applyProviderIntent(
         firstName: order.firstName,
         total: order.total,
         currency: order.currency,
+        itemsJson: order.itemsJson,
         trackingNumber: tracking.trackingNumber,
         originWarehouse: tracking.originWarehouse,
       }).catch((error) => {

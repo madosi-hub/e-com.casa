@@ -8,6 +8,7 @@ const NAV = [
   ['Products', '/admin/products'],
   ['Funnels', '/admin/funnels'],
   ['Orders', '/admin/orders'],
+  ['Relatórios', '/admin/reports'],
   ['Payments', '/admin/payments'],
   ['Customers', '/admin/customers'],
   ['Contacts', '/admin/contacts'],
