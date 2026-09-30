@@ -74,6 +74,53 @@ test(`signed webhook preserves metadata or allows retry before applying payment 
   assert.equal(applied.raw.metadata.tracking_sck, 'click-1');
 });
 }
+test('signed success resolves a new SC transaction through the merchant reference', async () => {
+  let where;
+  let applied;
+  const route = load('src/app/api/webhooks/xpayments/route.ts', {
+    'next/server': { NextResponse: Response },
+    '@/lib/db': { db: {
+      webhookEvent: { create: async () => ({}), delete: async () => ({}) },
+      payment: { findFirst: async args => {
+        where = args.where;
+        return { orderId: 'order', providerAccount: null, paymentIntentId: 'pi_fixture', amountMinor: 3500, order: { orderNumber: 'EC-406426', currency: 'EUR', total: '35.00' } };
+      } },
+    } },
+    '@/lib/payments/payments-config': { getPaymentConfig: () => ({ webhookSecret: 'test-secret' }) },
+    '@/lib/payments/xpayments-provider': { getPaymentProvider: () => ({ retrievePaymentIntent: async () => ({ id: 'pi_fixture', raw: { metadata: {} } }) }) },
+    '@/lib/payments/reconcile-payment': { applyProviderIntent: async (_, intent, options) => { applied = { intent, options }; return { paymentStatus: 'PAID' }; } },
+    '@/lib/payments/amounts': { toMinorUnit: () => 3500 },
+  });
+  const body = JSON.stringify({ event: 'payment_intent.succeeded', status: 'succeeded', transaction_id: 'SC-captured', reference: 'EC-406426', amount: 3500, currency: 'eur' });
+  const signature = createHmac('sha256', 'test-secret').update(body).digest('hex');
+  const response = await route.POST(new Request('https://example.test/api/webhooks/xpayments', { method: 'POST', body, headers: { 'x-nexflowx-signature': signature } }));
+  assert.equal(response.status, 200);
+  assert.ok(where.OR.some(candidate => candidate.order?.orderNumber === 'EC-406426'));
+  assert.equal(applied.intent.status, 'SUCCEEDED');
+  assert.equal(applied.options.xpaymentsTransactionId, 'SC-captured');
+});
+test('signed success discovers an SC-only callback from provider metadata without guessing by amount', async () => {
+  let applied = false;
+  let retrieved = 0;
+  const candidate = { orderId: 'order', providerAccount: null, paymentIntentId: 'pi_fixture', amountMinor: 3500, paymentMethodType: null, order: { orderNumber: 'EC-406426', currency: 'EUR', total: '35.00' } };
+  const route = load('src/app/api/webhooks/xpayments/route.ts', {
+    'next/server': { NextResponse: Response },
+    '@/lib/db': { db: {
+      webhookEvent: { create: async () => ({}), delete: async () => ({}) },
+      payment: { findFirst: async () => null, findMany: async () => [candidate] },
+    } },
+    '@/lib/payments/payments-config': { getPaymentConfig: () => ({ webhookSecret: 'test-secret' }) },
+    '@/lib/payments/xpayments-provider': { getPaymentProvider: () => ({ retrievePaymentIntent: async () => { retrieved++; return { id: 'pi_fixture', xpaymentsTransactionId: 'SC-captured', raw: { metadata: {} } }; } }) },
+    '@/lib/payments/reconcile-payment': { applyProviderIntent: async (_, intent) => { applied = intent.status === 'SUCCEEDED'; return { paymentStatus: 'PAID' }; } },
+    '@/lib/payments/amounts': { toMinorUnit: () => 3500 },
+  });
+  const body = JSON.stringify({ event: 'payment_intent.succeeded', status: 'succeeded', transaction_id: 'SC-captured', reference: 'SC-captured', amount: 3500, currency: 'eur' });
+  const signature = createHmac('sha256', 'test-secret').update(body).digest('hex');
+  const response = await route.POST(new Request('https://example.test/api/webhooks/xpayments', { method: 'POST', body, headers: { 'x-nexflowx-signature': signature } }));
+  assert.equal(response.status, 200);
+  assert.equal(retrieved, 1);
+  assert.equal(applied, true);
+});
 test('payment bridge retries transient failures with the same signed order and attribution', async () => {
   const payloads = [];
   const api = load('src/lib/payment-events.ts', { 'server-only': {} }, {

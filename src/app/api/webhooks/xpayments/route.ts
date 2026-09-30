@@ -36,7 +36,7 @@ function verify(rawBody: string, signature: string | null, secret: string | null
 }
 
 function idFor(event: XPaymentsEvent): string {
-  return [event.transaction_id ?? 'unknown', event.event ?? 'unknown', event.timestamp ?? ''].join(':');
+  return [event.transaction_id ?? event.reference ?? 'unknown', event.event ?? event.status ?? 'unknown', event.timestamp ?? ''].join(':');
 }
 
 function mapStatus(event: XPaymentsEvent): PaymentStatus | null {
@@ -67,9 +67,12 @@ export async function POST(req: NextRequest) {
   try { event = JSON.parse(rawBody) as XPaymentsEvent; }
   catch { return NextResponse.json({ error: 'Invalid payload' }, { status: 400 }); }
 
-  const transactionId = String(event.transaction_id ?? '');
-  const eventType = String(event.event ?? '');
-  if (!transactionId || !eventType) return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
+  const transactionId = String(event.transaction_id ?? '').trim();
+  const reference = String(event.reference ?? '').trim();
+  const eventType = String(event.event ?? (event.status ? `payment_intent.${event.status}` : '')).trim();
+  if ((!transactionId && !reference) || !eventType) {
+    return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
+  }
 
   const providerStatus = mapStatus(event);
   if (!providerStatus) return NextResponse.json({ received: true, ignored: eventType });
@@ -85,16 +88,60 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const payment = await db.payment.findFirst({
-      where: { providerAccount: transactionId },
+    // A successful gateway callback can be the first place where the SC-…
+    // transaction id appears. The locally-created Payment is keyed by pi_…
+    // and may still have providerAccount=null, so transaction-id-only lookup
+    // loses a real captured sale. XPayments reference can identify either the
+    // PaymentIntent or our merchant order number; accept all verified forms.
+    const identifiers = Array.from(new Set([transactionId, reference].filter(Boolean)));
+    let payment = await db.payment.findFirst({
+      where: {
+        OR: [
+          ...identifiers.map(value => ({ providerAccount: value })),
+          ...identifiers.map(value => ({ paymentIntentId: value })),
+          ...identifiers.map(value => ({ order: { orderNumber: value } })),
+        ],
+      },
       include: { order: true },
     });
+    let storedIntent: ProviderPaymentIntent | null = null;
+
+    // Some callbacks use SC-… for both transaction_id and reference. If the
+    // creation response did not yet expose that id, inspect a small bounded
+    // set of recent open intents and match the provider's own metadata. Never
+    // guess by amount alone: two buyers can legitimately pay the same total.
+    if (!payment && transactionId) {
+      const candidates = await db.payment.findMany({
+        where: {
+          provider: 'xpayments_stripe',
+          order: {
+            paymentStatus: { in: ['PENDING_PAYMENT', 'PAYMENT_PROCESSING'] },
+            createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60_000) },
+          },
+        },
+        include: { order: true },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
+      for (const candidate of candidates) {
+        let intent: ProviderPaymentIntent;
+        try {
+          intent = await getPaymentProvider().retrievePaymentIntent(candidate.paymentIntentId);
+        } catch {
+          continue;
+        }
+        if (intent.xpaymentsTransactionId !== transactionId) continue;
+        payment = candidate;
+        storedIntent = intent;
+        break;
+      }
+    }
     // The callback may beat local payment persistence; allow provider retry.
     if (!payment) throw new Error('Payment not yet available');
 
     // Merchant callbacks do not include Stripe metadata. Read the existing
     // intent before applying success, so attribution survives browser closure.
-    const storedIntent = await getPaymentProvider().retrievePaymentIntent(payment.paymentIntentId);
+    storedIntent ??= await getPaymentProvider().retrievePaymentIntent(payment.paymentIntentId);
     if (storedIntent.id !== payment.paymentIntentId) throw new Error('PaymentIntent mismatch');
 
     const amountMinor =
@@ -109,7 +156,7 @@ export async function POST(req: NextRequest) {
       amountMinor,
       currency: String(event.currency ?? payment.order.currency).toUpperCase(),
       paymentMethodType: event.method ?? payment.paymentMethodType ?? null,
-      xpaymentsTransactionId: transactionId,
+      xpaymentsTransactionId: transactionId || payment.providerAccount,
       raw: storedIntent.raw,
     };
 
@@ -120,7 +167,7 @@ export async function POST(req: NextRequest) {
       paidAt,
       eventId,
       paymentMethodType: event.method ?? null,
-      xpaymentsTransactionId: transactionId,
+      xpaymentsTransactionId: transactionId || payment.providerAccount,
     });
 
     return NextResponse.json({ received: true, applied: result.paymentStatus });

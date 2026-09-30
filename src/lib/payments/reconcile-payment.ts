@@ -11,7 +11,11 @@ import { hasCheckoutContact } from '@/lib/checkout';
 import { getProduct } from '@/lib/catalog';
 import { assignTrackingFields, ensureCancelledEvent } from '@/lib/tracking';
 import { sendPaymentConfirmedEmail } from '@/lib/email/order-email';
-import { sendPaymentPaidEvent, type PaymentTrackingParameters } from '@/lib/payment-events';
+import {
+  sendPaymentPaidEvent,
+  type PaymentEventDeliveryResult,
+  type PaymentTrackingParameters,
+} from '@/lib/payment-events';
 import { getPaymentProvider } from './xpayments-provider';
 import { toMinorUnit } from './amounts';
 import type { ProviderPaymentIntent } from './payment-types';
@@ -25,6 +29,8 @@ export interface ReconcileOptions {
   paymentMethodType?: string | null;
   /** XPayments transaction id supplied by the provider event. */
   xpaymentsTransactionId?: string | null;
+  /** Bound analytics retries for background jobs with a fixed runtime. */
+  paymentEventDelivery?: { attempts?: number; timeoutMs?: number };
 }
 
 export interface ReconcileResult {
@@ -194,12 +200,19 @@ export async function applyProviderIntent(
     // Sending for every verified SUCCEEDED observation is intentional: the
     // receiver deduplicates by order number, so a provider retry repairs a
     // previously unavailable analytics delivery without duplicating a sale.
-    await sendPaymentPaidEvent(
+    const delivery = await sendPaymentPaidEvent(
       { ...order, paidAt, paymentMethodType: method },
       trackingFromIntent(intent),
+      options.paymentEventDelivery,
     );
 
-    return { checked: true, changed: transitionedToPaid, paymentStatus: 'PAID', providerStatus: intent.status };
+    return {
+      checked: true,
+      changed: transitionedToPaid,
+      paymentStatus: 'PAID',
+      providerStatus: intent.status,
+      ...(delivery.ok ? {} : { reason: 'payment_event_delivery_failed' }),
+    };
   }
 
   // Never downgrade a paid/refunded order from a stale or out-of-order read.
@@ -284,7 +297,10 @@ export async function applyProviderIntent(
 }
 
 /** Retrieve the current XPayments PaymentIntent and reconcile it. */
-export async function refreshOrderPayment(orderId: string): Promise<ReconcileResult> {
+export async function refreshOrderPayment(
+  orderId: string,
+  options: ReconcileOptions = {},
+): Promise<ReconcileResult> {
   const payment = await db.payment.findUnique({ where: { orderId } });
   if (!payment?.paymentIntentId) {
     const order = await db.order.findUnique({ where: { id: orderId }, select: { paymentStatus: true } });
@@ -293,7 +309,7 @@ export async function refreshOrderPayment(orderId: string): Promise<ReconcileRes
 
   try {
     const intent = await getPaymentProvider().retrievePaymentIntent(payment.paymentIntentId);
-    return await applyProviderIntent(orderId, intent);
+    return await applyProviderIntent(orderId, intent, options);
   } catch (error) {
     console.warn('XPayments status reconciliation unavailable', error instanceof Error ? error.message : 'unknown');
     const order = await db.order.findUnique({ where: { id: orderId }, select: { paymentStatus: true } });
@@ -304,4 +320,36 @@ export async function refreshOrderPayment(orderId: string): Promise<ReconcileRes
       reason: 'provider_unavailable',
     };
   }
+}
+
+/**
+ * Replay only the analytics delivery for a locally verified paid order.
+ *
+ * A gateway callback can be authoritative even while the Stripe-compatible
+ * PaymentIntent read endpoint still exposes an older status. The order's PAID
+ * state is therefore the gate here; the intent is read only to recover its
+ * original attribution metadata, never to downgrade or re-charge anything.
+ */
+export async function redeliverPaymentPaidEvent(
+  orderId: string,
+  options: { attempts?: number; timeoutMs?: number } = {},
+): Promise<PaymentEventDeliveryResult> {
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+  });
+  if (!order || order.paymentStatus !== 'PAID' || !order.paidAt) {
+    return { ok: false, attempts: 0, error: 'Order is not paid', httpStatus: null };
+  }
+  const payment = order.payments[0] ?? null;
+  if (!payment?.paymentIntentId) {
+    return { ok: false, attempts: 0, error: 'PaymentIntent is missing', httpStatus: null };
+  }
+
+  const intent = await getPaymentProvider().retrievePaymentIntent(payment.paymentIntentId);
+  return sendPaymentPaidEvent(
+    { ...order, paymentMethodType: order.paymentMethodType ?? payment.paymentMethodType },
+    trackingFromIntent(intent),
+    options,
+  );
 }
