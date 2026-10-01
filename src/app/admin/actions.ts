@@ -11,6 +11,7 @@ import {
 } from '@/lib/admin/auth';
 import { saveProductOffer } from '@/lib/offers/store';
 import { refundPayment } from '@/lib/payments/refunds';
+import { refreshOrderPayment } from '@/lib/payments/reconcile-payment';
 import { ensureCancelledEvent, recordManualTrackingEvent, type TrackingState } from '@/lib/tracking';
 
 function value(formData: FormData, key: string): string {
@@ -284,4 +285,40 @@ export async function refundOrderAction(formData: FormData) {
   revalidatePath('/admin/orders');
   revalidatePath(`/admin/orders/${orderNumber}`);
   redirect(`/admin/orders/${orderNumber}?refunded=1`);
+}
+
+export async function reconcilePaymentAction(formData: FormData) {
+  await requireAdmin();
+  const paymentId = value(formData, 'paymentId');
+  if (!/^[a-z0-9]{10,64}$/i.test(paymentId)) throw new Error('Invalid payment');
+
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    select: { orderId: true, provider: true, order: { select: { orderNumber: true } } },
+  });
+  if (!payment || payment.provider !== 'xpayments_stripe') {
+    redirect('/admin/payments?reconcile=not_found');
+  }
+
+  // This retrieves the existing PaymentIntent. It never creates, captures or
+  // marks a payment paid without the provider's verified status.
+  const result = await refreshOrderPayment(payment.orderId, {
+    paymentEventDelivery: { attempts: 1, timeoutMs: 8_000 },
+  });
+  revalidatePath('/admin/payments');
+  revalidatePath('/admin/orders');
+  revalidatePath(`/admin/orders/${payment.order.orderNumber}`);
+
+  const outcome = result.reason === 'payment_event_delivery_failed' ? 'delivery_failed'
+    : result.reason === 'amount_currency_mismatch' || result.reason === 'intent_mismatch' ? 'mismatch'
+    : result.reason === 'checkout_contact_missing' ? 'contact_missing'
+    : !result.checked ? 'unavailable'
+    : result.paymentStatus === 'PAID' && result.providerStatus === 'SUCCEEDED' ? 'paid_sent'
+    : 'not_paid';
+  const query = new URLSearchParams({
+    reconcile: outcome,
+    order: payment.order.orderNumber,
+    provider: result.providerStatus ?? 'unavailable',
+  });
+  redirect(`/admin/payments?${query}`);
 }
