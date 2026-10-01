@@ -26,7 +26,7 @@ export default async function PaymentsPage({
   searchParams: Promise<{ reconcile?: string; order?: string; provider?: string }>;
 }) {
   const query = await searchParams;
-  const outcome = query.reconcile && query.reconcile in outcomeMessages
+  const outcome = query.reconcile && Object.hasOwn(outcomeMessages, query.reconcile)
     ? query.reconcile as ReconcileOutcome
     : null;
   const providerStatus = query.provider && ['CREATED', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELLED'].includes(query.provider)

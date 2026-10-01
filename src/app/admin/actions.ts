@@ -312,7 +312,7 @@ export async function reconcilePaymentAction(formData: FormData) {
   const outcome = result.reason === 'payment_event_delivery_failed' ? 'delivery_failed'
     : result.reason === 'amount_currency_mismatch' || result.reason === 'intent_mismatch' ? 'mismatch'
     : result.reason === 'checkout_contact_missing' ? 'contact_missing'
-    : !result.checked ? 'unavailable'
+    : result.reason || !result.checked ? 'unavailable'
     : result.paymentStatus === 'PAID' && result.providerStatus === 'SUCCEEDED' ? 'paid_sent'
     : 'not_paid';
   const query = new URLSearchParams({
