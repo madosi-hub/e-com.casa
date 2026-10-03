@@ -14,6 +14,8 @@ export type OfferAnalyticsEvent =
   | 'locale_changed'
   | 'add_to_cart'
   | 'begin_checkout'
+  | 'checkout_experience_view'
+  | 'checkout_delivery_continue'
   | 'checkout_blocked'
   | 'checkout_payment_attempt'
   | 'checkout_payment_error'

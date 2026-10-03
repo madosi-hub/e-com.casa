@@ -7,10 +7,9 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StripeElements, StripePaymentElementOptions } from '@stripe/stripe-js';
-import { CheckCircle2, ChevronDown, Lock, LoaderCircle, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronDown, Lock, LoaderCircle, MessageCircle, RotateCcw, ShieldCheck, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
@@ -29,7 +28,7 @@ import {
 } from '@/lib/constants';
 
 const OFFER_COPY: Record<string, string> = {
-  'checkout.title': 'Concluir encomenda',
+  'checkout.title': 'Finalize a sua encomenda.',
   'checkout.payNote': 'Os dados de pagamento são tratados de forma segura pelos nossos parceiros.',
   'checkout.each': 'por unidade',
   'checkout.emptyTitle': 'O seu carrinho está vazio',
@@ -99,7 +98,7 @@ const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
   // Contact details are collected above and supplied by confirmPayment.
   fields: { billingDetails: { email: 'never', name: 'never' } },
 };
-const CHECKOUT_CARD_CLASS = 'rounded-[24px] border border-[#e4e4e7] bg-white shadow-[0_1px_3px_rgba(24,24,27,.12)]';
+const CHECKOUT_CARD_CLASS = 'rounded-2xl border border-[#dedbd3] bg-white shadow-[0_3px_16px_rgba(32,26,23,.04)]';
 const CHECKOUT_LABEL_CLASS = 'text-[14px] font-medium leading-5 text-[#27272a]';
 const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#85858e] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#676770] focus-visible:border-[#201a17] focus-visible:ring-[#201a17]/25 md:text-[16px]';
 
@@ -123,6 +122,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof form, string>>>({});
   const deliverySectionRef = useRef<HTMLElement>(null);
+  const paymentHeadingRef = useRef<HTMLHeadingElement>(null);
+  const [reviewedDeliveryKey, setReviewedDeliveryKey] = useState<string | null>(null);
+  const deliveryReviewed = reviewedDeliveryKey === JSON.stringify(form);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const paySubmittingRef = useRef(false);
   const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'loading' | 'ready' | 'error'; complete: boolean; method?: string } | null>(null);
@@ -149,6 +151,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     setTrackingParameters(offerTrackingParameters(offerSlug));
     setDraftHydrated(true);
     setMounted(true);
+    trackOfferEvent('checkout_experience_view', { offerSlug, version: 'guided_v2' });
   }, []);
 
   useEffect(() => {
@@ -270,6 +273,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     }
     setFieldErrors(errors);
     if (firstInvalid) {
+      setReviewedDeliveryKey(null);
       const input = firstInvalid;
       // Let the inline error render before focusing its associated input.
       window.requestAnimationFrame(() => {
@@ -285,6 +289,18 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     // Some autofill providers update the DOM before React receives a change event.
     if (DELIVERY_FIELDS.some((name) => delivery[name] !== form[name])) setForm(delivery);
     return delivery;
+  };
+
+  const continueToPayment = () => {
+    if (paySubmittingRef.current || session.phase === 'confirming') return;
+    const delivery = reviewDeliveryDetails();
+    if (!delivery) return;
+    setReviewedDeliveryKey(JSON.stringify(delivery));
+    trackOfferEvent('checkout_delivery_continue', { offerSlug, version: 'guided_v2' });
+    window.requestAnimationFrame(() => {
+      paymentHeadingRef.current?.focus({ preventScroll: true });
+      paymentHeadingRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    });
   };
 
   const onPay = async (e: React.FormEvent) => {
@@ -394,7 +410,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
           className={`${CHECKOUT_FIELD_CLASS}${fieldErrors[name] ? ' border-[#a32924]' : ''}`}
           {...props}
           aria-invalid={Boolean(fieldErrors[name])}
-          aria-describedby={fieldErrors[name] ? `co-${name}-error` : undefined}
+          aria-describedby={[fieldErrors[name] ? `co-${name}-error` : '', name === 'email' ? 'co-email-help' : ''].filter(Boolean).join(' ') || undefined}
           onBlur={(event) => {
             validateField(name, event.currentTarget);
             props.onBlur?.(event);
@@ -402,6 +418,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         />
       </div>
       {fieldErrors[name] && <p id={`co-${name}-error`} className="mt-1 text-sm text-[#a32924]" aria-live="polite">{fieldErrors[name]}</p>}
+      {name === 'email' && <p id="co-email-help" className="mt-2 text-sm leading-5 text-[#626057]">Usaremos este e-mail para as informações da sua encomenda.</p>}
     </div>
   );
 
@@ -410,91 +427,89 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     session.phase !== 'ready' || !paymentReady;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-4 py-5 font-sans text-[#18181b] sm:px-6 sm:py-7 lg:py-9">
-      <div className="mx-auto w-full max-w-[760px]">
-        <h1 className="text-[28px] font-semibold leading-tight sm:text-[30px]">{t('checkout.title')}</h1>
-        <p className="mt-1.5 text-[15px] leading-6 text-[#70707a]">Confirme os seus dados e conclua a encomenda em segurança.</p>
-      </div>
-
-      <form onSubmit={onPay} noValidate className="mx-auto mt-5 grid w-full max-w-[760px] items-start gap-4">
-        {/* Order summary stays above the form and can be collapsed. */}
-        <aside aria-label={t('checkout.summary')} >
-          <details open className={`${CHECKOUT_CARD_CLASS} group overflow-hidden`}>
-            <summary className="cursor-pointer list-none px-4 py-4 [&::-webkit-details-marker]:hidden sm:px-5">
-              <span className="flex items-center justify-between gap-3">
-                <span className="text-[15px] font-semibold leading-5">Resumo da encomenda</span>
-                <span className="flex shrink-0 items-center gap-3">
-                  <strong className="text-[18px] font-semibold leading-tight">{formatPrice(money(total))}</strong>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-                </span>
-              </span>
-              {displayLines[0] && (
-                <span className="mt-2 flex min-w-0 items-center text-[12px] leading-5 text-[#5c5049] group-open:hidden">
-                  <span className="min-w-0 overflow-hidden whitespace-nowrap text-clip">{checkoutLineLabel(displayLines[0])}</span>
-                  <span className="shrink-0 pl-0.5 font-medium text-olive underline underline-offset-2">… Ver mais</span>
-                </span>
-              )}
-            </summary>
-            <div className="border-t border-[#e2e2e5] px-4 pb-4 pt-3 sm:px-5">
-            <ul className="mt-3 max-h-64 space-y-3 overflow-y-auto thin-scrollbar pr-1">
-              {displayLines.map((l) => (
-                <li key={`${l.slug}-${l.variantId ?? ''}`} className="flex gap-3">
-                  <div className="relative h-14 w-14 shrink-0">
-                    <div className="absolute inset-0 overflow-hidden rounded-lg border border-[#dedfe3]">
-                      <Image src={nuraltaCartImage(l.slug, l.image)} alt={l.name} fill sizes="56px" className="object-cover" />
+    <div className="mx-auto w-full max-w-[1120px] px-4 py-6 font-sans text-[#201a17] sm:px-6 sm:py-10">
+      <header className="mb-6 sm:mb-8">
+        <p className="mb-3 flex items-center gap-2 text-sm font-medium text-[#4b5d42]"><ShieldCheck aria-hidden className="h-4 w-4" /> Compra segura · Sem criar conta</p>
+        <h1 className="text-[30px] font-semibold leading-[1.15] tracking-tight sm:text-[38px]">{t('checkout.title')}</h1>
+        <p className="mt-3 max-w-xl text-base leading-6 text-[#626057]">A sua escolha está aqui. Indique a entrega e escolha como prefere pagar.</p>
+        <ol aria-label="Etapas da encomenda" className="mt-6 flex max-w-md items-center gap-3 text-sm font-medium">
+          <li aria-current={!deliveryReviewed ? 'step' : undefined} className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#344731] text-white">{deliveryReviewed ? <CheckCircle2 aria-label="Preenchida" className="h-4 w-4" /> : '1'}</span> Entrega
+          </li>
+          <li aria-hidden className="h-px min-w-6 flex-1 bg-[#c9cec2]" />
+          <li aria-current={deliveryReviewed ? 'step' : undefined} className="flex items-center gap-2">
+            <span className={'grid h-8 w-8 place-items-center rounded-full border ' + (deliveryReviewed ? 'border-[#344731] bg-[#344731] text-white' : 'border-[#b1b4aa] text-[#626057]')}>2</span> Pagamento
+          </li>
+        </ol>
+      </header>
+      <form onSubmit={onPay} noValidate className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-x-8">
+        <aside aria-label="Resumo da encomenda" className="min-w-0 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1">
+          <div className={CHECKOUT_CARD_CLASS + ' overflow-hidden'}>
+            <div className="flex items-center justify-between gap-3 border-b border-[#dedbd3] bg-[#f4f3ed] px-4 py-3 sm:px-5">
+              <h2 className="text-base font-semibold">A sua escolha</h2>
+              <Link href={offerPath + '?carrinho=aberto'} className="inline-flex min-h-11 items-center rounded px-1 text-sm font-medium underline underline-offset-4 focus-visible:outline-2">Editar carrinho</Link>
+            </div>
+            <div className="p-4 sm:p-5">
+              <ul className="space-y-4">
+                {displayLines.map((line) => (
+                  <li key={line.slug + '-' + (line.variantId ?? '')} className="flex items-start gap-3">
+                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-[#dedbd3] bg-[#f4f3ed]">
+                      <Image src={nuraltaCartImage(line.slug, line.image)} alt={line.name} fill sizes="80px" className="object-cover" />
                     </div>
-                    <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-ink/90 px-1 text-[10.5px] font-medium text-cream shadow-sm">
-                      {l.quantity}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-[14px] font-medium leading-5 text-[#18181b]">{checkoutLineLabel(l)}</p>
-                  </div>
-                  <p className="shrink-0 text-[14px] font-medium tabular-nums">{formatPrice(toNumber(l.price) * l.quantity)}</p>
-                </li>
-              ))}
-            </ul>
-            <Separator className="my-4" />
-            <dl className="space-y-2.5 text-[14px]">
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('cart.subtotal')}</dt>
-                <dd className="font-medium">{formatPrice(subtotal)}</dd>
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <p className="break-words text-sm font-semibold leading-5">{checkoutLineLabel(line)}</p>
+                      <p className="mt-2 text-base font-semibold tabular-nums">{formatPrice(toNumber(line.price) * line.quantity)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <details className="group mt-4 border-t border-[#dedbd3]">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm text-[#626057] [&::-webkit-details-marker]:hidden">
+                  Ver detalhes do valor <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" />
+                </summary>
+                <dl className="space-y-3 pb-3 text-sm">
+                  <div className="flex justify-between gap-3"><dt>Subtotal</dt><dd>{formatPrice(subtotal)}</dd></div>
+                  {discount > 0 && <div className="flex justify-between gap-3 text-[#344731]"><dt>Desconto ({cart.promoCode})</dt><dd>−{formatPrice(discount)}</dd></div>}
+                  <div className="flex justify-between gap-3"><dt>IVA</dt><dd>Incluído</dd></div>
+                </dl>
+              </details>
+              {shippingQuoteStatus !== 'ready' && <p className="mb-4 text-sm leading-5 text-[#626057]">Entrega: {shippingQuoteStatus === 'loading' ? 'a calcular…' : 'a calcular após preencher a morada'}.</p>}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#dedbd3] pt-4">
+                <span className="text-base font-semibold">Total da encomenda</span>
+                <strong className="text-[26px] font-semibold tracking-tight tabular-nums">{formatPrice(money(total))}</strong>
               </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-olive">
-                  <dt>{t('cart.discount')} ({cart.promoCode})</dt>
-                  <dd>−{formatPrice(discount)}</dd>
-                </div>
-              )}
-              <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Entrega</dt>
-                  <dd className="text-right font-medium">A calcular após preencher a morada</dd>
-                </div>
-              <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('checkout.vat')}</dt>
-                <dd className="text-muted-foreground">{t('checkout.vatIncludedNote')}</dd>
-              </div>
-              <Separator />
-              <div className="flex justify-between text-[17px]">
-                <dt className="font-semibold">{t('checkout.total')}</dt>
-                <dd className="font-semibold">{formatPrice(money(total))}</dd>
-              </div>
-            </dl>
-            {shippingQuoteStatus === 'ready' && <p className="mt-3 text-sm leading-5 text-[#5c5049]">Portugal · {deliveryWindowLabel()}</p>}
+              <p className="mt-1 text-sm text-[#626057]">IVA incluído</p>
             </div>
-          </details>
+          </div>
+          <div className="mt-4 hidden rounded-2xl border border-[#dedbd3] p-5 lg:block">
+            <h3 className="text-base font-semibold">Compre com tudo esclarecido.</h3>
+            <p className="mt-2 text-sm leading-6 text-[#626057]">Consulte as condições ou fale com a nossa equipa antes de concluir.</p>
+            <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"><MessageCircle aria-hidden className="h-4 w-4" /> Apoio ao cliente <span className="sr-only">(abre numa nova aba)</span></Link>
+          </div>
         </aside>
+
         {/* Delivery and payment follow the summary in reading order. */}
-        <div className="space-y-4">
-          <section ref={deliverySectionRef} aria-labelledby="co-delivery-title" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
-            <div className="flex items-start gap-3">
-              <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black text-[12px] font-bold text-white">1</span>
+        <div className="min-w-0 space-y-5 lg:col-start-1 lg:row-start-1">
+          <section ref={deliverySectionRef} aria-labelledby="co-delivery-title" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-6`}>
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#edf1e9] text-sm font-semibold text-[#344731]">{deliveryReviewed ? <CheckCircle2 className="h-5 w-5" /> : '1'}</span>
               <div className="min-w-0">
-                <h2 id="co-delivery-title" className="text-[16px] font-bold leading-[24px]">Dados de entrega</h2>
+                <h2 id="co-delivery-title" className="text-xl font-semibold leading-7">{deliveryReviewed ? 'A sua entrega' : 'Onde vamos entregar?'}</h2>
               </div>
+              {deliveryReviewed && <button type="button" onClick={() => {
+                setReviewedDeliveryKey(null);
+                window.requestAnimationFrame(() => deliverySectionRef.current?.querySelector<HTMLInputElement>('#co-firstName')?.focus());
+              }} className="ml-auto min-h-11 rounded px-2 text-sm font-semibold underline underline-offset-4 focus-visible:outline-2">Editar</button>}
             </div>
-            <p className="mt-2 text-sm leading-5 text-[#5c5049]">Todos os campos são obrigatórios, exceto o complemento da morada.</p>
-            <div className="mt-4 grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            {deliveryReviewed && <div className="rr-block rr-mask mt-4 space-y-1 break-words rounded-xl bg-[#f5f6f1] p-4 text-sm leading-6">
+              <p className="font-semibold">{form.firstName}</p>
+              <p>{form.email}</p>
+              <p>{form.address}{form.address2 ? `, ${form.address2}` : ''}</p>
+              <p>{form.postalCode} · {form.city} · Portugal</p>
+            </div>}
+            <div hidden={deliveryReviewed}>
+            <p className="mt-3 text-sm leading-5 text-[#626057]">Só precisamos dos dados para a sua encomenda. O complemento da morada é opcional.</p>
+            <div className="mt-5 grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
               {field('email', 'E-mail', {
                 type: 'email',
@@ -533,6 +548,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 />
                 {fieldErrors.postalCode && <p id="co-postalCode-error" className="mt-1 text-sm text-[#a32924]" aria-live="polite">{fieldErrors.postalCode}</p>}
               </div>
+            </div>
+            </div>
               {shippingQuoteStatus === 'loading' && (
                 <div role="status" className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-3 text-sm text-[#5c5049] sm:col-span-2">
                   <LoaderCircle aria-hidden className="h-4 w-4 shrink-0 animate-spin" />
@@ -546,21 +563,21 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 {shipping > 0 && <span className="font-medium">· {formatPrice(shipping)}</span>}
                 <span className="basis-full">{deliveryWindowLabel()}</span>
               </div>}
-            </div>
+            {!deliveryReviewed && <button type="button" onClick={continueToPayment} disabled={paySubmitting || session.phase === 'confirming'} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#344731] px-4 py-3 text-base font-semibold text-white hover:bg-[#253523] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#344731] disabled:opacity-60">
+              Continuar para pagamento <ArrowRight aria-hidden className="h-5 w-5" />
+            </button>}
           </section>
 
           {/* Payment — real Stripe Elements flow */}
-          <section aria-labelledby="co-payment" className={`${CHECKOUT_CARD_CLASS} p-4 sm:p-5`}>
+          <section aria-labelledby="co-payment" className={`${CHECKOUT_CARD_CLASS} overflow-hidden border-[#b4bfaa] p-4 sm:p-6`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 id="co-payment" className="flex items-center gap-3 text-[16px] font-bold leading-[24px]">
-                <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-black text-[12px] font-bold text-white">2</span>
-                Pagamento
+              <h2 id="co-payment" ref={paymentHeadingRef} tabIndex={-1} className="flex scroll-mt-6 items-center gap-3 rounded text-xl font-semibold leading-7 focus:outline-2 focus:outline-offset-4 focus:outline-[#344731]">
+                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#edf1e9] text-sm font-semibold text-[#344731]">2</span>
+                Como prefere pagar?
               </h2>
-              <span className="text-sm text-muted-foreground">{t('checkout.secureTitle')}</span>
+              <span className="flex items-center gap-1.5 text-sm text-[#4b5d42]"><Lock aria-hidden className="h-3.5 w-3.5" /> Pagamento seguro</span>
             </div>
-            <p className="mt-1 pl-10 text-sm leading-5 text-[#62626b]">
-              {t('checkout.secureDesc')}
-            </p>
+            <p className="mt-3 text-sm leading-6 text-[#626057]">Escolha uma das opções disponíveis. Os dados de pagamento são introduzidos num formulário protegido.</p>
 
             {(session.phase === 'error' || session.phase === 'unavailable') && (
               <div role="alert" className="mt-4 rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-3">
@@ -636,14 +653,10 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                     }
                   }}
                 />
-                <h3 className="mt-5 text-[16px] font-semibold">Como prefere pagar?</h3>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                  Selecione uma opção para ver os campos e as instruções de pagamento.
-                </p>
                 <PaymentElement
                   elements={session.elements}
                   options={PAYMENT_ELEMENT_OPTIONS}
-                  className="mt-3"
+                  className="mt-5"
                   ariaLabel="Dados de pagamento seguros"
                   loadingLabel="A carregar o pagamento seguro…"
                   onReady={() => {
@@ -669,7 +682,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               </>
             )}
 
-            <p id="co-payment-help" className="mt-4 text-sm leading-6 text-[#5c5049]" aria-live="polite">{paymentHelp}</p>
+            <p id="co-payment-help" className="mt-4 rounded-xl bg-[#f4f6f0] p-3 text-sm leading-6 text-[#344731]" aria-live="polite">{paymentHelp}</p>
             {paymentError && (
               <div id="co-payment-error" ref={paymentErrorRef} tabIndex={-1} role="alert" className="mt-4 rounded-xl border border-[#a32924] bg-[#fff6f5] p-4 text-sm leading-6 text-[#a32924] focus:outline-2 focus:outline-offset-2">
                 <p className="font-semibold">Não foi possível concluir o pagamento</p>
@@ -677,19 +690,23 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <p className="mt-1">Os seus dados de entrega foram mantidos.</p>
               </div>
             )}
+            <div className="mt-6 flex flex-wrap items-end justify-between gap-2 border-t border-[#dedbd3] pt-5">
+              <div><p className="text-base font-semibold">Total a pagar</p><p className="mt-1 text-sm text-[#626057]">Pagamento único · IVA incluído</p></div>
+              <p className="text-[28px] font-semibold tracking-tight tabular-nums">{formatPrice(money(total))}</p>
+            </div>
             <button
               type="submit"
               disabled={payDisabled}
               aria-describedby={paymentError ? 'co-payment-error co-payment-help' : 'co-payment-help'}
               aria-busy={paySubmitting || session.phase === 'confirming'}
-              className="mt-5 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[16px] bg-[#201a17] px-4 py-3 text-[16px] font-semibold text-white transition-colors hover:bg-[#352d28] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#201a17] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-4 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-[#344731] px-4 py-4 text-[16px] font-semibold text-white transition-colors hover:bg-[#253523] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#344731] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {paySubmitting || session.phase === 'confirming' ? (
                 <><LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
               ) : session.phase === 'error' || session.phase === 'unavailable' || paymentLoadFailed ? (
                 'Pagamento indisponível — tente novamente acima'
               ) : session.phase === 'ready' && paymentReady ? (
-                <><Lock aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} /> {paymentMethod === 'multibanco' ? 'Gerar referência' : 'Pagar'} · {formatPrice(money(total))}</>
+                <><Lock aria-hidden className="h-4 w-4 shrink-0" strokeWidth={2} /> {paymentMethod === 'multibanco' ? 'Gerar referência' : 'Confirmar e pagar'} · {formatPrice(money(total))}</>
               ) : (
                 <><LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> {t('checkout.paymentInitializing')}</>
               )}
@@ -698,6 +715,24 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               <ShieldCheck aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-olive" strokeWidth={1.5} />
               {t('checkout.payNote')}
             </p>
+            <div className="mt-5 border-t border-[#dedbd3] pt-4">
+              <p className="text-sm font-semibold">Alguma dúvida antes de concluir?</p>
+              <div className="mt-1 flex flex-wrap gap-x-5">
+                <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><MessageCircle aria-hidden className="h-4 w-4" /> Falar com o apoio<span className="sr-only"> (abre numa nova aba)</span></Link>
+                <Link href={panelOfferPath(offerSlug, '/informacao/trocas-e-devolucoes')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><RotateCcw aria-hidden className="h-4 w-4" /> Trocas e devoluções<span className="sr-only"> (abre numa nova aba)</span></Link>
+              </div>
+            </div>
+          </section>
+          <section aria-labelledby="co-questions" className="px-1">
+            <h2 id="co-questions" className="mb-2 text-base font-semibold">Antes de finalizar</h2>
+            <details className="group border-b border-[#dedbd3] py-1">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">Posso alterar a cor, a medida ou a quantidade?<ChevronDown aria-hidden className="h-4 w-4 shrink-0 group-open:rotate-180" /></summary>
+              <p className="pb-4 text-sm leading-6 text-[#626057]">Sim. Use <Link href={offerPath + '?carrinho=aberto'} className="font-medium underline underline-offset-4">Editar carrinho</Link> para rever a sua escolha antes de pagar.</p>
+            </details>
+            <details className="group border-b border-[#dedbd3] py-1">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">E se precisar de ajuda com a encomenda?<ChevronDown aria-hidden className="h-4 w-4 shrink-0 group-open:rotate-180" /></summary>
+              <p className="pb-4 text-sm leading-6 text-[#626057]">Contacte o apoio ao cliente indicando o número da encomenda. Para trocas, devoluções ou artigos danificados, consulte as condições e os procedimentos na nossa política.</p>
+            </details>
           </section>
         </div>
 
