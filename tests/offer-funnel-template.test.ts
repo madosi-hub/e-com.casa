@@ -149,15 +149,15 @@ test('both panel offer URLs keep their incoming slug through checkout and inform
   expect(dynamicInformation).toContain('offerSlug={slug}');
 });
 
-test('the dedicated checkout derives the required surname and reveals CTT delivery after the postal code', () => {
+test('the dedicated checkout keeps the minimal delivery form and CTT loading states', () => {
   expect(painelCheckout).not.toContain("field('lastName'");
   expect(painelCheckout).not.toContain('id="co-shipping"');
   expect(painelCheckout).not.toContain('id="co-notes"');
   expect(painelCheckout).not.toContain('id="co-country"');
   expect(painelCheckout).not.toContain("field('phone'");
   expect(painelCheckout).toContain('phone: null');
-  expect(painelCheckout).toContain('lastName: form.firstName.trim()');
-  expect(painelCheckout).toContain('loadShippingQuote();');
+  // The submitted surname and delayed delivery reveal are exercised in
+  // checkout-ux.test.mjs rather than tied to local variable/function names.
   expect(painelCheckout).toContain("shippingQuoteStatus === 'loading'");
   expect(painelCheckout).toContain("shippingQuoteStatus === 'ready'");
   expect(painelCheckout).toContain('/pt/images/logo-ctt-express.svg');

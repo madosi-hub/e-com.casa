@@ -18,6 +18,11 @@ export type OfferAnalyticsEvent =
   | 'checkout_payment_attempt'
   | 'checkout_payment_error'
   | 'checkout_payment_loading'
+  | 'checkout_delivery_status'
+  | 'checkout_field_error'
+  | 'checkout_payment_method'
+  | 'checkout_payment_details'
+  | 'checkout_payment_result'
   | 'purchase';
 
 export interface OfferAnalyticsPayload {

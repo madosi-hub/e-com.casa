@@ -16,7 +16,7 @@ export function mountPaymentElement({
   options?: StripePaymentElementOptions;
   onReady: () => void;
   onLoadError: (code: string) => void;
-  onChange?: (event: { complete?: boolean }) => void;
+  onChange?: (event: { complete?: boolean; value?: { type: string } }) => void;
 }): () => void {
   let paymentElement: StripePaymentElement | undefined;
   let disposed = false;
@@ -41,7 +41,9 @@ export function mountPaymentElement({
     onReady();
   };
   const handleLoadError = () => fail('payment_element_load_error');
-  const handleChange = (event: { complete?: boolean }) => onChange?.(event);
+  const handleChange = (event: { complete?: boolean; value?: { type: string } }) => {
+    if (!disposed && !failed) onChange?.(event);
+  };
 
   try {
     paymentElement = elements.create('payment', {

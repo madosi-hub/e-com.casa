@@ -95,7 +95,7 @@ export function ExpressCheckout({ stripe, elements, onBeforeConfirm, onConfirm, 
 
   return (
     <div className={`${available ? '' : 'hidden'} ${className}`}>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <p className="mb-2 text-sm font-semibold text-muted-foreground">
         Pagamento rápido
       </p>
       <div ref={containerRef} aria-label="Express checkout wallets" />
