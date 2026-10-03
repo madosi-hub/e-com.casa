@@ -21,7 +21,7 @@ export interface PaymentElementProps {
   loadingLabel?: string;
   onReady?: () => void;
   onLoadError?: (code: string) => void;
-  onChange?: (event: { complete?: boolean }) => void;
+  onChange?: (event: { complete?: boolean; value?: { type: string } }) => void;
   onRetry?: () => void;
 }
 
@@ -85,7 +85,7 @@ export function PaymentElement({
         <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
           <p>Não foi possível carregar o formulário de pagamento. Tente novamente.</p>
           {onRetry && (
-            <button type="button" onClick={onRetry} className="mt-3 rounded-md border border-current px-3 py-2 text-sm font-medium">
+            <button type="button" onClick={onRetry} className="mt-3 min-h-11 rounded-md border border-current px-3 py-2 text-sm font-medium">
               Tentar novamente
             </button>
           )}

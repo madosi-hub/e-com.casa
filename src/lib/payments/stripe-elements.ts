@@ -66,35 +66,35 @@ export const ELEMENTS_APPEARANCE = {
     colorBackground: '#ffffff',
     colorText: '#1f241c', // ink
     colorTextSecondary: '#6b7166',
-    colorTextPlaceholder: '#9aa093',
-    colorDanger: '#b3573f', // terracotta
+    colorTextPlaceholder: '#676770',
+    colorDanger: '#a32924',
     fontFamily: 'var(--font-sans, ui-sans-serif, system-ui, sans-serif)',
-    fontSizeBase: '14px',
+    fontSizeBase: '16px',
     spacingUnit: '4px',
     borderRadius: '6px',
     focusBoxShadow: '0 0 0 3px rgba(95, 112, 82, 0.18)',
   },
   rules: {
     '.Input': {
-      border: '1px solid #d9dcd4',
+      border: '1px solid #85858e',
       boxShadow: 'none',
-      padding: '10px 12px',
+      padding: '13px 12px',
     },
     '.Input:focus': {
       border: '1px solid #5f7052',
       boxShadow: '0 0 0 3px rgba(95, 112, 82, 0.18)',
     },
     '.Input--invalid': {
-      border: '1px solid #b3573f',
+      border: '1px solid #a32924',
     },
     '.Label': {
-      fontSize: '12.5px',
+      fontSize: '14px',
       fontWeight: '500',
       marginBottom: '6px',
       color: '#1f241c',
     },
     '.Tab': {
-      border: '1px solid #d9dcd4',
+      border: '1px solid #85858e',
       boxShadow: 'none',
     },
     '.Tab--selected': {

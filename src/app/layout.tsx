@@ -21,14 +21,16 @@ const inter = Inter({
 const manrope = Manrope({
   variable: '--font-manrope',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  // A variable font supplies all weights with one range. Fixed-weight requests
+  // can return Google /l/font URLs whose query breaks Turbopack's font import.
+  weight: 'variable',
   display: 'swap',
 });
 
 const newsreader = Newsreader({
   variable: '--font-newsreader',
   subsets: ['latin'],
-  weight: ['300', '400', '500'],
+  weight: 'variable',
   style: ['normal'],
   display: 'swap',
 });

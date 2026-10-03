@@ -11,11 +11,6 @@ import {
   panelOfferSlugFromPathname,
 } from '@/lib/offers/route-policy';
 
-const TICKER_ITEMS = [
-  'Portes calculados antes do pagamento',
-  'Pagamento seguro com Cartão, Apple Pay, MB WAY e Multibanco',
-];
-
 export function CheckoutHeader() {
   const pathname = usePathname();
   const offerSlug = panelOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
@@ -28,29 +23,9 @@ export function CheckoutHeader() {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes ecomCheckoutTicker { to { transform: translateX(-50%); } }
-        .ecom-checkout-ticker { animation: ecomCheckoutTicker 24s linear infinite; }
-        @media (prefers-reduced-motion: reduce) { .ecom-checkout-ticker { animation: none; } }
-      `}</style>
-      <div className="overflow-hidden bg-[#201a17] py-1.5 text-[#e9dfd5]">
-        <div className="ecom-checkout-ticker flex w-max text-[9px] uppercase tracking-[0.12em] sm:text-[10px]">
-          {[0, 1].map((group) => (
-            <div key={group} className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4" aria-hidden={group === 1}>
-              {TICKER_ITEMS.map((item) => (
-                <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8">
-                  <span>{item}</span>
-                  <span className="opacity-40">◆</span>
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <header className="border-b border-[#e6ded4] bg-[#f7f3ef]/95 backdrop-blur">
         <div className="mx-auto grid h-[60px] w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-          <Link href={legalPage ? offerPath : `${offerPath}?carrinho=aberto`} className="flex w-fit items-center gap-1.5 text-[12px] font-medium text-[#6f6259] transition-colors hover:text-[#201a17]">
+          <Link href={legalPage ? offerPath : `${offerPath}?carrinho=aberto`} className="flex min-h-11 w-fit items-center gap-1.5 rounded-sm text-[14px] font-medium text-[#6f6259] transition-colors hover:text-[#201a17] focus-visible:outline-2 focus-visible:outline-offset-2">
             <ArrowLeft className="h-4 w-4" aria-hidden />
             <span className="hidden sm:inline">{legalPage ? 'Voltar à oferta' : 'Voltar ao carrinho'}</span>
             <span className="sm:hidden">Voltar</span>
@@ -66,7 +41,7 @@ export function CheckoutHeader() {
             />
           </span>
 
-          <span className="ml-auto flex items-center gap-1.5 text-[11px] font-medium text-[#6f6259]">
+          <span className="ml-auto flex items-center gap-1.5 text-[14px] font-medium text-[#6f6259]">
             <Lock className="h-3.5 w-3.5" aria-hidden />
             <span className="hidden sm:inline">Pagamento seguro</span>
           </span>
@@ -82,11 +57,11 @@ export function CheckoutFooter() {
   const informationPath = (slug: string) => panelOfferPath(offerSlug, `/informacao/${slug}`);
 
   return (
-    <footer className="border-t border-[#e6ded4] bg-[#f7f3ef] px-4 py-5 text-center text-[11px] text-[#74685f]">
+    <footer className="border-t border-[#e6ded4] bg-[#f7f3ef] px-4 py-5 text-center text-[14px] text-[#74685f]">
       <nav aria-label="Informação legal" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
-        <Link href={informationPath('privacidade')}>Privacidade</Link>
-        <Link href={informationPath('trocas-e-devolucoes')}>Trocas e devoluções</Link>
-        <Link href={informationPath('contacto')}>Contacto</Link>
+        <Link className="inline-flex min-h-11 items-center rounded-sm px-1 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2" href={informationPath('privacidade')}>Privacidade</Link>
+        <Link className="inline-flex min-h-11 items-center rounded-sm px-1 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2" href={informationPath('trocas-e-devolucoes')}>Trocas e devoluções</Link>
+        <Link className="inline-flex min-h-11 items-center rounded-sm px-1 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2" href={informationPath('contacto')}>Precisa de ajuda?</Link>
       </nav>
       <p className="mt-2">Pagamento seguro. IVA incluído nos preços.</p>
     </footer>
