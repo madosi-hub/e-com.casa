@@ -41,7 +41,7 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
       input.validity = { typeMismatch: props.type === 'email' && Boolean(props.value) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(props.value) };
       inputs.set(props.id, input);
     }
-    if (props.ref) props.ref.current = { focus: () => focus.push({ id: props.id }), querySelector: selector => inputs.get(selector.slice(1)) ?? null };
+    if (props.ref) props.ref.current = { focus: () => focus.push({ id: props.id }), scrollIntoView: opts => scroll.push({ id: props.id, ...opts }), querySelector: selector => inputs.get(selector.slice(1)) ?? null };
     return { type, props };
   };
   const component = name => props => jsx(name, props);
@@ -56,7 +56,7 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     react, 'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' },
     'next/link': { default: component('a') }, 'next/image': { default: component('img') },
     'next/navigation': { useRouter: () => ({ push() { throw new Error('Navigation not expected'); } }) },
-    'lucide-react': Object.fromEntries(['ArrowUp', 'CheckCircle2', 'ChevronDown', 'Lock', 'LoaderCircle', 'Search', 'ShieldCheck', 'ShoppingBag'].map(key => [key, component(key)])),
+    'lucide-react': Object.fromEntries(['ArrowRight', 'ArrowUp', 'CheckCircle2', 'ChevronDown', 'Lock', 'LoaderCircle', 'MessageCircle', 'RotateCcw', 'Search', 'ShieldCheck', 'ShoppingBag'].map(key => [key, component(key)])),
     '@/components/ui/input': { Input: component('input') }, '@/components/ui/label': { Label: component('label') }, '@/components/ui/separator': { Separator: component('hr') },
     '@/hooks/use-toast': { toast() {} }, '@/lib/cart-store': { useCart: () => cart },
     '@/lib/catalog/nuralta-media': { nuraltaCartImage: (_, image) => image }, '@/lib/offers/attribution': { offerTrackingParameters: () => ({}) },
@@ -188,7 +188,8 @@ test('summary comes first and reveals shipping only after completed address and 
   const form = nodes(f.tree, n => n.type === 'form')[0];
   assert.equal(form.props.children.filter(Boolean)[0].type, 'aside');
   const summary = nodes(form, n => n.type === 'aside')[0];
-  assert.equal(nodes(summary, n => n.type === 'details')[0].props.open, true);
+  assert.equal(nodes(summary, n => n.type === 'details')[0].props.open, undefined);
+  assert.match(text(summary), /1× Painel de teste/);
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
   f.change('address', valid.address); f.change('city', valid.city); f.change('postalCode', valid.postalCode);
   assert.match(text(f.tree), /A calcular entrega/);
@@ -197,7 +198,7 @@ test('summary comes first and reveals shipping only after completed address and 
   assert.match(text(f.tree), /Entrega grátis por/); assert.match(text(f.tree), /Entrega prevista/);
   const readySummary = nodes(f.tree, n => n.type === 'aside')[0];
   assert.doesNotMatch(text(readySummary), /Grátis/);
-  assert.match(text(readySummary), /A calcular após preencher a morada/);
+  assert.doesNotMatch(text(readySummary), /a calcular após preencher a morada/);
   f.change('postalCode', '1000'); f.finishShipping();
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
   f.change('postalCode', '1000-002');
@@ -210,7 +211,7 @@ test('invalid email focuses its labelled error and respects reduced motion', asy
   const f = fixture({ draft: { ...valid, email: 'nome@' }, reducedMotion: true }); f.readyElement();
   await f.submit(); f.render(); f.flushFrames();
   assert.equal(f.focus[0].id, 'co-email'); assert.equal(f.scroll[0].behavior, 'auto');
-  assert.equal(nodes(f.tree, n => n.props?.id === 'co-email')[0].props['aria-describedby'], 'co-email-error');
+  assert.equal(nodes(f.tree, n => n.props?.id === 'co-email')[0].props['aria-describedby'], 'co-email-error co-email-help');
   assert.deepEqual(f.paymentCalls, []);
 });
 
@@ -236,4 +237,37 @@ test('express failure restores the submit button and displays an inline error', 
   await assert.rejects(f.express.props.onBeforeConfirm()); f.render();
   assert.equal(f.button.props.disabled, false);
   assert.ok(nodes(f.tree, n => n.props?.id === 'co-payment-error').length);
+});
+
+test('continue validates then collapses delivery without submitting or recreating payment', () => {
+  const f = fixture(); f.readyElement();
+  const options = f.payment.props.options;
+  const continueButton = () => nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para pagamento'))[0];
+  continueButton().props.onClick(); f.render(); f.flushFrames();
+  assert.equal(f.focus.at(-1).id, 'co-firstName');
+  assert.equal(nodes(f.tree, n => n.props?.hidden === true).length, 0);
+  for (const name of ['firstName', 'email', 'address', 'city', 'postalCode']) f.change(name, valid[name]);
+  continueButton().props.onClick(); f.render(); f.flushFrames();
+  assert.equal(f.focus.at(-1).id, 'co-payment');
+  const collapsed = nodes(f.tree, n => n.props?.hidden === true)[0];
+  assert.ok(nodes(collapsed, n => n.props?.id === 'co-email').length);
+  assert.equal(f.payment.props.options, options);
+  assert.deepEqual(f.paymentCalls, []);
+  assert.match(text(nodes(f.tree, n => n.type === 'li' && n.props['aria-current'] === 'step')[0]), /Pagamento/);
+  const edit = nodes(f.tree, n => n.type === 'button' && text(n) === 'Editar')[0];
+  edit.props.onClick(); f.render(); f.flushFrames();
+  assert.equal(f.focus.at(-1).id, 'co-firstName');
+  assert.equal(nodes(f.tree, n => n.props?.hidden === true).length, 0);
+  assert.equal(f.inputs.get('co-email').value, valid.email);
+  assert.equal(f.payment.props.options, options);
+});
+
+test('a newly invalid autofilled address reopens the delivery form before focusing the error', async () => {
+  const f = fixture({ draft: valid }); f.readyElement();
+  nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para pagamento'))[0].props.onClick(); f.render();
+  f.inputs.get('co-address').value = '';
+  await f.submit(); f.render(); f.flushFrames();
+  assert.equal(nodes(f.tree, n => n.props?.hidden === true).length, 0);
+  assert.equal(f.focus.at(-1).id, 'co-address');
+  assert.deepEqual(f.paymentCalls, []);
 });
