@@ -145,11 +145,14 @@ test('double submission validates, saves and confirms only once with current aut
   const f = fixture({ draft: valid }); f.readyElement();
   let resolve; f.session.elements.submit = () => { f.paymentCalls.push('submit'); return new Promise(done => { resolve = done; }); };
   f.inputs.get('co-email').value = 'autofill@example.test';
+  f.inputs.get('co-firstName').value = '  Nome Preenchido Automaticamente  ';
   const first = f.submit(); await f.submit(); f.render();
   assert.equal(f.button.props.disabled, true);
   resolve({}); await first; f.render();
   assert.deepEqual(f.paymentCalls, ['submit', 'sync', 'confirm']);
   assert.equal(f.saved[0].email, 'autofill@example.test');
+  assert.equal(f.saved[0].firstName, 'Nome Preenchido Automaticamente');
+  assert.equal(f.saved[0].lastName, 'Nome Preenchido Automaticamente');
   assert.equal(f.events.filter(([name]) => name === 'checkout_payment_attempt').length, 1);
   assert.ok(f.events.some(([name, data]) => name === 'checkout_payment_result' && data.status === 'submitted'));
   assert.ok(!f.events.some(([name]) => name === 'purchase'));
@@ -218,6 +221,7 @@ test('express checkout validates delivery and shares the submission lock with th
   assert.deepEqual(invalid.paymentCalls, []);
   const f = fixture({ draft: valid }); f.readyElement();
   await f.express.props.onBeforeConfirm();
+  assert.equal(f.saved[0].lastName, valid.firstName);
   await f.submit();
   await assert.rejects(f.express.props.onBeforeConfirm(), /já está/);
   assert.deepEqual(f.paymentCalls, ['sync']);
