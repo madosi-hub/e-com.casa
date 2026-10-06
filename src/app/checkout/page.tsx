@@ -55,8 +55,8 @@ function addBusinessDays(start: Date, days: number): Date {
 }
 
 function deliveryWindowLabel(): string {
-  const start = addBusinessDays(new Date(), 6);
-  const end = addBusinessDays(new Date(), 10);
+  const start = addBusinessDays(new Date(), 2);
+  const end = addBusinessDays(new Date(), 4);
   const month = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(end);
   const startMonth = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(start);
   if (startMonth === month) return `Entrega prevista entre ${start.getDate()} e ${end.getDate()} de ${month}`;
