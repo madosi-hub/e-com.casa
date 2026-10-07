@@ -27,7 +27,7 @@ test('every product offer reuses the approved complete funnel', () => {
   for (const block of [
     '<PanelConfigurator',
     '<PanelFactoryStory',
-    '<PanelCampaignStory',
+    '<PanelInstallationVideos',
     '<PanelProductDetails',
     '<PanelInspiration',
     '<PanelReviews',
@@ -54,7 +54,6 @@ test('offer and admin routes are self-contained and do not duplicate global chro
     'Somos a E-com.casa — e fabricamos os painéis que vendemos.',
     'Fábrica E-com.casa',
     'Conhecer os nossos painéis',
-    'Um detalhe que muda a forma de sentir o espaço.',
     'Cada detalhe,',
     'Espaços que ganharam outra vida.',
     'Galeria visual do produto',

@@ -11,6 +11,7 @@ import { trackOfferEvent } from '@/lib/offers/analytics';
 import type { CatalogProduct, ProductVariant } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { campaignEuro, isPanelVideo, panelProductMediaForColor, PANEL_COLORS, PANEL_PAYMENT_METHODS, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_SIZES } from './data';
+import { SilentVideo } from './silent-video';
 
 function StarRow({ value = 5, size = 14 }: { value?: number; size?: number }) {
   return (
@@ -63,6 +64,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   const selectedColor = colorIndex === null ? null : PANEL_COLORS[colorIndex];
   const gallery = panelProductMediaForColor(colorIndex);
   const active = gallery[activeIndex];
+  const isImage = active.type === 'image';
   const selectedSize = sizeIndex === null ? null : PANEL_SIZES[sizeIndex];
   const selectedVariant = findConfiguredVariant(product, colorIndex, sizeIndex);
   const selectedSizeSoldOut = Boolean(selectedSize?.soldOut || selectedVariant?.availability === 'outOfStock');
@@ -263,25 +265,22 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     <section id="product" className="belmonte-product-section mx-auto max-w-6xl px-4 sm:px-6">
       <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
         <div id="product-gallery" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-          <div className="belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]" onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
+          <div className={isImage ? 'relative aspect-[5/6] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]' : 'belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]'} onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
             {active.type === 'video' ? (
-              <video
-                ref={activeVideoRef}
+              <SilentVideo
+                videoRef={activeVideoRef}
                 key={active.src}
                 src={active.src}
                 poster={active.poster}
-                aria-label={active.alt}
-                className="h-full w-full object-cover object-center"
+                label={active.alt}
+                className="h-full w-full"
+                videoClassName="h-full w-full object-cover object-center"
                 autoPlay
-                muted
                 loop
-                playsInline
-                disablePictureInPicture
-                preload="metadata"
               />
             ) : (
               <button type="button" onClick={() => { if (!swipedRef.current) setProductLightboxOpen(true); }} className="block h-full w-full" aria-label="Ampliar imagem do painel">
-                <img src={active.src} alt={active.alt} className="h-full w-full object-cover object-center" />
+                <img src={active.src} alt={active.alt} className={`h-full w-full object-center ${active.fit === 'contain' ? 'object-contain' : 'object-cover'}`} />
               </button>
             )}
 
@@ -289,10 +288,8 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
               <button type="button" aria-label="Imagem anterior" onClick={() => moveGallery(-1)} className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#201a17] shadow-sm transition hover:bg-white sm:h-11 sm:w-11"><ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" /></button>
               <button type="button" aria-label="Próxima imagem" onClick={() => moveGallery(1)} className="pointer-events-auto grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#201a17] shadow-sm transition hover:bg-white sm:h-11 sm:w-11"><ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" /></button>
             </div>
-            <span className="absolute left-3 top-3 rounded-full bg-[#201a17]/80 px-3 py-1.5 text-[10px] uppercase tracking-[.12em] text-[#f2e9df]">{selectedColor?.name ?? 'Escolha uma cor'}</span>
             <button type="button" onClick={() => setProductLightboxOpen(true)} className="absolute bottom-3 right-3 z-30 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-[10px] font-semibold text-[#201a17] shadow transition hover:bg-white"><Maximize2 className="h-3.5 w-3.5" /> Ampliar</button>
           </div>
-
         </div>
 
         <div className="belmonte-product-info flex min-w-0 flex-col gap-6 pt-6">
@@ -434,7 +431,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-4 py-14 sm:px-16">
             <button type="button" onClick={() => moveGallery(-1)} className="absolute left-2 top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/12 text-white transition hover:bg-white/22 sm:left-5" aria-label="Imagem anterior"><ChevronLeft className="h-7 w-7" /></button>
             {active.type === 'video' ? (
-              <video key={active.src} src={active.src} poster={active.poster} className="max-h-full max-w-full object-contain" controls autoPlay muted loop playsInline />
+              <SilentVideo key={active.src} src={active.src} poster={active.poster} label={active.alt} className="flex h-full w-full items-center justify-center" videoClassName="max-h-full max-w-full object-contain" autoPlay loop />
             ) : (
               <img src={active.src} alt={active.alt} className="max-h-full max-w-full object-contain" />
             )}

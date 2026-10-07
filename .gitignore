@@ -44,6 +44,7 @@ server.log
 next-env.d.ts
 
 # Local working files
+/output/
 local-*
 worklog.md
 upload/

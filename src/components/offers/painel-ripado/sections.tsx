@@ -8,8 +8,9 @@ import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PaymentBrandStrip } from '@/components/payments/payment-brand-strip';
 import { COMPANY } from '@/lib/company';
 import { isPanelOfferSlug, NURALTA_OFFER_ALIAS, panelOfferPath } from '@/lib/offers/route-policy';
-import { isPanelVideo, PANEL_PRODUCT_MEDIA, PANEL_REVIEW_GALLERY, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_REVIEWS, PANEL_REVIEWS_PER_PAGE, PANEL_REVIEWS_WITH_PHOTOS, type PanelReviewGalleryItem } from './data';
+import { isPanelVideo, PANEL_INSPIRATION_IMAGES, PANEL_REVIEW_GALLERY, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_REVIEWS, PANEL_REVIEWS_PER_PAGE, PANEL_REVIEWS_WITH_PHOTOS, type PanelReviewGalleryItem } from './data';
 import { DETAILS as NURALTA_DETAILS, FAQS as NURALTA_FAQS } from '../nuralta/data';
+import { SilentVideo } from './silent-video';
 
 function Stars({ value = 5, size = 13 }: { value?: number; size?: number }) {
   return <span className="inline-flex gap-0.5">{[1,2,3,4,5].map((star) => <span key={star} style={{ color: '#f2b01e', fontSize: size }}>{star <= Math.round(value) ? '★' : '☆'}</span>)}</span>;
@@ -61,6 +62,8 @@ export function PanelFactoryStory() {
               poster="/videos/como-fazemos-painel-ripado-poster.jpg"
               preload="metadata"
               playsInline
+              muted
+              controls={false}
               disablePictureInPicture
               disableRemotePlayback
               controlsList="nofullscreen nodownload noremoteplayback"
@@ -108,19 +111,6 @@ export function PanelFactoryStory() {
   );
 }
 
-export function PanelCampaignStory({ product }: { product: CatalogProduct }) {
-  const storyImage = PANEL_PRODUCT_MEDIA.find((item) => item.type === 'image')?.src ?? product.image;
-
-  return <>
-    <section className="mx-auto max-w-6xl px-4 pb-6 pt-10 sm:px-6 sm:py-16">
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-        <div><p className="mb-3 text-[11px] uppercase tracking-[.18em] text-[#8a5a2b]">Textura, ritmo, calor</p><h2 className="font-display text-4xl leading-tight">Um detalhe que muda a forma de sentir o espaço.</h2><p className="mt-5 leading-relaxed text-[#5c5049]">Crie uma parede com presença, textura e calor natural. O Painel Ripado Decorativo foi pensado para renovar salas, quartos, escritórios e espaços comerciais.</p><ul className="mt-6 space-y-2 text-sm text-[#3d342e]"><li>Transforma o ambiente rapidamente</li><li>Ritmo visual moderno e acolhedor</li><li>Instalação simples e acabamento elegante</li><li>Manutenção fácil no dia a dia</li></ul></div>
-        <div className="relative aspect-[4/5] overflow-hidden rounded-lg"><img src={storyImage} alt={`${product.name} - ambiente e acabamento`} className="h-full w-full object-cover object-top" /></div>
-      </div>
-    </section>
-  </>;
-}
-
 function panelArea(dimensions: string | null): string {
   const match = dimensions?.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i);
   if (!match || !dimensions || !/mm|cm/i.test(dimensions)) return 'Confirmar na opção selecionada';
@@ -136,7 +126,7 @@ export function PanelProductDetails({ product }: { product: CatalogProduct }) {
 }
 
 export function PanelInspiration({ product }: { product: CatalogProduct }) {
-  const images = PANEL_PRODUCT_MEDIA.filter((item) => item.type === 'image').slice(2, 6).map((item) => item.src);
+  const images = PANEL_INSPIRATION_IMAGES;
   return <section id="inspiration" className="bg-[#efe7de]"><div className="mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:py-16"><h2 className="font-display text-4xl">Espaços que ganharam outra vida.</h2><p className="mt-2 text-sm text-[#7d6f64]">Projetos de clientes, em Portugal.</p><div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{images.map((image) => <div key={image} className="aspect-[3/4] overflow-hidden rounded-lg bg-[#e5dbd0]"><img src={image} alt={`${product.name} - ambiente de referência`} className="h-full w-full object-cover" loading="lazy" /></div>)}</div></div></section>;
 }
 
@@ -291,7 +281,7 @@ export function PanelReviews() {
           <button type="button" onClick={() => setLightboxIndex(null)} className="absolute right-3 top-2 z-10 rounded-full p-2.5 text-white" aria-label="Fechar fotos"><X className="h-6 w-6" /></button>
           <div className="relative flex min-h-0 flex-1 items-center justify-center px-5 pb-3 pt-12">
             <button type="button" onClick={() => moveLightbox(-1)} className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white" aria-label="Foto anterior"><ChevronLeft className="h-6 w-6" /></button>
-            {activeLightbox.isVideo ? <video src={activeLightbox.src} poster={activeLightbox.poster} className="h-full max-w-full object-contain" controls autoPlay muted playsInline /> : <img src={activeLightbox.src} alt={`Projeto partilhado por ${activeLightbox.review.name}`} className="h-full max-w-full object-contain" />}
+            {activeLightbox.isVideo ? <SilentVideo key={activeLightbox.src} src={activeLightbox.src} poster={activeLightbox.poster} label="Vídeo da avaliação" className="flex h-full w-full items-center justify-center" videoClassName="h-full max-w-full object-contain" autoPlay /> : <img src={activeLightbox.src} alt={`Projeto partilhado por ${activeLightbox.review.name}`} className="h-full max-w-full object-contain" />}
             <button type="button" onClick={() => moveLightbox(1)} className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white" aria-label="Próxima foto"><ChevronRight className="h-6 w-6" /></button>
           </div>
           <div className="shrink-0 border-t border-white/10 px-4 pb-5 pt-4 text-white sm:px-6">

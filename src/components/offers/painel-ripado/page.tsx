@@ -9,11 +9,13 @@ import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { useCart } from '@/lib/cart-store';
 import { captureOfferAttribution } from '@/lib/offers/attribution';
 import { trackOfferEvent } from '@/lib/offers/analytics';
+import { NURALTA_OFFER_SLUG } from '@/lib/offers/route-policy';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PanelConfigurator } from './configurator';
 import { InstallationAccessories } from '@/components/home/installation-accessories';
-import { PanelCampaignStory, PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
+import { PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
+import { PanelInstallationVideos } from './installation-videos';
 
 export function TopTicker() {
   const items = ['Portes calculados antes do pagamento', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'E-com.casa'];
@@ -86,10 +88,10 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market, 
     <FloatingHeader />
     <PanelConfigurator product={product} offer={offer} market={market} />
     <PanelFactoryStory />
-    <PanelCampaignStory product={product} />
+    <PanelInstallationVideos />
     <PanelProductDetails product={product} />
     <InstallationAccessories products={accessories} />
-    <PanelInspiration product={product} />
+    {offer.slug !== NURALTA_OFFER_SLUG && <PanelInspiration product={product} />}
     <PanelReviews />
     <PanelFaq offer={offer} />
     <PanelFooter market={market} offerSlug={offer.slug} />
