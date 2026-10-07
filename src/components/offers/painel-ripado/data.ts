@@ -4,18 +4,22 @@ export const PANEL_REVIEW_RATING = 4.7;
 export const PANEL_REVIEWS_PER_PAGE = 5;
 
 const panelImage = (path: string) => `${PANEL_ASSET_ROOT}/images/${path}`;
-const localPanelGalleryImage = (folder: string, file: string) => `/pt/images/gallery/${folder}/${file}`;
+const localPanelGalleryImage = (folder: string, file: string) => `/pt/images/gallery-v3/${folder}/${file}`;
+const panelInstallationImage = (color: string) => `/pt/images/installation/${color}-240x60.webp`;
 const panelVideo = (path: string) => `/pt/videos/${path}`;
 
 export const PANEL_COLORS = [
-  { name: 'Carvalho', src: panelImage('img1.webp'), galleryFolder: null },
-  { name: 'Carvalho Claro', src: panelImage('var2.webp'), galleryFolder: 'light-oak' },
-  { name: 'Preto', src: panelImage('var3.webp'), galleryFolder: 'black' },
-  { name: 'Cinzento', src: panelImage('var4.webp'), galleryFolder: 'grey' },
-  { name: 'Nogueira', src: panelImage('var5.webp'), galleryFolder: 'walnut' },
-  { name: 'Marfim', src: panelImage('var6.webp'), galleryFolder: 'ivory' },
-  { name: 'Grafite', src: panelImage('var7.webp'), galleryFolder: 'graphite' },
+  { name: 'Carvalho', src: panelImage('img1.webp'), galleryFolder: 'oak', installationImage: panelInstallationImage('oak') },
+  { name: 'Carvalho Claro', src: panelImage('var2.webp'), galleryFolder: 'light-oak', installationImage: panelInstallationImage('light-oak') },
+  { name: 'Preto', src: panelImage('var3.webp'), galleryFolder: 'black', installationImage: panelInstallationImage('black') },
+  { name: 'Cinzento', src: panelImage('var4.webp'), galleryFolder: 'grey', installationImage: panelInstallationImage('grey') },
+  { name: 'Nogueira', src: panelImage('var5.webp'), galleryFolder: 'walnut', installationImage: panelInstallationImage('walnut') },
+  { name: 'Marfim', src: panelImage('var6.webp'), galleryFolder: 'ivory', installationImage: panelInstallationImage('ivory') },
+  { name: 'Grafite', src: panelImage('var7.webp'), galleryFolder: 'graphite', installationImage: panelInstallationImage('graphite') },
 ] as const;
+
+export const PANEL_EXAMPLE_SIZE = '240 × 60 cm';
+export const PANEL_INSPIRATION_IMAGES = ['img6.webp', 'img7.webp', 'img8.webp'].map(panelImage);
 
 export type PanelSize = {
   key: string;
@@ -45,37 +49,40 @@ export type PanelProductMedia = {
   src: string;
   poster?: string;
   alt: string;
+  fit?: 'cover' | 'contain';
+  exampleSize?: string;
+  scaleReference?: string;
 };
 
-export const PANEL_PRODUCT_MEDIA: PanelProductMedia[] = [
-  { type: 'image', src: panelImage('img2.webp'), alt: 'Painel Carvalho' },
-  {
-    type: 'video',
-    src: panelVideo('video-painel-produto.mp4'),
-    poster: panelImage('video-painel-produto-poster.webp'),
-    alt: 'Vídeo do produto',
-  },
-  { type: 'image', src: panelImage('img5.webp'), alt: 'Painel Carvalho' },
-  { type: 'image', src: panelImage('img6.webp'), alt: 'Painel Carvalho' },
-  { type: 'image', src: panelImage('img7.webp'), alt: 'Painel Carvalho' },
-  { type: 'image', src: panelImage('img8.webp'), alt: 'Painel Carvalho' },
+const PANEL_ENVIRONMENTS = [
+  { file: '01-quarto.webp', label: 'quarto' },
+  { file: '02-sala-tv.webp', label: 'sala de televisão' },
+  { file: '03-escritorio.webp', label: 'escritório' },
+  { file: '04-escada.webp', label: 'escada' },
+  { file: '05-hall.webp', label: 'hall de entrada' },
+  { file: '06-cozinha.webp', label: 'cozinha' },
 ];
 
-const PANEL_IMAGE_FILES = ['img2.webp', 'img5.webp', 'img6.webp', 'img7.webp', 'img8.webp'];
-
 export function panelProductMediaForColor(colorIndex: number | null): PanelProductMedia[] {
-  const color = colorIndex === null ? null : PANEL_COLORS[colorIndex];
-  const folder = color?.galleryFolder;
-  if (!folder) return PANEL_PRODUCT_MEDIA;
-
-  const images = PANEL_IMAGE_FILES.map((file) => localPanelGalleryImage(folder, file));
+  const color = PANEL_COLORS[colorIndex ?? 0] ?? PANEL_COLORS[0];
+  const folder = color.galleryFolder;
+  const environments: PanelProductMedia[] = PANEL_ENVIRONMENTS.map(({ file, label }) => ({
+    type: 'image',
+    src: localPanelGalleryImage(folder, file),
+    alt: `Painel ${color.name} — ${label}`,
+    fit: 'cover',
+  }));
   return [
-    { type: 'image', src: images[0], alt: `Painel ${color.name}` },
-    PANEL_PRODUCT_MEDIA[1],
-    ...images.slice(1).map((src) => ({ type: 'image' as const, src, alt: `Painel ${color.name}` })),
+    { type: 'image', src: localPanelGalleryImage(folder, 'hero.webp'), alt: `Painel ${color.name} — apresentação e medidas de ${PANEL_EXAMPLE_SIZE}`, fit: 'cover', exampleSize: PANEL_EXAMPLE_SIZE },
+    environments[0],
+    // Keep the product demonstration in the third position for every finish.
+    { type: 'video', src: panelVideo('video-painel-produto.mp4'), poster: panelImage('video-painel-produto-poster.webp'), alt: 'Vídeo do produto' },
+    ...environments.slice(1),
+    { type: 'image', src: color.installationImage, alt: `Como aplicar o painel ${color.name} de ${PANEL_EXAMPLE_SIZE}`, fit: 'contain', exampleSize: PANEL_EXAMPLE_SIZE },
   ];
 }
 
+export const PANEL_PRODUCT_MEDIA = panelProductMediaForColor(0);
 export const PANEL_GALLERY = PANEL_PRODUCT_MEDIA.map((item) => item.poster ?? item.src);
 
 export type PanelReview = {

@@ -45,9 +45,9 @@ function AccessoryCard({ initialProduct }: { initialProduct: CatalogProduct }) {
   }
 
   return (
-    <article className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[#e0d6cb] bg-[#fdfbf9]">
+    <article className="flex min-w-0 snap-start flex-col overflow-hidden rounded-2xl border border-[#e0d6cb] bg-[#fdfbf9]">
       <button type="button" onClick={() => setDetailsOpen(true)} aria-label={`Ver ${name}: detalhes e avaliações`} className="group relative aspect-[5/4] w-full overflow-hidden bg-white focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#8a5a2b] sm:aspect-square">
-        <Image src={product.image} alt={name} fill sizes="(max-width: 639px) 50vw, (max-width: 1023px) 45vw, 280px" className="object-contain p-3 transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none sm:p-5" />
+        <Image src={product.image} alt={name} fill sizes="(max-width: 639px) 54vw, (max-width: 1023px) 32vw, 280px" className="object-contain p-3 transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none sm:p-5" />
         <span className="absolute bottom-3 right-3 grid size-8 place-items-center rounded-full border border-[#e0d6cb] bg-white text-[#62574f]" aria-hidden><ArrowUpRight className="size-4" /></span>
       </button>
       <div className="flex flex-1 flex-col p-3 sm:p-5">
@@ -78,7 +78,7 @@ export function InstallationAccessories({ products }: { products: CatalogProduct
           <h2 id="accessories-title" className="font-display text-3xl leading-tight sm:text-4xl">Para instalar e dar o toque final.</h2>
           <p className="mt-3 text-sm leading-6 text-[#62574f] sm:text-base sm:leading-7">Escolha apenas o que lhe faz falta. Artigos vendidos à unidade.</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+        <div role="region" aria-label="Carrossel de acessórios" tabIndex={0} className="grid auto-cols-[54%] grid-flow-col snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain rounded-2xl pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8a5a2b] sm:auto-cols-[32%] sm:gap-5 lg:auto-cols-auto lg:grid-flow-row lg:grid-cols-4 lg:overflow-visible">
           {accessories.map(product => <AccessoryCard key={product.slug} initialProduct={product} />)}
         </div>
       </div>

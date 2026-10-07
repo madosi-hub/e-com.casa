@@ -14,7 +14,8 @@ import type { CatalogProduct } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { PanelConfigurator } from './configurator';
 import { InstallationAccessories } from '@/components/home/installation-accessories';
-import { PanelCampaignStory, PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
+import { PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
+import { PanelInstallationVideos } from './installation-videos';
 
 export function TopTicker() {
   const items = ['Portes calculados antes do pagamento', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'E-com.casa'];
@@ -87,7 +88,7 @@ export function PainelRipadoOfferPage({ offer, product: initialProduct, market, 
     <FloatingHeader />
     <PanelConfigurator product={product} offer={offer} market={market} />
     <PanelFactoryStory />
-    <PanelCampaignStory product={product} />
+    <PanelInstallationVideos />
     <PanelProductDetails product={product} />
     <InstallationAccessories products={accessories} />
     {offer.slug !== NURALTA_OFFER_SLUG && <PanelInspiration product={product} />}
