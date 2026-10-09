@@ -16,14 +16,19 @@ import { PanelConfigurator } from './configurator';
 import { InstallationAccessories } from '@/components/home/installation-accessories';
 import { PanelFactoryStory, PanelFaq, PanelFooter, PanelInspiration, PanelProductDetails, PanelReviews } from './sections';
 import { PanelInstallationVideos } from './installation-videos';
+import { CampaignCountdown, useNuraltaCampaign } from '../nuralta/campaign';
 
 export function TopTicker() {
+  const { campaign } = useNuraltaCampaign();
+  if (campaign?.active) return null;
   const items = ['Portes calculados antes do pagamento', 'Pagamento seguro com Cartão · Apple Pay · MB WAY · Multibanco', 'E-com.casa'];
   const group = <div className="flex shrink-0 items-center gap-6 px-3 sm:gap-8 sm:px-4">{items.map((item) => <span key={item} className="flex items-center gap-6 whitespace-nowrap sm:gap-8"><span>{item}</span><span className="opacity-40">◆</span></span>)}</div>;
   return <div className="overflow-hidden bg-[#201a17] py-1 text-[#e9dfd5] sm:py-2"><div className="ecom-panel-ticker flex w-max text-[9px] uppercase tracking-[.12em] sm:text-[11px]">{group}{group}</div></div>;
 }
 
 export function FloatingHeader() {
+  const { campaign } = useNuraltaCampaign();
+  const showCampaign = Boolean(campaign?.active);
   const [visible, setVisible] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const openCart = useCartDrawer((state) => state.open);
@@ -35,8 +40,9 @@ export function FloatingHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   return <>
-    <div className="fixed inset-x-0 top-0 z-40 transition-all duration-200" style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(-100%)', visibility: visible ? 'visible' : 'hidden', pointerEvents: visible ? 'auto' : 'none' }}>
-      <header className="flex items-center justify-between border-b border-[#e6ded4] bg-[#f7f3ef]/95 px-4 py-2 backdrop-blur">
+    {showCampaign && <div aria-hidden className="h-9" />}
+    <div className="fixed inset-x-0 top-0 z-40 transition-transform duration-200 motion-reduce:transition-none" style={{ transform: visible ? 'translateY(0)' : showCampaign ? 'translateY(-60px)' : 'translateY(-100%)', visibility: visible || showCampaign ? 'visible' : 'hidden' }}>
+      <header className="flex h-[60px] items-center justify-between border-b border-[#e6ded4] bg-[#f7f3ef]/95 px-4 py-2 backdrop-blur" style={{ visibility: visible ? 'visible' : 'hidden' }}>
         <button type="button" aria-label="Abrir menu" onClick={() => setDrawerOpen(true)} className="rounded-full p-1.5"><Menu className="h-4 w-4" /></button>
         <Image src="/images/logo-e-com-casa-preto.png" alt="E-com.casa" width={2172} height={724} priority className="h-11 w-auto object-contain" />
         <button type="button" aria-label={`Carrinho${cartCount > 0 ? `, ${cartCount} artigo${cartCount === 1 ? '' : 's'}` : ''}`} onClick={openCart} className="relative rounded-full p-1.5">
@@ -44,6 +50,7 @@ export function FloatingHeader() {
           {cartCount > 0 && <span key={cartCount} className="absolute -right-1.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-[#201a17] px-1 text-[9px] font-bold text-white">{cartCount}</span>}
         </button>
       </header>
+      <CampaignCountdown />
     </div>
     <div className={`fixed inset-0 z-50 ${drawerOpen ? '' : 'pointer-events-none'}`} aria-hidden={!drawerOpen}>
       <div onClick={() => setDrawerOpen(false)} className={`absolute inset-0 bg-black/50 transition-opacity ${drawerOpen ? 'opacity-100' : 'opacity-0'}`} />

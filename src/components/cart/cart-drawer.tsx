@@ -26,8 +26,10 @@ import { trackOfferEvent } from '@/lib/offers/analytics';
 import { offerTrackingParameters } from '@/lib/offers/attribution';
 import { buildPanelCheckoutPayload, PANEL_CHECKOUT_COUNTRY } from '@/lib/offers/panel-checkout-payload';
 import { acquirePreparedOfferPayment, resetPreparedOfferPayment } from '@/lib/payments/offer-payment-preparation';
+import { DispatchNotice, useNuraltaCampaign } from '@/components/offers/nuralta/campaign';
 
 export function CartDrawer() {
+  const { campaign } = useNuraltaCampaign();
   const pathname = usePathname();
   const panelOfferSlug = panelOfferSlugFromPathname(pathname);
   const panelOfferProductPath = panelOfferSlug ? panelOfferPath(panelOfferSlug) : '/offers/painel-ripado';
@@ -182,6 +184,7 @@ export function CartDrawer() {
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 Portes calculados antes do pagamento
               </p>
+              {campaign && <div className="mt-3"><DispatchNotice /></div>}
               <div className="mt-4 grid gap-2">
                 <Button asChild className="h-11 rounded-md bg-ink text-[14px] font-semibold text-cream hover:bg-ink/90">
                   <Link

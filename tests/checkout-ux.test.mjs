@@ -6,6 +6,12 @@ import ts from 'typescript';
 const code = ts.transpileModule(fs.readFileSync('src/components/checkout/painel-ripado-checkout.tsx', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
+const deliveryCode = ts.transpileModule(fs.readFileSync('src/lib/offers/panel-delivery.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const deliveryModule = { exports: {} };
+new Function('exports', deliveryCode)(deliveryModule.exports);
+const { panelDeliveryWindowLabel } = deliveryModule.exports;
 const valid = { firstName: 'Cliente Teste', email: 'cliente@example.test', address: 'Rua Teste 1', city: 'Lisboa', postalCode: '1000-001', country: 'PT' };
 function nodes(tree, predicate) {
   if (!tree || typeof tree !== 'object') return [];
@@ -20,7 +26,7 @@ function text(tree) {
 function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
   const slots = [], effects = [], frames = [], focus = [], scroll = [], paymentCalls = [];
   const inputs = new Map(), events = [], saved = [], timers = new Map();
-  let timerId = 0;
+  let timerId = 0, elapsed = 0;
   let cursor = 0, dirty = true, tree;
   const same = (a, b) => a?.length === b?.length && a.every((v, i) => Object.is(v, b[i]));
   const react = {
@@ -59,6 +65,7 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     'lucide-react': Object.fromEntries(['ArrowRight', 'ArrowUp', 'CheckCircle2', 'ChevronDown', 'Lock', 'LoaderCircle', 'MessageCircle', 'RotateCcw', 'Search', 'ShieldCheck', 'ShoppingBag'].map(key => [key, component(key)])),
     '@/components/ui/input': { Input: component('input') }, '@/components/ui/label': { Label: component('label') }, '@/components/ui/separator': { Separator: component('hr') },
     '@/hooks/use-toast': { toast() {} }, '@/lib/cart-store': { useCart: () => cart },
+    '@/components/offers/nuralta/campaign': { DispatchNotice: () => null },
     '@/lib/catalog/nuralta-media': { nuraltaCartImage: (_, image) => image }, '@/lib/offers/attribution': { offerTrackingParameters: () => ({}) },
     '@/lib/offers/analytics': { trackOfferEvent: (...event) => events.push(event) }, '@/lib/offers/route-policy': { NURALTA_OFFER_ALIAS: 'fixture-panel', panelOfferPath: (slug, suffix = '') => `/offers/${slug}${suffix}` },
     '@/lib/i18n': { translate: (_, key) => ({ 'checkout.paymentInitializing': 'A preparar o pagamento seguro…', 'checkout.processing': 'A processar…' })[key] ?? key },
@@ -68,11 +75,12 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     '@/components/payments/express-checkout': { ExpressCheckout: component('express-checkout') },
     '@/lib/offers/panel-checkout-payload': { CHECKOUT_DRAFT_KEY: 'draft', PANEL_CHECKOUT_COUNTRY: 'PT', buildPanelCheckoutPayload: lines => ({ items: lines.map(({ slug, quantity }) => ({ slug, quantity })) }) },
     '@/lib/constants': { calculatePromoDiscount: () => 0, PROMO_CODES: {} }, '@/lib/shipping': { shippingPrice: () => 0 },
+    '@/lib/offers/panel-delivery': deliveryModule.exports,
   };
   const browser = {
     localStorage: { getItem: () => draft ? JSON.stringify(draft) : null, setItem() {}, removeItem() {} },
     requestAnimationFrame: fn => frames.push(fn), matchMedia: () => ({ matches: reducedMotion }), clearTimeout(id) { timers.delete(id); },
-    setTimeout(fn) { const id = ++timerId; timers.set(id, fn); return id; },
+    setTimeout(fn, delay) { const id = ++timerId; timers.set(id, { fn, due: elapsed + delay }); return id; },
   };
   const compiled = { exports: {} };
   new Function('require', 'module', 'exports', 'window', 'document', code)(id => { assert.ok(id in mocks, `Unmocked dependency: ${id}`); return mocks[id]; }, compiled, compiled.exports, browser, { documentElement: {} });
@@ -90,7 +98,8 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     get express() { return nodes(tree, n => n.type === 'express-checkout')[0]; },
     submit() { return nodes(tree, n => n.type === 'form')[0].props.onSubmit({ preventDefault() {} }); },
     change(name, value) { const field = nodes(tree, n => n.props?.id === 'co-' + name)[0]; const input = inputs.get('co-' + name); input.value = value; field.props.onChange({ target: input, currentTarget: input }); render(); },
-    finishShipping() { for (const [id, fn] of [...timers]) { timers.delete(id); fn(); } render(); },
+    advanceTime(ms) { elapsed += ms; for (const [id, timer] of [...timers]) { if (timer.due <= elapsed) { timers.delete(id); timer.fn(); } } render(); },
+    finishShipping() { for (const [id, { fn }] of [...timers]) { timers.delete(id); fn(); } render(); },
     flushFrames() { while (frames.length) frames.shift()(); },
     readyElement() { nodes(tree, n => n.type === 'payment-element')[0].props.onReady(); render(); },
   };
@@ -183,7 +192,7 @@ test('method/completeness telemetry deduplicates and excludes personal/payment d
   assert.match(text(nodes(f.tree, n => n.props?.id === 'co-payment-help')[0]), /aplicação MB WAY/);
 });
 
-test('summary comes first and reveals shipping only after completed address and loading', () => {
+test('summary comes first and reveals shipping and delivery dates after one second with a complete address', () => {
   const f = fixture();
   const form = nodes(f.tree, n => n.type === 'form')[0];
   assert.equal(form.props.children.filter(Boolean)[0].type, 'aside');
@@ -192,19 +201,30 @@ test('summary comes first and reveals shipping only after completed address and 
   assert.match(text(summary), /1× Painel de teste/);
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
   f.change('address', valid.address); f.change('city', valid.city); f.change('postalCode', valid.postalCode);
-  assert.match(text(f.tree), /A calcular entrega/);
+  assert.match(text(f.tree), /A calcular os portes/);
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
-  f.finishShipping();
-  assert.match(text(f.tree), /Entrega grátis por/); assert.match(text(f.tree), /Entrega prevista/);
+  f.advanceTime(999);
+  assert.match(text(f.tree), /A calcular os portes/);
+  assert.doesNotMatch(text(f.tree), /Entrega prevista/);
+  f.advanceTime(1);
+  assert.match(text(f.tree), /Entrega grátis por/);
+  assert.ok(text(f.tree).includes(panelDeliveryWindowLabel()));
+  assert.match(text(f.tree), /1 a 4 dias úteis, para pagamentos confirmados hoje/);
   const readySummary = nodes(f.tree, n => n.type === 'aside')[0];
   assert.doesNotMatch(text(readySummary), /Grátis/);
   assert.doesNotMatch(text(readySummary), /a calcular após preencher a morada/);
   f.change('postalCode', '1000'); f.finishShipping();
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
   f.change('postalCode', '1000-002');
-  assert.match(text(f.tree), /A calcular entrega/);
+  assert.match(text(f.tree), /A calcular os portes/);
   f.change('city', ''); f.finishShipping();
   assert.doesNotMatch(text(f.tree), /Grátis|Entrega grátis|Entrega prevista/);
+});
+
+test('delivery estimates use the Lisbon date, skip weekends and format month boundaries in Portuguese', () => {
+  assert.equal(panelDeliveryWindowLabel(new Date('2026-10-09T12:00:00Z')), 'Entrega prevista entre 12 e 15 de outubro');
+  assert.equal(panelDeliveryWindowLabel(new Date('2026-10-12T23:30:00Z')), 'Entrega prevista entre 14 e 19 de outubro');
+  assert.equal(panelDeliveryWindowLabel(new Date('2026-02-24T12:00:00Z')), 'Entrega prevista entre 25 de fevereiro e 2 de março');
 });
 
 test('invalid email focuses its labelled error and respects reduced motion', async () => {
@@ -242,7 +262,7 @@ test('express failure restores the submit button and displays an inline error', 
 test('continue validates then collapses delivery without submitting or recreating payment', () => {
   const f = fixture(); f.readyElement();
   const options = f.payment.props.options;
-  const continueButton = () => nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para pagamento'))[0];
+  const continueButton = () => nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para o pagamento'))[0];
   continueButton().props.onClick(); f.render(); f.flushFrames();
   assert.equal(f.focus.at(-1).id, 'co-firstName');
   assert.equal(nodes(f.tree, n => n.props?.hidden === true).length, 0);
@@ -264,7 +284,7 @@ test('continue validates then collapses delivery without submitting or recreatin
 
 test('a newly invalid autofilled address reopens the delivery form before focusing the error', async () => {
   const f = fixture({ draft: valid }); f.readyElement();
-  nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para pagamento'))[0].props.onClick(); f.render();
+  nodes(f.tree, n => n.type === 'button' && text(n).includes('Continuar para o pagamento'))[0].props.onClick(); f.render();
   f.inputs.get('co-address').value = '';
   await f.submit(); f.render(); f.flushFrames();
   assert.equal(nodes(f.tree, n => n.props?.hidden === true).length, 0);

@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
-    return NextResponse.json({ product: toStorefrontProduct(product) });
+    return NextResponse.json({ product: toStorefrontProduct(product) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('GET /api/products/[slug] error', error);
     return NextResponse.json({ error: 'Failed to load product' }, { status: 500 });

@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { SiteChrome } from '@/components/layout/site-chrome';
 import { RuntimeWidgets } from '@/components/layout/runtime-widgets';
 import { COMPANY } from '@/lib/company';
+import { NuraltaCampaignBoundary } from '@/components/offers/nuralta/campaign';
 
 const playfair = Playfair_Display({
   variable: '--font-serif-display',
@@ -77,8 +78,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a href="#main-content" className="sr-only z-[100] bg-ink px-4 py-2 text-sm text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">
           Skip to main content
         </a>
-        <SiteChrome>{children}</SiteChrome>
-        <RuntimeWidgets />
+        <NuraltaCampaignBoundary>
+          <SiteChrome>{children}</SiteChrome>
+          <RuntimeWidgets />
+        </NuraltaCampaignBoundary>
         <Toaster />
         <script
           type="application/ld+json"

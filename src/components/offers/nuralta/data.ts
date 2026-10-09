@@ -245,9 +245,9 @@ export const FAQS: Faq[] = [
   },
   {
     number: "02",
-    question: "A que painel corresponde o preço desde 5,00 €?",
+    question: "A que painel corresponde o preço apresentado?",
     answer:
-      "O preço desde 5,00 € corresponde ao painel de 240 × 60 cm. As restantes medidas têm preços diferentes, apresentados junto a cada opção de medida.",
+      "O preço inicial corresponde ao painel de 240 × 60 cm. As restantes medidas têm preços diferentes, apresentados junto a cada opção. O contador indica o tempo restante para o fim da queima de stock. O prazo é o mesmo para todos os visitantes.",
   },
   {
     number: "03",
@@ -281,9 +281,9 @@ export const FAQS: Faq[] = [
   },
   {
     number: "08",
-    question: "Quanto tempo demora a entrega?",
+    question: "Quando é expedida a minha encomenda?",
     answer:
-      "A entrega está prevista em 2 a 4 dias úteis após a confirmação do pagamento, com portes grátis para Portugal Continental. Após a expedição, recebe o número de seguimento para acompanhar a encomenda.",
+      "Com o pagamento confirmado hoje, expedimos a sua encomenda no próximo dia útil. Os portes são calculados antes do pagamento. Após a expedição, recebe o número de seguimento para acompanhar a encomenda.",
   },
   {
     number: "09",

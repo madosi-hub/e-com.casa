@@ -4,7 +4,7 @@ import { useLiveProduct } from '@/hooks/use-live-product';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
 import { type TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, Truck, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Minus, Play, Plus, Ruler, Star, X } from 'lucide-react';
 import { useCart } from '@/lib/cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { trackOfferEvent } from '@/lib/offers/analytics';
@@ -12,6 +12,8 @@ import type { CatalogProduct, ProductVariant } from '@/lib/catalog/types';
 import type { OfferConfig, OfferMarketContext } from '@/lib/offers/types';
 import { campaignEuro, isPanelVideo, panelProductMediaForColor, PANEL_COLORS, PANEL_PAYMENT_METHODS, PANEL_REVIEW_RATING, PANEL_REVIEW_TOTAL, PANEL_SIZES } from './data';
 import { SilentVideo } from './silent-video';
+import { CampaignStock, DispatchNotice, useNuraltaCampaign } from '../nuralta/campaign';
+import { NURALTA_CAMPAIGN } from '@/lib/offers/nuralta-campaign';
 
 function StarRow({ value = 5, size = 14 }: { value?: number; size?: number }) {
   return (
@@ -44,6 +46,9 @@ function findConfiguredVariant(product: CatalogProduct, colorIndex: number | nul
 
 export function PanelConfigurator({ product: initialProduct, offer }: { product: CatalogProduct; offer: OfferConfig; market: OfferMarketContext }) {
   const product = useLiveProduct(initialProduct);
+  const { campaign } = useNuraltaCampaign();
+  const applies = product.slug === NURALTA_CAMPAIGN.productSlug && campaign !== null;
+  const basePrice = product.priceCents;
   const add = useCart((state) => state.add);
   const openCart = useCartDrawer((state) => state.open);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -77,8 +82,9 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
         ? 'Falta selecionar a medida.'
         : '';
   const visibleSelectionMessage = selectionError || (selectionGuidanceVisible ? missingSelectionMessage : '');
-  const unitCents = selectedVariant ? product.priceCents + selectedVariant.priceDeltaCents : selectedSize?.priceCents ?? PANEL_SIZES[0].priceCents;
-  const displayedPrice = selectedSize ? campaignEuro(unitCents) : `Desde ${campaignEuro(PANEL_SIZES[0].priceCents)}`;
+  const selectedDelta = (selectedVariant ?? findConfiguredVariant(product, colorIndex ?? 0, sizeIndex ?? 0))?.priceDeltaCents ?? 0;
+  const unitCents = basePrice + selectedDelta;
+  const displayedPrice = selectedSize ? campaignEuro(unitCents) : `Desde ${campaignEuro(basePrice)}`;
   const displayedSize = selectedSize ?? PANEL_SIZES[0];
   const purchaseUnavailable = !isCatalogProductSaleable(product) || selectedSizeSoldOut;
 
@@ -105,8 +111,9 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
     const height = Number(wallHeight.replace(',', '.'));
     const size = PANEL_SIZES[calculatorSizeIndex] ?? PANEL_SIZES[0];
     const panels = width > 0 && height > 0 ? Math.max(1, Math.ceil((width * height * 1.1) / size.areaM2)) : 0;
-    return { panels, priceCents: panels * size.priceCents };
-  }, [calculatorSizeIndex, wallHeight, wallWidth]);
+    const variant = findConfiguredVariant(product, colorIndex ?? 0, calculatorSizeIndex);
+    return { panels, priceCents: panels * (basePrice + (variant?.priceDeltaCents ?? 0)) };
+  }, [calculatorSizeIndex, wallHeight, wallWidth, basePrice, product, colorIndex]);
 
   useEffect(() => {
     if (!calculatorOpen) return;
@@ -264,7 +271,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
   return (
     <section id="product" className="belmonte-product-section mx-auto max-w-6xl px-4 sm:px-6">
       <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
-        <div id="product-gallery" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+        <div id="product-gallery" className={`min-w-0 lg:sticky lg:self-start ${applies && campaign.active ? 'lg:top-28' : 'lg:top-24'}`}>
           <div className={isImage ? 'relative aspect-[5/6] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]' : 'belmonte-product-image relative aspect-[4/5] max-h-[48dvh] touch-pan-y overflow-hidden rounded-lg border border-[#e0d6cb] bg-[#e8e0d7] max-sm:h-[38dvh] max-sm:min-h-[220px] sm:aspect-square sm:max-h-[540px] lg:max-h-[calc(100dvh-160px)]'} onTouchStart={handleGalleryTouchStart} onTouchEnd={handleGalleryTouchEnd}>
             {active.type === 'video' ? (
               <SilentVideo
@@ -306,15 +313,18 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
             </div>
           </div>
 
-          <div id="configurar-painel" className="belmonte-configurator flex flex-col gap-6" style={{ scrollMarginTop: 72 }}>
-            <div id="product-price" className="relative before:absolute before:inset-x-0 before:-top-3 before:border-t before:border-[#e6ded4] after:absolute after:inset-x-0 after:-bottom-3 after:border-t after:border-[#e6ded4]">
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <strong className="belmonte-serif text-4xl font-normal leading-tight">{displayedPrice}</strong>
-                <span className="text-sm text-[#7d6f64]">por painel · IVA incluído</span>
+          <div id="configurar-painel" className="belmonte-configurator flex flex-col gap-6" style={{ scrollMarginTop: applies && campaign.active ? 108 : 72 }}>
+            <div id="product-price" className="border-b border-[#e6ded4] pb-4">
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <strong className="belmonte-serif flex items-baseline gap-2 text-[42px] font-normal leading-tight text-[#201a17] sm:text-[46px]">
+                    {!selectedSize && <span className="font-sans text-sm font-normal text-[#6f6259]">Desde</span>}{campaignEuro(unitCents)}
+                  </strong>
+                </div>
+                <p className="mt-1 text-xs text-[#64594d]">por painel · IVA incluído</p>
+                <p className="mt-1.5 text-xs text-[#64594d]">{displayedSize.label} · Cobre {displayedSize.areaM2.toLocaleString('pt-PT')} m² por painel</p>
+                <a href="#fabrico-proprio" className="mt-2 block w-fit text-xs font-medium leading-5 text-[#6b481e] underline underline-offset-4">Preço direto da fábrica</a>
               </div>
-              <p className="mt-1 text-xs text-[#7d6f64]">{displayedSize.label} · Cobre {displayedSize.areaM2.toLocaleString('pt-PT')} m² por painel</p>
-              <strong className="mt-1 block text-sm text-[#8a5a2b]">Preço direto da fábrica</strong>
-              <a href="#fabrico-proprio" className="mt-2 block w-fit pt-2 text-xs leading-5 text-[#5c5049] underline underline-offset-4">Como conseguimos este preço?</a>
             </div>
 
             <div id="product-color" className={`belmonte-color-option ${selectionGuidanceVisible && colorIndex === null ? 'ecom-pending-option rounded-xl' : ''}`}>
@@ -348,7 +358,8 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   return (
                     <button key={size.key} type="button" disabled={disabled} onClick={() => { setSizeIndex(index); setSelectionError(''); }} className={`belmonte-option-card flex min-h-20 min-w-0 flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm transition ${disabled ? 'cursor-not-allowed border-[#ded9d4] bg-[#efedeb] text-[#9a948e]' : selected ? 'border-[#8a5a2b] bg-[#f1e7db] shadow-[inset_0_0_0_1px_#8a5a2b]' : 'border-[#e0d6cb] bg-[#fdfbf9] hover:border-[#8a5a2b]'}`}>
                       <strong className="break-words">{size.label}</strong>
-                      <span className="break-words text-xs sm:text-sm">{disabled ? 'Esgotado' : `${campaignEuro(variant ? product.priceCents + variant.priceDeltaCents : size.priceCents)} / unidade`}</span>
+                      <span className="break-words text-xs sm:text-sm">{disabled ? 'Esgotado' : `${campaignEuro(basePrice + (variant?.priceDeltaCents ?? 0))} / unidade`}</span>
+                      {!disabled && <CampaignStock sizeKey={size.key} />}
                     </button>
                   );
                 })}
@@ -377,7 +388,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                 </div>
               )}
               <button id="primary-buy-button" type="button" disabled={purchaseUnavailable} onClick={addCampaignLine} className="w-full rounded-full bg-[#201a17] px-4 py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">
-                {purchaseUnavailable ? 'Indisponível' : `Adicionar ao carrinho${hasRequiredSelections ? ` — ${campaignEuro(unitCents * qty)}` : ''}`}
+                {purchaseUnavailable ? 'Indisponível' : `${applies && campaign.active ? 'Aproveitar a queima de stock' : 'Adicionar ao carrinho'}${hasRequiredSelections ? ` — ${campaignEuro(unitCents * qty)}` : ''}`}
               </button>
               <div>
                 <p className="mb-2 text-sm font-semibold text-[#201a17]">Pague como preferir</p>
@@ -389,17 +400,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-xl border border-[#e0d6cb] bg-[#fdfbf9] px-4 py-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#efe7de] text-[#8a5a2b]"><Truck className="h-4.5 w-4.5" /></span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#201a17]">Envio por</span>
-                    <img src="/pt/images/logo-ctt-express.svg" alt="CTT Express" style={{ width: 78, height: 'auto' }} />
-                  </div>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-[#5c5049]">Portes calculados antes do pagamento</p>
-                  <p className="mt-1 text-[11px] leading-4 text-[#7d6f64]">Acompanhe a entrega com o número de seguimento</p>
-                </div>
-              </div>
+              <DispatchNotice expedited={product.slug === NURALTA_CAMPAIGN.productSlug} />
             </div>
           </div>
         </div>
