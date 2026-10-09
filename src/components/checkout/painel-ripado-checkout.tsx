@@ -127,7 +127,6 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       if (raw) {
         const { marketingOptIn: _legacyMarketingOptIn, termsAccepted: _legacyTermsAccepted, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean; termsAccepted?: boolean };
         // Draft restoration is a one-time client hydration step from localStorage.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm((current) => ({ ...current, ...saved, country: PANEL_CHECKOUT_COUNTRY }));
       }
     } catch {
