@@ -120,6 +120,7 @@ function cartFixture(t, initial = {}) {
   const useCartDrawer = selector => selector(state);
   useCartDrawer.getState = () => ({ open: () => { state.isOpen = true; }, close: () => { state.isOpen = false; } });
   const { CartDrawer } = load('src/components/cart/cart-drawer.tsx', {
+    '@/components/offers/nuralta/campaign': { useNuraltaCampaign: () => ({ campaign: null }), DispatchNotice: () => null },
     react: hooks.react,
     'react/jsx-runtime': jsxRuntime,
     'next/link': { default: 'Link' }, 'next/image': { default: 'Image' },

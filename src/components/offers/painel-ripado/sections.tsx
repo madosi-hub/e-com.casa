@@ -79,12 +79,12 @@ export function PanelFactoryStory() {
             <button
               type="button"
               onClick={togglePlayback}
-              aria-label={isPlaying ? 'Pausar vídeo' : 'Reproduzir vídeo'}
+              aria-label={isPlaying ? 'Colocar o vídeo em pausa' : 'Reproduzir vídeo'}
               aria-pressed={isPlaying}
               className="absolute right-3 top-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-[#d6a56f] px-4 py-2.5 text-[10px] font-bold uppercase tracking-[.12em] text-[#201a17] shadow-lg transition hover:bg-[#e0b37f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#201a17] sm:right-5 sm:top-5 sm:text-xs"
             >
               {isPlaying ? <Pause className="h-4 w-4 fill-current" aria-hidden="true" /> : <Play className="h-4 w-4 fill-current" aria-hidden="true" />}
-              <span>{isPlaying ? 'Pausar' : 'Reproduzir'}</span>
+              <span>{isPlaying ? 'Pausa' : 'Reproduzir'}</span>
             </button>
           </div>
 

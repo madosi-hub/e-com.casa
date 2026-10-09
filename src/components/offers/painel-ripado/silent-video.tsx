@@ -19,7 +19,7 @@ export function SilentVideo({ src, poster, label, className, videoClassName, vid
 
   return <div className={`relative ${className}`}>
     <video ref={ref} src={src} poster={poster} aria-label={label} className={videoClassName} muted controls={false} autoPlay={autoPlay} loop={loop} playsInline disablePictureInPicture disableRemotePlayback preload="metadata" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
-    <button type="button" aria-label={`${playing ? 'Pausar' : 'Reproduzir'}: ${label}`} onClick={() => {
+    <button type="button" aria-label={`${playing ? 'Colocar em pausa' : 'Reproduzir'}: ${label}`} onClick={() => {
       const video = ref.current;
       if (!video) return;
       if (video.paused) void video.play().catch(() => setPlaying(false));

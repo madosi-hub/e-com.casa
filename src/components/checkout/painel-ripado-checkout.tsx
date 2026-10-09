@@ -2,6 +2,8 @@
 
 import { calculatePromoDiscount } from '@/lib/constants';
 import { shippingPrice } from '@/lib/shipping';
+import { panelDeliveryWindowLabel } from '@/lib/offers/panel-delivery';
+import { DispatchNotice } from '@/components/offers/nuralta/campaign';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -31,6 +33,7 @@ const OFFER_COPY: Record<string, string> = {
   'checkout.title': 'Finalize a sua encomenda.',
   'checkout.payNote': 'Os dados de pagamento são tratados de forma segura pelos nossos parceiros.',
   'checkout.each': 'por unidade',
+  'checkout.city': 'Localidade',
   'checkout.emptyTitle': 'O seu carrinho está vazio',
   'checkout.emptyDesc': 'Adicione um produto antes de avançar para o pagamento.',
 };
@@ -66,24 +69,6 @@ function deliveryFieldError(name: string, value: string): string {
   return '';
 }
 
-function addBusinessDays(start: Date, days: number): Date {
-  const result = new Date(start);
-  let remaining = days;
-  while (remaining > 0) {
-    result.setDate(result.getDate() + 1);
-    if (result.getDay() !== 0 && result.getDay() !== 6) remaining -= 1;
-  }
-  return result;
-}
-
-function deliveryWindowLabel(): string {
-  const start = addBusinessDays(new Date(), 2);
-  const end = addBusinessDays(new Date(), 4);
-  const month = new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(end);
-  if (new Intl.DateTimeFormat('pt-PT', { month: 'long' }).format(start) === month) return `Entrega prevista entre ${start.getDate()} e ${end.getDate()} de ${month}`;
-  const fmt = (date: Date) => new Intl.DateTimeFormat('pt-PT', { day: 'numeric', month: 'long' }).format(date);
-  return `Entrega prevista entre ${fmt(start)} e ${fmt(end)}`;
-}
 const PAYMENT_ELEMENT_OPTIONS: StripePaymentElementOptions = {
   layout: {
     type: 'accordion',
@@ -183,7 +168,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   // this delay does not represent a carrier API request.
   useEffect(() => {
     if (!deliveryAddressComplete) return;
-    const timer = window.setTimeout(() => setShippingReadyKey(shippingAddressKey), 350);
+    const timer = window.setTimeout(() => setShippingReadyKey(shippingAddressKey), 1000);
     return () => window.clearTimeout(timer);
   }, [deliveryAddressComplete, shippingAddressKey]);
 
@@ -418,7 +403,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         />
       </div>
       {fieldErrors[name] && <p id={`co-${name}-error`} className="mt-1 text-sm text-[#a32924]" aria-live="polite">{fieldErrors[name]}</p>}
-      {name === 'email' && <p id="co-email-help" className="mt-2 text-sm leading-5 text-[#626057]">Usaremos este e-mail para as informações da sua encomenda.</p>}
+      {name === 'email' && <p id="co-email-help" className="mt-2 text-sm leading-5 text-[#626057]">Enviaremos as informações sobre a sua encomenda para este e-mail.</p>}
     </div>
   );
 
@@ -431,7 +416,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       <header className="mb-6 sm:mb-8">
         <p className="mb-3 flex items-center gap-2 text-sm font-medium text-[#4b5d42]"><ShieldCheck aria-hidden className="h-4 w-4" /> Compra segura · Sem criar conta</p>
         <h1 className="text-[30px] font-semibold leading-[1.15] tracking-tight sm:text-[38px]">{t('checkout.title')}</h1>
-        <p className="mt-3 max-w-xl text-base leading-6 text-[#626057]">A sua escolha está aqui. Indique a entrega e escolha como prefere pagar.</p>
+        <p className="mt-3 max-w-xl text-base leading-6 text-[#626057]">Confirme os dados de entrega e escolha como prefere pagar.</p>
         <ol aria-label="Etapas da encomenda" className="mt-6 flex max-w-md items-center gap-3 text-sm font-medium">
           <li aria-current={!deliveryReviewed ? 'step' : undefined} className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-[#344731] text-white">{deliveryReviewed ? <CheckCircle2 aria-label="Preenchida" className="h-4 w-4" /> : '1'}</span> Entrega
@@ -473,18 +458,19 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                   <div className="flex justify-between gap-3"><dt>IVA</dt><dd>Incluído</dd></div>
                 </dl>
               </details>
-              {shippingQuoteStatus !== 'ready' && <p className="mb-4 text-sm leading-5 text-[#626057]">Entrega: {shippingQuoteStatus === 'loading' ? 'a calcular…' : 'a calcular após preencher a morada'}.</p>}
+              {shippingQuoteStatus !== 'ready' && <p className="mb-4 text-sm leading-5 text-[#626057]">Portes: {shippingQuoteStatus === 'loading' ? 'a calcular…' : 'a calcular após preencher a morada'}.</p>}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#dedbd3] pt-4">
                 <span className="text-base font-semibold">Total da encomenda</span>
                 <strong className="text-[26px] font-semibold tracking-tight tabular-nums">{formatPrice(money(total))}</strong>
               </div>
               <p className="mt-1 text-sm text-[#626057]">IVA incluído</p>
+              <div className="mt-4 border-t border-[#dedbd3] pt-4"><DispatchNotice /></div>
             </div>
           </div>
           <div className="mt-4 hidden rounded-2xl border border-[#dedbd3] p-5 lg:block">
             <h3 className="text-base font-semibold">Compre com tudo esclarecido.</h3>
             <p className="mt-2 text-sm leading-6 text-[#626057]">Consulte as condições ou fale com a nossa equipa antes de concluir.</p>
-            <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"><MessageCircle aria-hidden className="h-4 w-4" /> Apoio ao cliente <span className="sr-only">(abre numa nova aba)</span></Link>
+            <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"><MessageCircle aria-hidden className="h-4 w-4" /> Apoio ao cliente <span className="sr-only">(abre num novo separador)</span></Link>
           </div>
         </aside>
 
@@ -508,7 +494,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               <p>{form.postalCode} · {form.city} · Portugal</p>
             </div>}
             <div hidden={deliveryReviewed}>
-            <p className="mt-3 text-sm leading-5 text-[#626057]">Só precisamos dos dados para a sua encomenda. O complemento da morada é opcional.</p>
+            <p className="mt-3 text-sm leading-5 text-[#626057]">Preencha os dados necessários para entregar a sua encomenda. As informações adicionais da morada são opcionais.</p>
             <div className="mt-5 grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               {field('firstName', 'Nome completo', { autoComplete: 'name', placeholder: 'O seu nome' })}
               {field('email', 'E-mail', {
@@ -518,8 +504,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               })}
               {field('address', t('checkout.address'), { autoComplete: 'address-line1', placeholder: 'Rua e número' })}
               <details open={Boolean(form.address2) || undefined} className="sm:col-span-2">
-                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Adicionar andar, porta ou complemento (opcional)</summary>
-                {field('address2', 'Complemento da morada (opcional)', { autoComplete: 'address-line2', placeholder: 'Andar, porta ou ponto de referência', required: false })}
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2">Adicionar andar, porta ou outras indicações (opcional)</summary>
+                {field('address2', 'Informações adicionais da morada (opcional)', { autoComplete: 'address-line2', placeholder: 'Andar, porta ou ponto de referência', required: false })}
               </details>
               {field('city', t('checkout.city'), { autoComplete: 'address-level2', placeholder: 'Lisboa' }, true)}
               <div className="min-w-0">
@@ -553,7 +539,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               {shippingQuoteStatus === 'loading' && (
                 <div role="status" className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-3 text-sm text-[#5c5049] sm:col-span-2">
                   <LoaderCircle aria-hidden className="h-4 w-4 shrink-0 animate-spin" />
-                  A calcular entrega para Portugal…
+                  A calcular os portes para Portugal…
                 </div>
               )}
               {shippingQuoteStatus === 'ready' && <div role="status" className="mt-2 flex min-h-10 flex-wrap items-center gap-2 rounded-xl border border-[#dedfe3] bg-[#fbfbfc] px-3 py-3 text-sm text-[#5c5049] sm:col-span-2">
@@ -561,10 +547,11 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <span className="font-medium">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
                 <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
                 {shipping > 0 && <span className="font-medium">· {formatPrice(shipping)}</span>}
-                <span className="basis-full">{deliveryWindowLabel()}</span>
+                <p className="basis-full text-sm font-medium leading-5 text-[#405236]">{panelDeliveryWindowLabel()}</p>
+                <p className="basis-full text-xs leading-5 text-[#6f6259]">1 a 4 dias úteis, para pagamentos confirmados hoje.</p>
               </div>}
             {!deliveryReviewed && <button type="button" onClick={continueToPayment} disabled={paySubmitting || session.phase === 'confirming'} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#344731] px-4 py-3 text-base font-semibold text-white hover:bg-[#253523] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#344731] disabled:opacity-60">
-              Continuar para pagamento <ArrowRight aria-hidden className="h-5 w-5" />
+              Continuar para o pagamento <ArrowRight aria-hidden className="h-5 w-5" />
             </button>}
           </section>
 
@@ -718,8 +705,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             <div className="mt-5 border-t border-[#dedbd3] pt-4">
               <p className="text-sm font-semibold">Alguma dúvida antes de concluir?</p>
               <div className="mt-1 flex flex-wrap gap-x-5">
-                <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><MessageCircle aria-hidden className="h-4 w-4" /> Falar com o apoio<span className="sr-only"> (abre numa nova aba)</span></Link>
-                <Link href={panelOfferPath(offerSlug, '/informacao/trocas-e-devolucoes')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><RotateCcw aria-hidden className="h-4 w-4" /> Trocas e devoluções<span className="sr-only"> (abre numa nova aba)</span></Link>
+                <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><MessageCircle aria-hidden className="h-4 w-4" /> Falar com o apoio<span className="sr-only"> (abre num novo separador)</span></Link>
+                <Link href={panelOfferPath(offerSlug, '/informacao/trocas-e-devolucoes')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><RotateCcw aria-hidden className="h-4 w-4" /> Trocas e devoluções<span className="sr-only"> (abre num novo separador)</span></Link>
               </div>
             </div>
           </section>

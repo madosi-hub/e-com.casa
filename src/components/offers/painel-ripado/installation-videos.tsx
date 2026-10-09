@@ -33,7 +33,7 @@ export function PanelInstallationVideos() {
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[.18em] text-[#8a5a2b]">Instale com confiança</p>
           <h2 id="installation-title" className="mt-3 font-display text-4xl leading-tight sm:text-5xl">Fácil de instalar.<span className="block">Veja como se faz.</span></h2>
-          <p className="mt-4 text-base leading-7 text-[#5c5049]">Antes de começar, veja como alinhar e fixar os painéis, com cola ou parafusos. Pode pausar e rever cada movimento, ao seu ritmo.</p>
+          <p className="mt-4 text-base leading-7 text-[#5c5049]">Antes de começar, veja como alinhar e fixar os painéis, com cola ou parafusos. Pode colocar o vídeo em pausa e rever cada passo, ao seu ritmo.</p>
         </div>
 
         <div ref={carouselRef} id="installation-videos" onScroll={updateActiveIndex} role="region" aria-label="Vídeos de instalação" tabIndex={0} className="relative mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain rounded-2xl pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden focus-visible:outline-2 focus-visible:outline-[#8a5a2b] lg:grid lg:grid-cols-3 lg:overflow-visible">
@@ -63,7 +63,7 @@ export function PanelInstallationVideos() {
                   onEnded={() => setPlayingIndex((current) => current === index ? null : current)}
                   onError={() => setFailedIndex(index)}
                 >O seu navegador não suporta este vídeo.</video>
-                  <button type="button" aria-label={`${playingIndex === index ? 'Pausar' : 'Reproduzir'}: ${item.title}`} onClick={() => {
+                  <button type="button" aria-label={`${playingIndex === index ? 'Colocar em pausa' : 'Reproduzir'}: ${item.title}`} onClick={() => {
                     const video = videoRefs.current[index];
                     if (!video) return;
                     if (video.paused) void video.play().catch(() => setFailedIndex(index));
