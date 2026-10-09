@@ -21,6 +21,7 @@ import { buildPanelCheckoutPayload, CHECKOUT_DRAFT_KEY, PANEL_CHECKOUT_COUNTRY }
 import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
+import { paymentErrorDetails } from '@/lib/payments/client-payment-errors';
 import { formatPrice, toNumber, money } from '@/lib/format';
 import { PaymentElement } from '@/components/payments/payment-element';
 import { PaymentLoadingSkeleton } from '@/components/payments/payment-loading-skeleton';
@@ -114,6 +115,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const paySubmittingRef = useRef(false);
   const [paymentElementState, setPaymentElementState] = useState<{ elements: StripeElements; status: 'loading' | 'ready' | 'error'; complete: boolean; method?: string } | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pendingMultibanco, setPendingMultibanco] = useState<{ elements: StripeElements; details?: { entity: string; reference: string } } | null>(null);
   const paymentErrorRef = useRef<HTMLDivElement>(null);
   const paymentProgress = useRef<{ elements: StripeElements; method: string; complete: boolean } | null>(null);
   const elementStartedAt = useRef(0);
@@ -222,8 +224,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const paymentReady = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'ready';
   const paymentLoadFailed = session.elements !== null && paymentElementState?.elements === session.elements && paymentElementState.status === 'error';
   const paymentMethod = paymentElementState?.elements === session.elements ? paymentElementState?.method : undefined;
+  const multibancoPending = pendingMultibanco?.elements === session.elements && paymentMethod === 'multibanco';
   const paymentHelp = paymentMethod === 'mb_way'
-    ? 'Depois de carregar em Pagar, confirme o pedido na aplicação MB WAY do seu telemóvel.'
+    ? 'Introduza o número de telemóvel associado ao MB WAY. Depois de confirmar o pagamento, abra a aplicação MB WAY e autorize o pedido.'
     : paymentMethod === 'multibanco'
       ? 'Vamos gerar uma entidade e referência. A encomenda só fica paga depois de efetuar o pagamento no Multibanco ou no seu banco.'
       : paymentMethod === 'card'
@@ -290,6 +293,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (paySubmittingRef.current || session.phase === 'confirming') return;
+    if (multibancoPending && pendingMultibanco?.details) return;
     setPaymentError(null);
     if (cart.lines.length === 0) {
       trackOfferEvent('checkout_blocked', { offerSlug, stage: 'empty_cart' });
@@ -312,7 +316,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
       // pending sale in UTMify. An incomplete card or MB WAY form stops here.
       const { error } = await session.elements.submit();
       if (error) {
-        trackOfferEvent('checkout_blocked', { offerSlug, stage: 'payment_details', reason: error.type });
+        const details = paymentErrorDetails(error);
+        trackOfferEvent('checkout_blocked', { offerSlug, stage: 'payment_details', reason: details.providerType, method: paymentMethod ?? 'unknown', provider_code: details.providerCode, decline_code: details.declineCode });
         showPaymentError(error.message ?? 'Verifique os dados de pagamento indicados acima.', false);
         return;
       }
@@ -329,18 +334,19 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
         phone: null,
         notes: null,
         marketingConsent: false,
-      });
+      }, { amountMinor: Math.round(total * 100), currency: 'EUR' });
       if (!synced.ok) {
-        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'save_delivery' });
+        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'save_delivery', reason: synced.reason, http_status: synced.httpStatus, method: paymentMethod ?? 'unknown' });
         showPaymentError(synced.errorMessage ?? 'Não foi possível guardar a morada. Os seus dados foram mantidos; tente novamente.');
         return;
       }
 
       trackOfferEvent('checkout_payment_attempt', { offerSlug, stage: 'confirm', method: paymentMethod ?? 'unknown' });
-      const result = await session.confirmPayment();
-      trackOfferEvent('checkout_payment_result', { offerSlug, status: result.ok ? 'submitted' : 'error', method: paymentMethod ?? 'unknown' });
+      const result = await session.confirmPayment(paymentMethod);
+      trackOfferEvent('checkout_payment_result', { offerSlug, status: result.paymentStatus === 'requires_action' ? 'pending' : result.ok ? 'submitted' : 'error', method: paymentMethod ?? 'unknown' });
+      if (result.ok && result.paymentStatus === 'requires_action' && session.elements) setPendingMultibanco({ elements: session.elements, details: result.multibanco });
       if (!result.ok) {
-        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'confirm', reason: result.errorCode ?? 'unknown' });
+        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'confirm', reason: result.reason ?? result.errorCode ?? 'unknown', method: paymentMethod ?? 'unknown', provider_type: result.providerType, provider_code: result.providerCode, decline_code: result.declineCode });
         const message =
           result.errorCode === 'PAYMENT_CANCELLED'
             ? t('checkout.errorCancelled')
@@ -408,6 +414,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
 
   const payDisabled =
     paySubmitting ||
+    (multibancoPending && Boolean(pendingMultibanco?.details)) ||
     session.phase !== 'ready' || !paymentReady;
 
   return (
@@ -613,12 +620,14 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                         address2: delivery.address2.trim() || null,
                         city: delivery.city,
                         postalCode: delivery.postalCode,
-                      });
-                      if (!synced.ok) throw new Error(synced.errorMessage ?? 'Não foi possível atualizar a encomenda.');
+                      }, { amountMinor: Math.round(total * 100), currency: 'EUR' });
+                      if (!synced.ok) {
+                        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'save_delivery', method: 'express', reason: synced.reason, http_status: synced.httpStatus });
+                        throw new Error(synced.errorMessage ?? 'Não foi possível atualizar a encomenda.');
+                      }
                     } catch (error) {
                       paySubmittingRef.current = false;
                       setPaySubmitting(false);
-                      trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'save_delivery', method: 'express' });
                       showPaymentError('Não foi possível guardar os dados de entrega. Tente novamente.');
                       throw error;
                     }
@@ -628,9 +637,11 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                       trackOfferEvent('checkout_payment_attempt', { offerSlug, stage: 'confirm', method: 'express' });
                       const result = await session.confirmPayment();
                       trackOfferEvent('checkout_payment_result', { offerSlug, status: result.ok ? 'submitted' : 'error', method: 'express' });
-                      if (!result.ok) throw new Error(result.errorMessage ?? t('checkout.errorPayment'));
+                      if (!result.ok) {
+                        trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'confirm', method: 'express', reason: result.reason ?? result.errorCode, provider_type: result.providerType, provider_code: result.providerCode, decline_code: result.declineCode });
+                        throw new Error(result.errorMessage ?? t('checkout.errorPayment'));
+                      }
                     } catch (error) {
-                      trackOfferEvent('checkout_payment_error', { offerSlug, stage: 'confirm', method: 'express' });
                       showPaymentError(error instanceof Error ? error.message : t('checkout.errorPayment'));
                       throw error;
                     } finally {
@@ -669,10 +680,23 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             )}
 
             <p id="co-payment-help" className="mt-4 rounded-xl bg-[#f4f6f0] p-3 text-sm leading-6 text-[#344731]" aria-live="polite">{paymentHelp}</p>
+            {multibancoPending && (
+              <div role="status" className="mt-4 rounded-xl border border-[#b4bfaa] bg-[#f4f6f0] p-4 text-sm leading-6 text-[#344731]">
+                <p className="font-semibold">Pagamento Multibanco pendente</p>
+                <p>Efetue o pagamento com a entidade e a referência nas instruções apresentadas. A encomenda só fica confirmada após recebermos o pagamento.</p>
+                {pendingMultibanco?.details && <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg bg-white p-3">
+                  <dt>Entidade</dt><dd className="select-all font-semibold tabular-nums">{pendingMultibanco.details.entity}</dd>
+                  <dt>Referência</dt><dd className="select-all font-semibold tabular-nums">{pendingMultibanco.details.reference.replace(/(\d{3})(?=\d)/g, '$1 ')}</dd>
+                  <dt>Montante</dt><dd className="font-semibold tabular-nums">{formatPrice(money(total))}</dd>
+                </dl>}
+                {session.statusPath && <Link href={session.statusPath} className="mt-2 inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Consultar estado do pagamento</Link>}
+              </div>
+            )}
             {paymentError && (
               <div id="co-payment-error" ref={paymentErrorRef} tabIndex={-1} role="alert" className="mt-4 rounded-xl border border-[#a32924] bg-[#fff6f5] p-4 text-sm leading-6 text-[#a32924] focus:outline-2 focus:outline-offset-2">
                 <p className="font-semibold">Não foi possível concluir o pagamento</p>
                 <p>{paymentError}</p>
+                {paymentMethod === 'mb_way' && <p className="mt-2">Se não conseguir concluir por MB WAY, pode selecionar cartão ou Multibanco no formulário acima.</p>}
                 <p className="mt-1">Os seus dados de entrega foram mantidos.</p>
               </div>
             )}
@@ -687,7 +711,9 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
               aria-busy={paySubmitting || session.phase === 'confirming'}
               className="mt-4 flex min-h-[50px] w-full items-center justify-center gap-2 rounded-xl bg-[#344731] px-4 py-4 text-[16px] font-semibold text-white transition-colors hover:bg-[#253523] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#344731] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {paySubmitting || session.phase === 'confirming' ? (
+              {multibancoPending ? (
+                pendingMultibanco?.details ? 'A aguardar o pagamento Multibanco' : 'Ver instruções de pagamento'
+              ) : paySubmitting || session.phase === 'confirming' ? (
                 <><LoaderCircle aria-hidden className="h-4 w-4 animate-spin" /> {t('checkout.processing')}</>
               ) : session.phase === 'error' || session.phase === 'unavailable' || paymentLoadFailed ? (
                 'Pagamento indisponível — tente novamente acima'

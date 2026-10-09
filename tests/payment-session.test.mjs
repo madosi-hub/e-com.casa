@@ -9,6 +9,9 @@ const source = ts.transpileModule(fs.readFileSync('src/hooks/use-payment-session
 const preparationSource = ts.transpileModule(fs.readFileSync('src/lib/payments/offer-payment-preparation.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+const errorSource = ts.transpileModule(fs.readFileSync('src/lib/payments/client-payment-errors.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText;
 
 const payload = {
   email: 'buyer@example.test', firstName: 'Buyer', lastName: 'Test', address: 'Street 1',
@@ -138,6 +141,7 @@ function fixture({ fetchMock, stripeMock, options = {} } = {}) {
     return compiled.exports;
   }
   const preparation = load(preparationSource);
+  mocks['@/lib/payments/client-payment-errors'] = load(errorSource);
   mocks['@/lib/payments/offer-payment-preparation'] = preparation;
   const hook = load(source);
 
@@ -527,6 +531,139 @@ test('a changed server price disables stale Elements and explicit retry prepares
   assert.equal(f.requests.filter(request => request.url === '/api/payments/create-intent').length, 2);
   assert.equal((await f.current.syncOrder(payload)).ok, true);
   assert.equal(f.confirmCalls.length, 0);
+});
+
+test('an equivalent payload rerender during delivery save preserves the active payment session', async () => {
+  const saving = deferred();
+  const f = fixture({ options: { payload: offerPayload, prepareEarly: true }, fetchMock: async (url, config, normal) => {
+    if (url === '/api/checkout/create' && JSON.parse(config.body).draft === false) return saving.promise;
+    return normal(url, config);
+  } });
+  await f.start();
+  const elements = f.current.elements;
+  const pending = f.current.syncOrder(payload);
+  await f.flush();
+  await f.update({ payload: { ...offerPayload } });
+  saving.resolve(Response.json({ orderNumber: 'ORDER-A', pricingHash: 'price-a' }));
+  assert.equal((await pending).ok, true);
+  assert.equal(f.current.elements, elements);
+  assert.equal(f.requests.length, 3);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+test('a manual retry still verifies server pricing even when the contact has not changed', async () => {
+  let price = 'price-a';
+  const f = fixture({ fetchMock: async (url, config, normal) => {
+    if (url === '/api/checkout/create') return Response.json({ orderNumber: 'ORDER-A', pricingHash: price, accessToken: 'token-fixture' });
+    return normal(url, config);
+  } });
+  await f.start();
+  assert.equal((await f.current.syncOrder(payload)).ok, true);
+  price = 'price-b';
+  const result = await f.current.syncOrder({ ...payload });
+  await f.flush();
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'pricing_changed');
+  assert.equal(f.requests.filter(r => r.data.draft === false).length, 2);
+  assert.equal(f.confirmCalls.length, 0);
+  assert.equal(f.current.elements, null);
+});
+
+for (const mismatch of [true, false]) {
+  test(`the displayed EUR amount ${mismatch ? 'cannot differ from' : 'matches'} the server total before confirmation`, async () => {
+    const f = fixture({ fetchMock: async (url, config, normal) => {
+      if (url === '/api/checkout/create') return Response.json({ orderNumber: 'ORDER-A', pricingHash: 'price-a', accessToken: 'token-fixture', totals: { total: '9.00', currency: 'EUR' } });
+      return normal(url, config);
+    } });
+    await f.start();
+    const result = await f.current.syncOrder(payload, { amountMinor: mismatch ? 500 : 900, currency: 'EUR' });
+    await f.flush();
+    assert.equal(result.ok, !mismatch);
+    if (mismatch) {
+      assert.equal(result.reason, 'displayed_amount_changed');
+      assert.equal(f.current.phase, 'error');
+      assert.equal(f.current.elements, null);
+      assert.equal((await f.current.confirmPayment()).ok, false);
+    }
+    assert.equal(f.confirmCalls.length, 0);
+  });
+}
+
+test('MB WAY decline returns Portuguese guidance and only allowlisted technical diagnostics', async () => {
+  const f = fixture({ stripeMock: { confirmPayment: async () => ({ error: {
+    type: 'card_error', code: 'card_declined', decline_code: 'do_not_honor',
+    message: 'Sensitive provider text +351910000000', payment_method: { billing_details: { email: payload.email } },
+  } }) } });
+  await f.start();
+  const result = await f.current.confirmPayment('mb_way');
+  await f.flush();
+  assert.equal(result.ok, false);
+  assert.equal(result.errorCode, 'PAYMENT_FAILED');
+  assert.equal(result.providerCode, 'card_declined');
+  assert.equal(result.declineCode, 'do_not_honor');
+  assert.match(result.errorMessage, /número de telemóvel.*MB WAY/);
+  assert.ok(!JSON.stringify(result).includes('+351'));
+  assert.ok(!JSON.stringify(result).includes(payload.email));
+  assert.equal(f.current.phase, 'ready');
+});
+
+test('arbitrary provider diagnostic values are excluded instead of sending contacts or secrets', async () => {
+  const f = fixture({ stripeMock: { confirmPayment: async () => ({ error: {
+    type: 'card_error', code: 'pi_private_secret_value', decline_code: payload.email, message: 'Private message',
+  } }) } });
+  await f.start();
+  const result = await f.current.confirmPayment('mb_way');
+  assert.equal(result.providerCode, 'other');
+  assert.equal(result.declineCode, 'other');
+  assert.ok(!JSON.stringify(result).includes('private'));
+  assert.ok(!JSON.stringify(result).includes(payload.email));
+});
+
+test('delivery HTTP errors include a safe status, preserve the session, and allow a manual retry', async () => {
+  let fail = true;
+  const f = fixture({ fetchMock: async (url, config, normal) => {
+    if (fail && url === '/api/checkout/create' && JSON.parse(config.body).draft === false) return Response.json({ error: 'Private server details' }, { status: 429 });
+    return normal(url, config);
+  } });
+  await f.start();
+  const elements = f.current.elements;
+  const result = await f.current.syncOrder(payload);
+  assert.equal(result.reason, 'delivery_request_failed');
+  assert.equal(result.httpStatus, 429);
+  assert.match(result.errorMessage, /Aguarde/);
+  assert.ok(!JSON.stringify(result).includes('Private'));
+  fail = false;
+  assert.equal((await f.current.syncOrder(payload)).ok, true);
+  assert.equal(f.current.elements, elements);
+  assert.equal(f.confirmCalls.length, 0);
+});
+
+test('Multibanco instructions return a pending outcome without a paid navigation or a permanent spinner', async () => {
+  let confirmations = 0;
+  const f = fixture({ stripeMock: { confirmPayment: async () => { confirmations++; return { paymentIntent: { status: 'requires_action', next_action: { multibanco_display_details: { entity: '12345', reference: '123 456 789' } } } }; } } });
+  await f.start();
+  const result = await f.current.confirmPayment('multibanco');
+  await f.flush();
+  assert.equal(result.ok, true);
+  assert.equal(result.paymentStatus, 'requires_action');
+  assert.deepEqual(result.multibanco, { entity: '12345', reference: '123456789' });
+  assert.equal(f.current.phase, 'ready');
+  assert.deepEqual(f.completed, []);
+  assert.equal(confirmations, 1);
+});
+
+test('a changed cart during provider confirmation cannot navigate or clear the newer checkout', async () => {
+  const confirmation = deferred();
+  const f = fixture({ stripeMock: { confirmPayment: () => confirmation.promise } });
+  await f.start();
+  const pending = f.current.confirmPayment();
+  await f.flush();
+  await f.update({ signature: 'cart-b', payload: { ...payload, items: [{ slug: 'panel', quantity: 2 }] } });
+  await f.start();
+  confirmation.resolve({ paymentIntent: { status: 'succeeded' } });
+  assert.equal((await pending).reason, 'session_changed');
+  assert.deepEqual(f.completed, []);
+  assert.equal(f.current.phase, 'ready');
 });
 
 test('resetCheckoutToken clears shared offer preparation as well as the generic token', async () => {
