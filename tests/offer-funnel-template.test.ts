@@ -42,12 +42,12 @@ test('offer and admin routes are self-contained and do not duplicate global chro
   for (const copy of [
     'Painel Ripado Decorativo',
     'Preço direto da fábrica',
-    'Como conseguimos este preço?',
     'Quantos painéis preciso?',
     'Pague como preferir',
   ]) {
     expect(configurator).toContain(copy);
   }
+  expect(configurator).toContain('href="#fabrico-proprio"');
 
   for (const copy of [
     'Da nossa fábrica.',
