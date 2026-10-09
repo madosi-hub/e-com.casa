@@ -12,6 +12,10 @@ const deliveryCode = ts.transpileModule(fs.readFileSync('src/lib/offers/panel-de
 const deliveryModule = { exports: {} };
 new Function('exports', deliveryCode)(deliveryModule.exports);
 const { panelDeliveryWindowLabel } = deliveryModule.exports;
+const errorModule = { exports: {} };
+new Function('exports', ts.transpileModule(fs.readFileSync('src/lib/payments/client-payment-errors.ts', 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText)(errorModule.exports);
 const valid = { firstName: 'Cliente Teste', email: 'cliente@example.test', address: 'Rua Teste 1', city: 'Lisboa', postalCode: '1000-001', country: 'PT' };
 function nodes(tree, predicate) {
   if (!tree || typeof tree !== 'object') return [];
@@ -70,6 +74,7 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     '@/lib/offers/analytics': { trackOfferEvent: (...event) => events.push(event) }, '@/lib/offers/route-policy': { NURALTA_OFFER_ALIAS: 'fixture-panel', panelOfferPath: (slug, suffix = '') => `/offers/${slug}${suffix}` },
     '@/lib/i18n': { translate: (_, key) => ({ 'checkout.paymentInitializing': 'A preparar o pagamento seguro…', 'checkout.processing': 'A processar…' })[key] ?? key },
     '@/hooks/use-payment-session': { usePaymentSession: () => session }, '@/lib/format': { formatPrice: value => `€${value}`, toNumber: Number, money: Number },
+    '@/lib/payments/client-payment-errors': errorModule.exports,
     '@/components/payments/payment-element': { PaymentElement: component('payment-element') },
     '@/components/payments/payment-loading-skeleton': { PaymentLoadingSkeleton: component('payment-loading') },
     '@/components/payments/express-checkout': { ExpressCheckout: component('express-checkout') },
@@ -190,6 +195,40 @@ test('method/completeness telemetry deduplicates and excludes personal/payment d
   assert.ok(!JSON.stringify(f.events).includes(valid.email));
   assert.ok(!JSON.stringify(f.events).includes('+351'));
   assert.match(text(nodes(f.tree, n => n.props?.id === 'co-payment-help')[0]), /aplicação MB WAY/);
+});
+
+test('MB WAY failures explain an alternative and record technical codes without provider messages', async () => {
+  const f = fixture({ draft: valid }); f.readyElement();
+  f.payment.props.onChange({ complete: true, value: { type: 'mb_way' } }); f.render();
+  f.session.confirmPayment = async method => {
+    assert.equal(method, 'mb_way');
+    return { ok: false, errorCode: 'PAYMENT_FAILED', providerType: 'card_error', providerCode: 'card_declined', declineCode: 'do_not_honor', errorMessage: 'Verifique o número associado ao MB WAY.' };
+  };
+  await f.submit(); f.render();
+  assert.match(text(nodes(f.tree, n => n.props?.id === 'co-payment-error')[0]), /selecionar cartão ou Multibanco/);
+  const error = f.events.find(([name, data]) => name === 'checkout_payment_error' && data.stage === 'confirm')[1];
+  assert.equal(error.provider_code, 'card_declined');
+  assert.equal(error.decline_code, 'do_not_honor');
+  assert.equal(error.method, 'mb_way');
+  assert.ok(!JSON.stringify(error).includes(valid.email));
+  assert.ok(!JSON.stringify(error).includes('Verifique o número'));
+  assert.equal(f.inputs.get('co-address').value, valid.address);
+});
+
+test('Multibanco pending instructions do not advertise a completed payment or submit twice', async () => {
+  const f = fixture({ draft: valid }); f.readyElement();
+  f.payment.props.onChange({ complete: true, value: { type: 'multibanco' } }); f.render();
+  f.session.confirmPayment = async () => { f.paymentCalls.push('confirm'); return { ok: true, paymentStatus: 'requires_action', multibanco: { entity: '12345', reference: '123456789' } }; };
+  await f.submit(); f.render();
+  assert.match(text(f.tree), /Pagamento Multibanco pendente/);
+  assert.match(text(f.tree), /só fica confirmada após recebermos o pagamento/);
+  assert.match(text(f.tree), /12345/);
+  assert.match(text(f.tree), /123 456 789/);
+  assert.ok(!JSON.stringify(f.events).includes('123456789'));
+  assert.equal(f.button.props.disabled, true);
+  await f.submit();
+  assert.equal(f.paymentCalls.filter(call => call === 'confirm').length, 1);
+  assert.ok(f.events.some(([name, data]) => name === 'checkout_payment_result' && data.status === 'pending'));
 });
 
 test('summary comes first and reveals shipping and delivery dates after one second with a complete address', () => {
