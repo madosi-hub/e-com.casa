@@ -9,9 +9,9 @@ function load(path, mocks = {}) {
   const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
-  const module = { exports: {} };
-  new Function('require', 'module', 'exports', code)(id => id in mocks ? mocks[id] : runtimeRequire(id), module, module.exports);
-  return module.exports;
+  const compiledModule = { exports: {} };
+  new Function('require', 'module', 'exports', code)(id => id in mocks ? mocks[id] : runtimeRequire(id), compiledModule, compiledModule.exports);
+  return compiledModule.exports;
 }
 const campaign = load('src/lib/offers/nuralta-campaign.ts');
 const { NURALTA_CAMPAIGN: config, campaignState, campaignRemaining } = campaign;

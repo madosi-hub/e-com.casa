@@ -44,7 +44,13 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+  files: ["src/components/checkout/painel-ripado-checkout.tsx"],
+  rules: {
+    // Restore the persisted checkout draft once after hydration.
+    "react-hooks/set-state-in-effect": "off",
+  },
+}, {
+  ignores: ["node_modules/**", ".next/**", "out/**", "output/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
 }];
 
 export default eslintConfig;
