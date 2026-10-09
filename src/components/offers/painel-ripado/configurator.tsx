@@ -388,7 +388,7 @@ export function PanelConfigurator({ product: initialProduct, offer }: { product:
                 </div>
               )}
               <button id="primary-buy-button" type="button" disabled={purchaseUnavailable} onClick={addCampaignLine} className="w-full rounded-full bg-[#201a17] px-4 py-4 text-base font-semibold text-[#f7f3ef] transition hover:bg-[#8a5a2b] disabled:cursor-not-allowed disabled:opacity-45">
-                {purchaseUnavailable ? 'Indisponível' : `${applies && campaign.active ? 'Aproveitar a queima de stock' : 'Adicionar ao carrinho'}${hasRequiredSelections ? ` — ${campaignEuro(unitCents * qty)}` : ''}`}
+                {purchaseUnavailable ? 'Indisponível' : `Adicionar ao carrinho${hasRequiredSelections ? ` — ${campaignEuro(unitCents * qty)}` : ''}`}
               </button>
               <div>
                 <p className="mb-2 text-sm font-semibold text-[#201a17]">Pague como preferir</p>
