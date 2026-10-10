@@ -10,31 +10,23 @@ import type { OrderEmailInput, OrderStatusEmailInput, RenderedOrderEmail } from 
 
 export type { OrderEmailInput, OrderStatusEmailInput, OrderNotificationStatus } from './types';
 
-const RESEND_API = 'https://api.resend.com/emails';
-
-function configured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY);
-}
+import { db } from '@/lib/db';
+import { sendTracked } from './tracking';
 
 async function deliverOrderEmail(input: OrderEmailInput, message: RenderedOrderEmail, type: string): Promise<boolean> {
-  if (!configured()) {
-    console.warn(`RESEND_API_KEY is not configured; ${type} email skipped`);
+  if (!process.env.RESEND_API_KEY) return false;
+  try {
+    const email = await sendTracked(db, {
+      key: `order:${input.orderNumber}:${type}:${input.trackingNumber || ''}:${'refundAmount' in input ? input.refundAmount || '' : ''}`,
+      from: `${message.fromName} <${EMAILS.orders}>`, to: [input.customerEmail], reply_to: [EMAILS.support],
+      subject: message.subject, html: message.html, text: message.text, type, orderNumber: input.orderNumber,
+      tags: [{name:'type',value:type},{name:'profile',value:message.profile},{name:'order',value:input.orderNumber}],
+    });
+    return email.status === 'accepted' || ['sent','delivered','opened','clicked'].includes(email.status);
+  } catch {
+    console.warn('Order email unavailable; payment processing continues');
     return false;
   }
-
-  const response = await fetch(RESEND_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: `${message.fromName} <${EMAILS.orders}>`, to: [input.customerEmail], reply_to: [EMAILS.support], subject: message.subject, html: message.html, text: message.text, tags: [{ name: 'type', value: type }, { name: 'profile', value: message.profile }, { name: 'order', value: input.orderNumber }] }),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    console.error(`Resend ${type} email failed`, response.status, body.slice(0, 300));
-    return false;
-  }
-  return true;
 }
 
 function templateContext(input: OrderEmailInput) {
