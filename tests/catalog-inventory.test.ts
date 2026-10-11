@@ -5,6 +5,9 @@ import { FileCatalogAdapter } from '../src/lib/catalog/file-adapter';
 import { readFileSync } from 'node:fs';
 
 const snapshot = JSON.parse(readFileSync('data/catalog/generated-provider-products.json', 'utf8'));
+const storefront = JSON.parse(readFileSync('data/catalog/storefront-products.json', 'utf8'));
+const lighting = JSON.parse(readFileSync('data/catalog/lighting-preview-products.json', 'utf8'));
+const bundledProducts = [...new Map([...snapshot, ...storefront, ...lighting].map(product => [product.sku, product])).values()];
 const unlimited = {
   ...snapshot[0],
   supplierKey: null,
@@ -42,9 +45,16 @@ describe('catalogue inventory', () => {
     expect(isCatalogProductSaleable({ ...unlimited, documentationStatus: 'BLOCKED' })).toBe(false);
   });
 
-  test('fallback adapter serves the bundled provider snapshot without a supplier whitelist', async () => {
+  test('fallback adapter serves provider and lighting products without a supplier whitelist', async () => {
     const adapter = new FileCatalogAdapter();
-    expect(await adapter.count()).toBe(snapshot.length);
+    expect(await adapter.count()).toBe(bundledProducts.length);
+    for (const product of [...storefront, ...lighting]) {
+      const actual = await adapter.getBySlug(product.slug);
+      expect(actual?.sku).toBe(product.sku);
+      expect(actual?.stockKnown).toBe(true);
+      expect(actual?.stockUnlimited).toBe(false);
+      expect(actual?.stock).toBe(product.stock);
+    }
     expect((await adapter.getBySlug('odem-painel-ripado-acustico-carvalho'))?.stockUnlimited).toBe(true);
     expect(await adapter.getBySlug('warm-oak-slatted-wall-panel')).toBeNull();
   });
