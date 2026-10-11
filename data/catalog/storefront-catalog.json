@@ -1,0 +1,13 @@
+{
+  "categories": [
+    {
+      "id": "storefront-iluminacao",
+      "slug": "iluminacao",
+      "name": "Iluminação",
+      "type": "shop",
+      "image": "/images/offers/fado/living-room.webp",
+      "subtitle": "Luz para viver a casa",
+      "sortOrder": 1000
+    }
+  ]
+}

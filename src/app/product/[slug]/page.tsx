@@ -20,6 +20,8 @@ import { COMPANY } from '@/lib/company';
 import type { ReviewDTO } from '@/lib/reviews-data';
 import type { Product } from '@/types';
 import { ChevronRight } from 'lucide-react';
+import { getLightingPresentation, lightingCollection } from '@/lib/catalog/lighting';
+import { LightingProductPage } from '@/components/offers/fado/lighting-product-page';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,9 +42,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const product = await getProduct(slug);
   if (!product) notFound();
   const saleable = isCatalogProductSaleable(product);
+  const lighting = getLightingPresentation(slug);
   return {
     title: saleable ? `${product.name} — ${formatPrice(product.price)}` : product.name,
-    description: product.description.slice(0, 155),
+    description: (lighting?.description ?? product.description).slice(0, 155),
     alternates: { canonical: `/product/${product.slug}` },
     robots: {
       index: process.env.NEXT_PUBLIC_INDEXING_ENABLED === 'true' && saleable,
@@ -62,6 +65,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
   const saleable = isCatalogProductSaleable(product);
   const publicProduct = toStorefrontProduct(product) as Product;
+  const lighting = getLightingPresentation(slug);
+  if (lighting) {
+    const lightingProducts = (await Promise.all([...lightingCollection.map(item => item.slug), 'ikea-fado-candeeiro-mesa-branco'].map(getProduct))).filter((item): item is Product => item !== null).map(toStorefrontProduct);
+    return <LightingProductPage product={publicProduct} presentation={lighting} collectionProducts={lightingProducts} />;
+  }
 
   const styleSlugs = product.styleSlugs.split(',').filter(Boolean);
   const spaceSlugs = product.spaceSlugs.split(',').filter(Boolean);

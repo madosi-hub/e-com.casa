@@ -1,0 +1,41 @@
+[
+  {
+    "slug": "lexman-e27-2700k",
+    "ref": "86577606",
+    "kelvin": 2700,
+    "label": "Luz quente",
+    "media": "3600151",
+    "source": "https://www.leroymerlin.pt/produtos/lampada-led-filamento-a60-e27-806-lm-2700-k-milky-86577606.html",
+    "priceCents": 399,
+    "currency": "EUR",
+    "unitCount": 1,
+    "checkedAt": "2026-10-10",
+    "retailer": "Leroy Merlin Portugal"
+  },
+  {
+    "slug": "lexman-e27-4000k",
+    "ref": "86577608",
+    "kelvin": 4000,
+    "label": "Luz neutra",
+    "media": "3600183",
+    "source": "https://www.leroymerlin.pt/produtos/lampada-led-filamento-a60-e27-806-lm-4000-k-milky-86577608.html",
+    "priceCents": 399,
+    "currency": "EUR",
+    "unitCount": 1,
+    "checkedAt": "2026-10-10",
+    "retailer": "Leroy Merlin Portugal"
+  },
+  {
+    "slug": "lexman-e27-6500k",
+    "ref": "86577610",
+    "kelvin": 6500,
+    "label": "Luz fria",
+    "media": "3600016",
+    "source": "https://www.leroymerlin.pt/produtos/lampada-led-filamento-a60-e27-806-lm-6500-k-milky-86577610.html",
+    "priceCents": 399,
+    "currency": "EUR",
+    "unitCount": 1,
+    "checkedAt": "2026-10-10",
+    "retailer": "Leroy Merlin Portugal"
+  }
+]

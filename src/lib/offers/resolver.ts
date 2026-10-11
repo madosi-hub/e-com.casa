@@ -5,7 +5,8 @@ import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { FileCatalogAdapter } from '@/lib/catalog/file-adapter';
 import type { CatalogProduct } from '@/lib/catalog/types';
 import { getProductOffers } from './store';
-import { isOfferRouteEnabled } from './route-policy';
+import { FADO_OFFER_ALIAS, FADO_OFFER_SLUG, isOfferRouteEnabled } from './route-policy';
+import { getOfferConfig } from './registry';
 import type { OfferConfig, OfferReviewItem } from './types';
 
 export interface ResolvedOffer {
@@ -88,6 +89,7 @@ function nuraltaConfig(product: CatalogProduct, slug: string): OfferConfig {
 }
 
 export const resolveOffer = cache(async (requestedSlug: string): Promise<ResolvedOffer | null> => {
+  if (requestedSlug === FADO_OFFER_ALIAS) requestedSlug = FADO_OFFER_SLUG;
   const offers = await getProductOffers();
   const offer = offers.find((candidate) =>
     candidate.slug === requestedSlug ||
@@ -96,10 +98,12 @@ export const resolveOffer = cache(async (requestedSlug: string): Promise<Resolve
 
   if (!isOfferRouteEnabled(requestedSlug, offer)) return null;
 
+  const configuredOffer = requestedSlug === FADO_OFFER_SLUG ? getOfferConfig(requestedSlug) : null;
+
   const dedicatedPanel = requestedSlug === 'painel-ripado' || requestedSlug === 'nuralta-painel-ripado';
-  const productSlug = requestedSlug === 'painel-ripado'
+  const productSlug = configuredOffer?.productSlug ?? (requestedSlug === 'painel-ripado'
     ? 'nuralta-painel-ripado-decorativo'
-    : offer?.productSlug ?? 'nuralta-painel-ripado-decorativo';
+    : offer?.productSlug ?? 'nuralta-painel-ripado-decorativo');
   let product = await getProduct(productSlug);
   // A transient or stale database row must not turn the dedicated funnel into
   // a false "unavailable" page when the bundled approved snapshot is healthy.
@@ -108,6 +112,8 @@ export const resolveOffer = cache(async (requestedSlug: string): Promise<Resolve
     if (snapshotProduct && isCatalogProductSaleable(snapshotProduct)) product = snapshotProduct;
   }
   if (!product || !isCatalogProductSaleable(product)) return null;
+
+  if (configuredOffer) return { product, offer: configuredOffer };
 
   if (product.slug === 'nuralta-painel-ripado-decorativo') {
     return { product, offer: nuraltaConfig(product, requestedSlug) };

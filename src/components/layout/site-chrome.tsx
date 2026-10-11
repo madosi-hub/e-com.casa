@@ -6,6 +6,7 @@ import { SiteHeader } from '@/components/layout/site-header';
 import { SiteFooter } from '@/components/layout/site-footer';
 import { CheckoutFooter, CheckoutHeader } from '@/components/checkout/checkout-chrome';
 import { panelOfferPath, panelOfferSlugFromPathname } from '@/lib/offers/route-policy';
+import { isLightingProductPath } from '@/lib/catalog/lighting';
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,7 +14,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const offerCheckoutRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/checkout')));
   const offerInformationRoute = Boolean(panelOfferSlug && pathname.startsWith(panelOfferPath(panelOfferSlug, '/informacao/')));
   const offerChromeRoute = offerCheckoutRoute || offerInformationRoute;
-  const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin');
+  const selfContainedRoute = pathname.startsWith('/offers/') || pathname.startsWith('/admin') || isLightingProductPath(pathname);
 
   return (
     <div className={offerChromeRoute ? 'flex min-h-screen flex-col bg-[#f7f3ef]' : 'flex min-h-screen flex-col'}>

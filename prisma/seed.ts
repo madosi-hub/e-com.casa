@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { importStorefrontCatalog } from '../scripts/catalog/import-storefront.mjs';
 
 const db = new PrismaClient();
 
@@ -173,6 +174,8 @@ async function main() {
       created++;
     }
   }
+  const storefrontCount = await importStorefrontCatalog(tx);
+  console.log(`✔ storefront products: ${storefrontCount} imported (existing stock preserved)`);
   const offerSeeds = readArtifact('product-offers.json') as Array<{ productSlug: string; slug: string; enabled: boolean; discountPct: number | null; fixedPriceCents: number | null; startsAt: string; endsAt: string; version: number }> | null;
   if (offerSeeds) {
     await tx.productOffer.createMany({ data: offerSeeds.map(o => ({ ...o, startsAt: new Date(o.startsAt), endsAt: new Date(o.endsAt) })), skipDuplicates: true });

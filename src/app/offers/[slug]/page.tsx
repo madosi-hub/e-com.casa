@@ -9,6 +9,12 @@ import { toStorefrontProduct } from '@/lib/catalog/public-product';
 import { COMPANY } from '@/lib/company';
 import { getProduct } from '@/lib/catalog';
 import { NURALTA_STANDALONE_ACCESSORY_SLUGS } from '@/lib/catalog/nuralta-accessories';
+import { isPanelOfferSlug } from '@/lib/offers/route-policy';
+import { lightingCollection } from '@/lib/catalog/lighting';
+
+function marketForOffer(requestHeaders: { get(name: string): string | null }, markets?: string[]) {
+  return resolveOfferMarket(markets?.length === 1 ? { get: () => null } : requestHeaders, markets?.[0] ?? 'PT');
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +24,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!resolved) notFound();
 
   const requestHeaders = await headers();
-  const market = resolveOfferMarket(requestHeaders);
   const { offer, product } = resolved;
+  const market = marketForOffer(requestHeaders, offer.markets);
   const seo = offer.translations?.[market.language]?.seo ?? offer.seo;
   const canonical = `/offers/${offer.slug}`;
 
@@ -54,8 +60,8 @@ export default async function OfferRoute({ params }: { params: Promise<{ slug: s
   if (!resolved) notFound();
 
   const requestHeaders = await headers();
-  const market = resolveOfferMarket(requestHeaders);
   const { offer, product } = resolved;
+  const market = marketForOffer(requestHeaders, offer.markets);
   const publicProduct = toStorefrontProduct(product);
   const seo = offer.translations?.[market.language]?.seo ?? offer.seo;
   const image = product.image?.startsWith('http') ? product.image : `${COMPANY.domain}${product.image}`;
@@ -80,7 +86,9 @@ export default async function OfferRoute({ params }: { params: Promise<{ slug: s
     },
   };
 
-  const accessoryProducts = await Promise.all(NURALTA_STANDALONE_ACCESSORY_SLUGS.map(getProduct));
+  const accessoryProducts = isPanelOfferSlug(offer.slug)
+    ? await Promise.all(NURALTA_STANDALONE_ACCESSORY_SLUGS.map(getProduct))
+    : offer.slug === 'fado-table-lamp' ? await Promise.all(lightingCollection.map(item => getProduct(item.slug))) : [];
   const accessories = accessoryProducts.filter((item): item is NonNullable<typeof item> => item !== null).map(toStorefrontProduct);
   const page = <ProductFunnelPage offer={offer} product={publicProduct} market={market} accessories={accessories} />;
 
