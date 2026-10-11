@@ -16,6 +16,7 @@
     "db:reset": "prisma migrate reset",
     "db:seed": "bun prisma/seed.ts",
     "catalog:bootstrap": "bun prisma/seed.ts",
+    "catalog:import:storefront": "node scripts/catalog/import-storefront.mjs",
     "offers:verify": "bun scripts/offers/verify-offers.ts",
     "test:checkout": "node --test tests/checkout-drafts.test.mjs tests/checkout-ux.test.mjs",
     "test:payments": "node --test tests/xpayments-provider.test.mjs tests/stripe-elements.test.mjs tests/payment-element.test.mjs tests/payment-session.test.mjs tests/express-checkout.test.mjs tests/offer-payment-preparation.test.mjs tests/offer-payment-entry.test.mjs",

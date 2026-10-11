@@ -51,11 +51,10 @@ export function ProductCard({ product: initialProduct, priority = false }: { pro
     : null;
 
   const onAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
     if (!saleable) {
-      toast({ title: saleabilityLabel, description: 'This item cannot be purchased right now.' });
       return;
     }
+    e.preventDefault();
     add({
       slug: product.slug,
       name: product.name,

@@ -1,0 +1,5 @@
+Asset: evening-off.webp
+Method: built-in image_gen image edit, then WebP conversion for the website.
+Source: evening.webp, IKEA FADO product photography.
+Purpose: illustrative OFF state for a before/after slider. This is not a manufacturer-supplied OFF photograph.
+Prompt: Create the OFF counterpart of the exact square FADO windowsill photograph. Change only the lamp: unlit matte white opal glass, remove its yellow emission and immediate warm spill. Preserve framing, camera, window grid, chair, botanical print, gingerbread house, stems, fairy lights, wall, floor, object positions and all other exposure and lighting. No text, new objects, filters or overall relighting. Deliver one square OFF image.

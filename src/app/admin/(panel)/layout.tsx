@@ -12,7 +12,8 @@ const NAV = [
   ['Payments', '/admin/payments'],
   ['Webhooks', '/admin/webhooks'],
   ['Customers', '/admin/customers'],
-  ['Contacts', '/admin/contacts'],
+  ['Contactos', '/admin/contacts'],
+  ['Emails', '/admin/emails'],
 ] as const;
 
 export const dynamic = 'force-dynamic';

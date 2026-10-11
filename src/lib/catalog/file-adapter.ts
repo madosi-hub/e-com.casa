@@ -63,9 +63,13 @@ function load(): { products: CatalogProduct[]; categories: CatalogCategory[] } {
   }
 
   const products = [
-    ...new Map(readProducts('generated-provider-products.json').map((product) => [product.sku, product])).values(),
+    ...new Map([
+      ...readProducts('generated-provider-products.json'),
+      ...readProducts('storefront-products.json'),
+      ...readProducts('lighting-preview-products.json'),
+    ].map((product) => [product.sku, product])).values(),
   ];
-  const categories = readCategories('generated-provider-catalog.json');
+  const categories = [...readCategories('generated-provider-catalog.json'), ...readCategories('storefront-catalog.json')];
   cache = { products, categories, loadedAt: Date.now() };
   return { products, categories };
 }
