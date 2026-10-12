@@ -6,7 +6,7 @@ import { tokenMatches } from '@/lib/checkout';
 import { ensureTracking } from '@/lib/tracking';
 import { refreshOrderPayment } from '@/lib/payments/reconcile-payment';
 import { SuccessView, type SuccessOrderData } from './success-view';
-import { isPanelOfferSlug, panelOfferPath } from '@/lib/offers/route-policy';
+import { isFadoOfferSlug, isPanelOfferSlug, dedicatedOfferPath, offerInformationPath } from '@/lib/offers/route-policy';
 
 export const metadata: Metadata = {
   title: 'Order status',
@@ -83,7 +83,7 @@ async function loadOrder(orderNumber: string, token: string): Promise<SuccessOrd
 
 async function OrderContent({ orderNumber, token, offer }: { orderNumber: string; token: string; offer?: string }) {
   const data = await loadOrder(orderNumber, token);
-  const panelOfferSlug = isPanelOfferSlug(offer) ? offer : null;
+  const panelOfferSlug = isPanelOfferSlug(offer) || isFadoOfferSlug(offer) ? offer : null;
   const painelRipado = panelOfferSlug !== null;
 
   if (!data) {
@@ -97,7 +97,7 @@ async function OrderContent({ orderNumber, token, offer }: { orderNumber: string
             ? `Não foi possível encontrar a encomenda ${orderNumber}. Consulte o email de confirmação ou contacte o apoio ao cliente.`
             : `We could not find order ${orderNumber}. Check your confirmation email or contact support.`}
         </p>
-        <Link href={panelOfferSlug ? panelOfferPath(panelOfferSlug) : '/shop'} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
+        <Link href={panelOfferSlug ? dedicatedOfferPath(panelOfferSlug) : '/shop'} className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-7 text-[14px] font-semibold text-primary-foreground">
           {painelRipado ? 'Continuar a comprar' : 'Continue shopping'}
         </Link>
       </div>
@@ -110,9 +110,10 @@ async function OrderContent({ orderNumber, token, offer }: { orderNumber: string
       token={token}
       language={painelRipado ? 'pt' : undefined}
       deliveryMessage={painelRipado ? 'Receberá as atualizações da entrega por e-mail.' : undefined}
-      retryPath={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/checkout') : undefined}
-      continuePath={panelOfferSlug ? panelOfferPath(panelOfferSlug) : undefined}
+      retryPath={panelOfferSlug ? dedicatedOfferPath(panelOfferSlug, '/checkout') : undefined}
+      continuePath={panelOfferSlug ? dedicatedOfferPath(panelOfferSlug) : undefined}
       continueLabel={painelRipado ? 'Voltar à oferta' : undefined}
+      cartScope={isFadoOfferSlug(offer) ? 'fado' : undefined}
     />
   );
 }
@@ -123,7 +124,7 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ order?: string; token?: string; offer?: string }>;
 }) {
   const { order: orderNumber, token, offer } = await searchParams;
-  const panelOfferSlug = isPanelOfferSlug(offer) ? offer : null;
+  const panelOfferSlug = isPanelOfferSlug(offer) || isFadoOfferSlug(offer) ? offer : null;
   const painelRipado = panelOfferSlug !== null;
 
   return (
@@ -146,7 +147,7 @@ export default async function CheckoutSuccessPage({
           </h1>
           <p className="mt-2 text-[14px] text-muted-foreground">
             {painelRipado ? 'Abra a ligação no email de confirmação da encomenda ou ' : 'Open the link from your order confirmation email, or '}
-            <Link href={panelOfferSlug ? panelOfferPath(panelOfferSlug, '/informacao/contacto') : '/contact'} className="text-olive underline underline-offset-2">
+            <Link href={panelOfferSlug ? offerInformationPath(panelOfferSlug, 'contacto') : '/contact'} className="text-olive underline underline-offset-2">
               {painelRipado ? 'contacte o apoio ao cliente' : 'contact support'}
             </Link>
             .

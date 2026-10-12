@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useT } from '@/hooks/use-t';
 import { useCart } from '@/lib/cart-store';
+import { useFadoCart, FADO_CHECKOUT_DRAFT_KEY } from '@/lib/fado-cart-store';
 import { translate, type Lang } from '@/lib/i18n';
 import { resetCheckoutToken } from '@/hooks/use-payment-session';
 import { formatPrice, formatDate } from '@/lib/format';
@@ -96,12 +97,18 @@ function PaymentStatusPoller({ orderNumber, token, language }: { orderNumber: st
 }
 
 /** The cart belongs to a placed order now — clear it and the checkout session. */
-function FinaliseClientState() {
-  const cart = useCart();
+function FinaliseClientState({ cartScope }: { cartScope?: 'fado' }) {
+  const useOrderCart = cartScope === 'fado' ? useFadoCart : useCart;
+  const clear = useOrderCart(state => state.clear);
+  const hydrated = useOrderCart(state => state.hydrated);
   useEffect(() => {
-    cart.clear();
+    if (!hydrated) return;
+    clear();
+    if (cartScope === 'fado') {
+      try { window.localStorage.removeItem(FADO_CHECKOUT_DRAFT_KEY); } catch { /* best effort */ }
+    }
     resetCheckoutToken();
-  }, []);
+  }, [clear, hydrated, cartScope]);
   return null;
 }
 
@@ -114,6 +121,7 @@ export function SuccessView({
   retryPath,
   continuePath,
   continueLabel,
+  cartScope,
 }: {
   order: SuccessOrderData;
   token: string;
@@ -123,6 +131,7 @@ export function SuccessView({
   retryPath?: string;
   continuePath?: string;
   continueLabel?: string;
+  cartScope?: 'fado';
 }) {
   const uiT = useT();
   const t = language ? (key: string, vars?: Record<string, string | number>) => translate(language, key, vars) : uiT;
@@ -216,7 +225,7 @@ export function SuccessView({
 
   return (
     <div className="mx-auto max-w-2xl">
-      {placed && <FinaliseClientState />}
+      {placed && <FinaliseClientState cartScope={cartScope} />}
       <div className="text-center">{header}</div>
       {waiting && <PaymentStatusPoller orderNumber={order.orderNumber} token={token} language={language} />}
 

@@ -3,10 +3,38 @@
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import type { TouchEvent } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react';
 import styles from './page.module.css';
 
-type GalleryPhoto = { src: string; alt: string; kind: string };
+type GalleryPhoto = { src: string; alt: string; kind: string; poster?: string };
+
+function GalleryMedia({ photo, expanded = false, playing = true, priority = false }: {
+  photo: GalleryPhoto;
+  expanded?: boolean;
+  playing?: boolean;
+  priority?: boolean;
+}) {
+  if (photo.kind === 'video' && playing) return <video
+    key={photo.src}
+    src={photo.src}
+    poster={photo.poster}
+    className={styles.galleryVideo}
+    aria-label={photo.alt}
+    autoPlay
+    muted
+    loop
+    playsInline
+    controls={false}
+    disablePictureInPicture
+    disableRemotePlayback
+    controlsList="nodownload nofullscreen noremoteplayback"
+    preload="none"
+    tabIndex={-1}
+    onContextMenu={event => event.preventDefault()}
+  />;
+
+  return <Image src={photo.kind === 'video' ? photo.poster! : photo.src} alt={photo.alt} fill preload={priority} draggable={false} sizes={expanded ? '100vw' : '(max-width: 900px) 100vw, 58vw'} className={expanded || photo.kind === 'video' || photo.kind === 'presentation' ? styles.presentationImage : photo.kind === 'scene' ? styles.lifestyleImage : styles.productImage} />;
+}
 
 export function LightingGallery({ photos, activeImage, onImageChange, name }: {
   photos: readonly GalleryPhoto[];
@@ -65,19 +93,19 @@ export function LightingGallery({ photos, activeImage, onImageChange, name }: {
 
   return <div className={styles.gallery}>
     <div className={styles.mainImage} {...touchHandlers}>
-      <button type="button" className={styles.galleryOpen} aria-label={`Ampliar fotografia de ${name}`} onClick={openImage}>
-        <Image src={photo.src} alt={photo.alt} fill preload={index === 0} draggable={false} sizes="(max-width: 900px) 100vw, 58vw" className={photo.kind === 'scene' ? styles.lifestyleImage : photo.kind === 'presentation' ? styles.presentationImage : styles.productImage} />
+      <button type="button" className={styles.galleryOpen} aria-label={`Ampliar ${photo.kind === 'video' ? 'vídeo' : 'fotografia'} de ${name}`} onClick={openImage} onContextMenu={event => { if (photo.kind === 'video') event.preventDefault(); }}>
+        <GalleryMedia photo={photo} playing={!expanded} priority={index === 0} />
       </button>
       <div className={styles.galleryControls}>
         <span aria-live="polite">{index + 1} <span>/ {photos.length}</span></span>
         {photos.length > 1 && <div><button type="button" aria-label="Imagem anterior" onClick={() => move(-1)}><ChevronLeft size={20} strokeWidth={1.5} /></button><button type="button" aria-label="Imagem seguinte" onClick={() => move(1)}><ChevronRight size={20} strokeWidth={1.5} /></button></div>}
       </div>
     </div>
-    {photos.length > 1 && <div className={styles.galleryThumbnails} aria-label="Fotografias do produto">{photos.map((item, itemIndex) => <button key={item.src} type="button" aria-label={`Ver fotografia ${itemIndex + 1} de ${photos.length}`} aria-pressed={index === itemIndex} onClick={() => onImageChange(itemIndex)}><Image src={item.src} alt="" fill sizes="56px" className={item.kind === 'scene' ? styles.lifestyleImage : styles.presentationImage} /></button>)}</div>}
-    <dialog ref={dialog} className={styles.zoomDialog} aria-label={`Fotografia ampliada de ${name}`} onClose={() => setExpanded(false)} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); } if (event.key === 'ArrowRight') { event.preventDefault(); move(1); } }}>
+    {photos.length > 1 && <div className={styles.galleryThumbnails} aria-label="Imagens e vídeos do produto">{photos.map((item, itemIndex) => <button key={item.src} type="button" aria-label={`Ver ${item.kind === 'video' ? 'vídeo' : 'fotografia'} ${itemIndex + 1} de ${photos.length}`} aria-pressed={index === itemIndex} onClick={() => onImageChange(itemIndex)}><Image src={item.kind === 'video' ? item.poster! : item.src} alt="" fill sizes="56px" className={item.kind === 'scene' ? styles.lifestyleImage : styles.presentationImage} />{item.kind === 'video' && <span className={styles.videoThumbnailIcon} aria-hidden="true"><Play size={18} fill="currentColor" /></span>}</button>)}</div>}
+    <dialog ref={dialog} className={styles.zoomDialog} aria-label={`Galeria ampliada de ${name}`} onClose={() => setExpanded(false)} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); } if (event.key === 'ArrowRight') { event.preventDefault(); move(1); } }}>
       <div className={styles.zoomContent}>
         <button type="button" aria-label="Fechar fotografia ampliada" onClick={() => dialog.current?.close()} className={styles.zoomClose}><X size={23} /></button>
-        <div className={styles.zoomImage} {...touchHandlers}><Image src={photo.src} alt={photo.alt} fill draggable={false} sizes="100vw" className={styles.presentationImage} /></div>
+        <div className={styles.zoomImage} {...touchHandlers} onContextMenu={event => { if (photo.kind === 'video') event.preventDefault(); }}><GalleryMedia photo={photo} expanded playing={expanded} /></div>
         {photos.length > 1 && <div className={styles.zoomControls}><button type="button" aria-label="Imagem anterior" onClick={() => move(-1)}><ChevronLeft size={22} /></button><p aria-live="polite">{index + 1} / {photos.length}</p><button type="button" aria-label="Imagem seguinte" onClick={() => move(1)}><ChevronRight size={22} /></button></div>}
       </div>
     </dialog>

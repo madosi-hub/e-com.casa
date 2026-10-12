@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowRight, ChevronLeft, ChevronRight, Lightbulb, LockKeyhole, Minus, Plus, Truck } from 'lucide-react';
 import { useLiveProduct } from '@/hooks/use-live-product';
-import { useCart } from '@/lib/cart-store';
+import { useFadoCart as useCart } from '@/lib/fado-cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { useLanguage } from '@/lib/language-store';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
@@ -133,7 +133,7 @@ export function FadoOfferPage({ product: initialProduct, offer, market, accessor
       <p className={styles.simulationNote}>Ambientes ilustrativos criados com IA. Cores com lâmpada RGB, incluída no kit. A luz real varia com o espaço e as definições.</p>
     </section>
 
-    <section id="kit" className={styles.kitSection} aria-labelledby="kit-title"><div className={`${styles.kitVisual} ${styles.kitPresentation}`}><Image src="/images/offers/fado/kit-apresentacao.png" alt="Apresentação do kit FADO com lâmpada WiZ RGB e comando: milhões de cores, branco quente e frio, brilho regulável e Wi-Fi sem hub" fill sizes="(max-width: 760px) 100vw, 50vw" className={styles.presentationImage} /></div><div className={styles.kitCopy}><p className={styles.eyebrow}>O conjunto para mudar o ambiente</p><h2 id="kit-title">O seu FADO.<br /><em>Milhões de possibilidades.</em></h2><p>Candeeiro branco + lâmpada WiZ A60 RGB E27 + comando físico.</p><ul><li>16 milhões de cores</li><li>Branco quente e frio · 2200–6500 K</li><li>Brilho regulável</li><li>Aplicação WiZ ou comando incluído</li><li>Wi-Fi · sem necessidade de hub</li></ul><button type="button" className={styles.addButton} onClick={() => { chooseBundle(true); document.getElementById('comprar')?.scrollIntoView(); }}>Escolher o kit · {money(kit.slug === FADO_KIT_SLUG ? kit.priceCents : 2099)}<ArrowRight size={18} /></button><Link href={`/product/${WIZ_BULB_SLUG}`} className={styles.kitTextLink}>Ver a lâmpada à parte <ArrowRight size={15} /></Link></div></section>
+    <section id="kit" className={styles.kitSection} aria-labelledby="kit-title"><div className={`${styles.kitVisual} ${styles.kitPresentation}`}><Image src="/images/offers/fado/kit-apresentacao-v2.png" alt="Apresentação do kit FADO com lâmpada WiZ RGB e comando: milhões de cores, branco quente e frio, brilho regulável e Wi-Fi sem hub" fill sizes="(max-width: 760px) 100vw, 50vw" className={styles.presentationImage} /></div><div className={styles.kitCopy}><p className={styles.eyebrow}>O conjunto para mudar o ambiente</p><h2 id="kit-title">O seu FADO.<br /><em>Milhões de possibilidades.</em></h2><p>Candeeiro branco + lâmpada WiZ A60 RGB E27 + comando físico.</p><ul><li>16 milhões de cores</li><li>Branco quente e frio · 2200–6500 K</li><li>Brilho regulável</li><li>Aplicação WiZ ou comando incluído</li><li>Wi-Fi · sem necessidade de hub</li></ul><button type="button" className={styles.addButton} onClick={() => { chooseBundle(true); document.getElementById('comprar')?.scrollIntoView(); }}>Escolher o kit · {money(kit.slug === FADO_KIT_SLUG ? kit.priceCents : 2099)}<ArrowRight size={18} /></button><Link href={`/product/${WIZ_BULB_SLUG}`} className={styles.kitTextLink}>Ver a lâmpada à parte <ArrowRight size={15} /></Link></div></section>
 
     <LightingCollection products={accessories} />
 

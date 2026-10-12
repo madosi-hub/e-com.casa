@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import CheckoutSuccessPage from '@/app/checkout/success/page';
-import { isPanelOfferSlug } from '@/lib/offers/route-policy';
+import { isFadoOfferSlug, isPanelOfferSlug } from '@/lib/offers/route-policy';
 
 export const metadata: Metadata = {
   title: 'Estado da encomenda',
@@ -16,7 +16,7 @@ export default async function PanelOfferCheckoutSuccessPage({
   searchParams: Promise<{ order?: string; token?: string }>;
 }) {
   const [{ slug }, query] = await Promise.all([params, searchParams]);
-  if (!isPanelOfferSlug(slug)) notFound();
+  if (!isPanelOfferSlug(slug) && !isFadoOfferSlug(slug)) notFound();
 
   return (
     <CheckoutSuccessPage

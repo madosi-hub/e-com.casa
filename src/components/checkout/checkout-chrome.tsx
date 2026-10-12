@@ -7,15 +7,17 @@ import { ArrowLeft, Lock } from 'lucide-react';
 import { useEffect } from 'react';
 import {
   NURALTA_OFFER_ALIAS,
-  panelOfferPath,
-  panelOfferSlugFromPathname,
+  dedicatedOfferPath,
+  dedicatedOfferSlugFromPathname,
+  isFadoOfferSlug,
+  offerInformationPath,
 } from '@/lib/offers/route-policy';
 
 export function CheckoutHeader() {
   const pathname = usePathname();
-  const offerSlug = panelOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
-  const offerPath = panelOfferPath(offerSlug);
-  const legalPage = pathname.startsWith(panelOfferPath(offerSlug, '/informacao/'));
+  const offerSlug = dedicatedOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
+  const offerPath = dedicatedOfferPath(offerSlug);
+  const legalPage = pathname.startsWith(dedicatedOfferPath(offerSlug, '/informacao/'));
 
   useEffect(() => {
     document.documentElement.lang = 'pt-PT';
@@ -23,7 +25,7 @@ export function CheckoutHeader() {
 
   return (
     <>
-      <header className="border-b border-[#e6ded4] bg-[#f7f3ef]/95 backdrop-blur">
+      <header className={`border-b border-[#e6ded4] backdrop-blur ${isFadoOfferSlug(offerSlug) ? 'bg-[#faf9f5]/95' : 'bg-[#f7f3ef]/95'}`}>
         <div className="mx-auto grid h-[60px] w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link href={legalPage ? offerPath : `${offerPath}?carrinho=aberto`} className="flex min-h-11 w-fit items-center gap-1.5 rounded-sm text-[14px] font-medium text-[#6f6259] transition-colors hover:text-[#201a17] focus-visible:outline-2 focus-visible:outline-offset-2">
             <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -53,11 +55,11 @@ export function CheckoutHeader() {
 
 export function CheckoutFooter() {
   const pathname = usePathname();
-  const offerSlug = panelOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
-  const informationPath = (slug: string) => panelOfferPath(offerSlug, `/informacao/${slug}`);
+  const offerSlug = dedicatedOfferSlugFromPathname(pathname) ?? NURALTA_OFFER_ALIAS;
+  const informationPath = (slug: string) => offerInformationPath(offerSlug, slug);
 
   return (
-    <footer className="border-t border-[#e6ded4] bg-[#f7f3ef] px-4 py-5 text-center text-[14px] text-[#74685f]">
+    <footer className={`border-t border-[#e6ded4] px-4 py-5 text-center text-[14px] text-[#74685f] ${isFadoOfferSlug(offerSlug) ? 'bg-[#faf9f5]' : 'bg-[#f7f3ef]'}`}>
       <nav aria-label="Informação legal" className="flex flex-wrap justify-center gap-x-5 gap-y-2">
         <Link className="inline-flex min-h-11 items-center rounded-sm px-1 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2" href={informationPath('privacidade')}>Privacidade</Link>
         <Link className="inline-flex min-h-11 items-center rounded-sm px-1 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2" href={informationPath('trocas-e-devolucoes')}>Trocas e devoluções</Link>
