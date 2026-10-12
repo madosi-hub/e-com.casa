@@ -14,11 +14,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useCart } from '@/lib/cart-store';
+import { useFadoCart, FADO_CHECKOUT_DRAFT_KEY } from '@/lib/fado-cart-store';
 import { nuraltaCartImage } from '@/lib/catalog/nuralta-media';
 import { offerTrackingParameters } from '@/lib/offers/attribution';
 import { trackOfferEvent } from '@/lib/offers/analytics';
 import { buildPanelCheckoutPayload, CHECKOUT_DRAFT_KEY, PANEL_CHECKOUT_COUNTRY } from '@/lib/offers/panel-checkout-payload';
-import { NURALTA_OFFER_ALIAS, panelOfferPath, type PanelOfferSlug } from '@/lib/offers/route-policy';
+import { NURALTA_OFFER_ALIAS, dedicatedOfferPath, isFadoOfferSlug, offerInformationPath, type DedicatedOfferSlug } from '@/lib/offers/route-policy';
 import { translate } from '@/lib/i18n';
 import { usePaymentSession } from '@/hooks/use-payment-session';
 import { paymentErrorDetails } from '@/lib/payments/client-payment-errors';
@@ -88,11 +89,14 @@ const CHECKOUT_CARD_CLASS = 'rounded-2xl border border-[#dedbd3] bg-white shadow
 const CHECKOUT_LABEL_CLASS = 'text-[14px] font-medium leading-5 text-[#27272a]';
 const CHECKOUT_FIELD_CLASS = 'mt-2 h-[50px] rounded-[16px] border-[#85858e] bg-[#fafafa] px-4 text-[16px] font-normal leading-[24px] text-[#27272a] shadow-none placeholder:text-[#676770] focus-visible:border-[#201a17] focus-visible:ring-[#201a17]/25 md:text-[16px]';
 
-export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offerSlug?: PanelOfferSlug }) {
+export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offerSlug?: DedicatedOfferSlug }) {
   const router = useRouter();
-  const offerPath = panelOfferPath(offerSlug);
-  const checkoutPath = panelOfferPath(offerSlug, '/checkout');
-  const cart = useCart();
+  const fado = isFadoOfferSlug(offerSlug);
+  const offerPath = dedicatedOfferPath(offerSlug);
+  const checkoutPath = dedicatedOfferPath(offerSlug, '/checkout');
+  const useCheckoutCart = fado ? useFadoCart : useCart;
+  const cart = useCheckoutCart();
+  const draftKey = fado ? FADO_CHECKOUT_DRAFT_KEY : CHECKOUT_DRAFT_KEY;
   const [mounted, setMounted] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [trackingParameters, setTrackingParameters] = useState<Record<string, string | null> | null>(null);
@@ -125,7 +129,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   useEffect(() => {
     document.documentElement.lang = 'pt-PT';
     try {
-      const raw = window.localStorage.getItem(CHECKOUT_DRAFT_KEY);
+      const raw = window.localStorage.getItem(draftKey);
       if (raw) {
         const { marketingOptIn: _legacyMarketingOptIn, termsAccepted: _legacyTermsAccepted, ...saved } = JSON.parse(raw) as Partial<typeof form> & { marketingOptIn?: boolean; termsAccepted?: boolean };
         // Draft restoration is a one-time client hydration step from localStorage.
@@ -143,11 +147,11 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   useEffect(() => {
     if (!draftHydrated) return;
     try {
-      window.localStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(form));
+      window.localStorage.setItem(draftKey, JSON.stringify(form));
     } catch {
       // Persistence is best effort; checkout remains fully functional.
     }
-  }, [draftHydrated, form]);
+  }, [draftHydrated, form, draftKey]);
 
   const displayLines = mounted ? cart.lines : [];
   const subtotal = mounted ? toNumber(cart.subtotal().toFixed(2)) : 0;
@@ -181,11 +185,12 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   }, [draftHydrated, detailsValid, offerSlug]);
 
   const payload = useMemo(
-    () => draftHydrated && cart.lines.length > 0
+    () => draftHydrated && cart.hydrated && cart.lines.length > 0
       ? buildPanelCheckoutPayload(cart.lines, cart.promoCode, form.country, trackingParameters)
       : null,
     [
       cart.lines,
+      cart.hydrated,
       draftHydrated,
       cart.promoCode,
       form.country,
@@ -199,7 +204,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
   );
 
   const finishOrder = (orderNumber: string, accessToken: string) => {
-    try { window.localStorage.removeItem(CHECKOUT_DRAFT_KEY); } catch { /* best effort */ }
+    try { window.localStorage.removeItem(draftKey); } catch { /* best effort */ }
     saveOrderReference(orderNumber, accessToken);
     router.push(`${checkoutPath}/sucesso?order=${encodeURIComponent(orderNumber)}&token=${encodeURIComponent(accessToken)}`);
   };
@@ -364,7 +369,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
     }
   };
 
-  if (mounted && cart.lines.length === 0) {
+  if (mounted && cart.hydrated && cart.lines.length === 0) {
     return (
       <div className="container-ecom flex min-h-[55vh] flex-col items-center justify-center py-16 text-center font-sans">
         <ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1.25} />
@@ -445,7 +450,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 {displayLines.map((line) => (
                   <li key={line.slug + '-' + (line.variantId ?? '')} className="flex items-start gap-3">
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-[#dedbd3] bg-[#f4f3ed]">
-                      <Image src={nuraltaCartImage(line.slug, line.image)} alt={line.name} fill sizes="80px" className="object-cover" />
+                      <Image src={fado ? line.image : nuraltaCartImage(line.slug, line.image)} alt={line.name} fill sizes="80px" className={fado ? 'object-contain' : 'object-cover'} />
                     </div>
                     <div className="min-w-0 flex-1 py-0.5">
                       <p className="break-words text-sm font-semibold leading-5">{checkoutLineLabel(line)}</p>
@@ -470,13 +475,13 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <strong className="text-[26px] font-semibold tracking-tight tabular-nums">{formatPrice(money(total))}</strong>
               </div>
               <p className="mt-1 text-sm text-[#626057]">IVA incluído</p>
-              <div className="mt-4 border-t border-[#dedbd3] pt-4"><DispatchNotice /></div>
+              <div className="mt-4 border-t border-[#dedbd3] pt-4">{fado ? <p className="text-sm text-[#59614c]">Entrega por CTT Express em Portugal.</p> : <DispatchNotice />}</div>
             </div>
           </div>
           <div className="mt-4 hidden rounded-2xl border border-[#dedbd3] p-5 lg:block">
             <h3 className="text-base font-semibold">Compre com tudo esclarecido.</h3>
             <p className="mt-2 text-sm leading-6 text-[#626057]">Consulte as condições ou fale com a nossa equipa antes de concluir.</p>
-            <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"><MessageCircle aria-hidden className="h-4 w-4" /> Apoio ao cliente <span className="sr-only">(abre num novo separador)</span></Link>
+            <Link href={offerInformationPath(offerSlug, 'contacto')} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold underline underline-offset-4"><MessageCircle aria-hidden className="h-4 w-4" /> Apoio ao cliente <span className="sr-only">(abre num novo separador)</span></Link>
           </div>
         </aside>
 
@@ -553,8 +558,7 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
                 <span className="font-medium">{shipping === 0 ? 'Entrega grátis por' : 'Entrega por'}</span>
                 <Image src="/pt/images/logo-ctt-express.svg" alt="CTT Express" width={82} height={27} className="h-auto w-[76px]" />
                 {shipping > 0 && <span className="font-medium">· {formatPrice(shipping)}</span>}
-                <p className="basis-full text-sm font-medium leading-5 text-[#405236]">{panelDeliveryWindowLabel()}</p>
-                <p className="basis-full text-xs leading-5 text-[#6f6259]">1 a 4 dias úteis, para pagamentos confirmados hoje.</p>
+                {!fado && <><p className="basis-full text-sm font-medium leading-5 text-[#405236]">{panelDeliveryWindowLabel()}</p><p className="basis-full text-xs leading-5 text-[#6f6259]">1 a 4 dias úteis, para pagamentos confirmados hoje.</p></>}
               </div>}
             {!deliveryReviewed && <button type="button" onClick={continueToPayment} disabled={paySubmitting || session.phase === 'confirming'} className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#344731] px-4 py-3 text-base font-semibold text-white hover:bg-[#253523] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#344731] disabled:opacity-60">
               Continuar para o pagamento <ArrowRight aria-hidden className="h-5 w-5" />
@@ -730,8 +734,8 @@ export default function CheckoutPage({ offerSlug = NURALTA_OFFER_ALIAS }: { offe
             <div className="mt-5 border-t border-[#dedbd3] pt-4">
               <p className="text-sm font-semibold">Alguma dúvida antes de concluir?</p>
               <div className="mt-1 flex flex-wrap gap-x-5">
-                <Link href={panelOfferPath(offerSlug, '/informacao/contacto')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><MessageCircle aria-hidden className="h-4 w-4" /> Falar com o apoio<span className="sr-only"> (abre num novo separador)</span></Link>
-                <Link href={panelOfferPath(offerSlug, '/informacao/trocas-e-devolucoes')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><RotateCcw aria-hidden className="h-4 w-4" /> Trocas e devoluções<span className="sr-only"> (abre num novo separador)</span></Link>
+                <Link href={offerInformationPath(offerSlug, 'contacto')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><MessageCircle aria-hidden className="h-4 w-4" /> Falar com o apoio<span className="sr-only"> (abre num novo separador)</span></Link>
+                <Link href={offerInformationPath(offerSlug, 'trocas-e-devolucoes')} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded text-sm text-[#344731] underline underline-offset-4 focus-visible:outline-2"><RotateCcw aria-hidden className="h-4 w-4" /> Trocas e devoluções<span className="sr-only"> (abre num novo separador)</span></Link>
               </div>
             </div>
           </section>

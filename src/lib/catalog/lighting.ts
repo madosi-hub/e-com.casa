@@ -7,14 +7,16 @@ const fadoScenes = [
   { src: '/images/offers/fado/real-setup-v2.webp', alt: 'Ambiente ilustrativo: FADO com luz azul junto a um computador', kind: 'scene' },
   { src: '/images/offers/fado/real-study-v2.webp', alt: 'Ambiente ilustrativo: FADO com luz coral numa secretária', kind: 'scene' },
 ];
-const fadoPresentation = { src: '/images/offers/fado/candeeiro-apresentacao.png', alt: 'Apresentação do candeeiro FADO com luz quente; lâmpada vendida separadamente', kind: 'presentation' };
+const fadoPresentation = { src: '/images/offers/fado/candeeiro-apresentacao-v2.png', alt: 'Apresentação do candeeiro FADO com luz quente; lâmpada vendida separadamente', kind: 'presentation' };
 export const fadoGalleryImages = [
   fadoPresentation,
   { src: '/images/offers/fado/product.webp', alt: 'Candeeiro FADO branco, sem lâmpada', kind: 'product' },
+  { src: '/images/offers/fado/candeeiro-interruptor-v2.png', alt: 'Candeeiro FADO aceso com destaque para o interruptor no cabo; lâmpada vendida separadamente', kind: 'presentation' },
+  { src: '/images/offers/fado/candeeiro-v2.mp4', poster: '/images/offers/fado/candeeiro-video-poster-v2.jpg', alt: 'Vídeo do candeeiro FADO', kind: 'video' },
   ...fadoScenes,
 ];
 export const fadoKitGalleryImages = [
-  { src: '/images/offers/fado/kit-completo.png', alt: 'Kit completo: candeeiro FADO, lâmpada WiZ A60 RGB e comando; telemóvel ilustrativo, não incluído', kind: 'presentation' },
+  { src: '/images/offers/fado/kit-apresentacao-v2.png', alt: 'Kit completo: candeeiro FADO, lâmpada WiZ A60 RGB E27 e comando físico', kind: 'presentation' },
   { src: '/images/offers/fado/wiz-rgb-comando.png', alt: 'Lâmpada WiZ A60 RGB E27 com comando físico e apresentação das funcionalidades', kind: 'presentation' },
   fadoPresentation,
   ...fadoScenes,

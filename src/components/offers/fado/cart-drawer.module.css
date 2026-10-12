@@ -1,0 +1,47 @@
+.drawer { width: 100%; max-width: 480px; height: 100dvh; gap: 0; padding: 0; border-color: #ddded4; background: #faf9f5; color: #2b2d29; font-family: var(--font-manrope), sans-serif; }
+.drawer > button:last-child { top: 15px; right: 12px; display: grid; place-items: center; width: 44px; height: 44px; }
+.heading { padding: 24px 58px 20px 20px; border-bottom: 1px solid #ddded4; }
+.heading h2 { font-size: 21px; font-weight: 600; }
+.heading h2 span { font-size: 13px; font-weight: 400; color: #74766e; }
+.heading p { font-size: 12px; color: #74766e; line-height: 1.6; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.items { margin: 0; padding: 0 20px; list-style: none; }
+.item { display: flex; gap: 14px; padding: 20px 0; border-bottom: 1px solid #ddded4; }
+.photo { position: relative; flex: 0 0 88px; height: 100px; overflow: hidden; border-radius: 4px; background: #eeece4; }
+.productImage { object-fit: contain; }
+.itemCopy { flex: 1; min-width: 0; }
+.itemCopy > a { display: block; font-size: 14px; line-height: 1.5; font-weight: 600; }
+.itemCopy > p { margin: 4px 0 7px; font-size: 11px; line-height: 1.6; color: #74766e; }
+.itemCopy > strong { display: block; font-size: 19px; font-weight: 600; }
+.actions { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.quantity { display: flex; align-items: center; border: 1px solid #c4c7b9; border-radius: 3px; }
+.quantity button, .remove { display: grid; place-items: center; width: 44px; height: 44px; }
+.quantity button:disabled { opacity: .35; }
+.quantity span { min-width: 22px; text-align: center; font-size: 13px; }
+.remove { color: #74766e; }
+.upgrade { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: calc(100% - 40px); margin: 18px 20px; padding: 15px; border: 1px solid #c4c7b9; border-radius: 5px; background: #eeefe5; text-align: left; }
+.upgrade strong { display: block; font-size: 13px; }
+.upgrade small { display: block; margin-top: 5px; font-size: 11px; line-height: 1.7; }
+.upgrade svg { flex-shrink: 0; }
+.extras { padding: 8px 20px 24px; }
+.extras h2 { font-size: 17px; font-weight: 600; }
+.extras > p { margin-top: 5px; font-size: 12px; color: #74766e; }
+.suggestions { display: flex; gap: 12px; overflow-x: auto; padding: 16px 0 8px; scroll-snap-type: x proximity; }
+.suggestions article { flex: 0 0 145px; scroll-snap-align: start; }
+.suggestionPhoto { position: relative; display: block; aspect-ratio: 1; background: #eeece4; border-radius: 4px; overflow: hidden; }
+.suggestions h3 { margin: 10px 0 5px; min-height: 36px; font-size: 12px; font-weight: 500; line-height: 1.5; }
+.suggestions strong { font-size: 17px; }
+.suggestions button { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; margin-top: 10px; padding: 8px 12px; border: 1px solid #c4c7b9; border-radius: 3px; font-size: 12px; }
+.summary { flex-shrink: 0; padding: 18px 20px max(18px, env(safe-area-inset-bottom)); border-top: 1px solid #ddded4; background: #faf9f5; }
+.summary dl > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; line-height: 1.7; }
+.summary dl > div:first-child dd { font-size: 21px; font-weight: 600; }
+.summary dl > div + div { margin-top: 8px; color: #59614c; }
+.summary dt { display: flex; align-items: center; gap: 7px; }
+.checkout { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-height: 52px; margin-top: 18px; padding: 14px; border-radius: 3px; color: #fff; background: #30392d; font-size: 13px; font-weight: 600; }
+.checkout > span { display: flex; align-items: center; gap: 8px; }
+.summary > p { margin-top: 10px; text-align: center; font-size: 10px; color: #74766e; }
+.empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 30px; text-align: center; }
+.empty h2 { font-size: 20px; font-weight: 500; }
+.drawer button { cursor: pointer; }
+.drawer button:disabled { cursor: not-allowed; }
+.drawer button:focus-visible, .drawer a:focus-visible { outline: 2px solid #59614c; outline-offset: 3px; }

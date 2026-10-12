@@ -8,7 +8,7 @@ import type { CatalogProduct } from '@/lib/catalog/types';
 import { type LightingPresentation, FADO_KIT_SLUG, WIZ_BULB_SLUG, fadoKitGalleryImages, lightingImage } from '@/lib/catalog/lighting';
 import { isCatalogProductSaleable } from '@/lib/catalog/saleability';
 import { cartStockLimit, quantityLimit } from '@/lib/catalog/inventory';
-import { useCart } from '@/lib/cart-store';
+import { useFadoCart as useCart } from '@/lib/fado-cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import { useLanguage } from '@/lib/language-store';
 import { useLiveProduct } from '@/hooks/use-live-product';

@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
-import { useCart } from '@/lib/cart-store';
+import { useFadoCart as useCart } from '@/lib/fado-cart-store';
 import { useCartDrawer } from '@/lib/cart-drawer-store';
 import styles from './page.module.css';
 

@@ -22,6 +22,16 @@ Publicar este commit pelo processo habitual de deploy. O build existente (`npm r
 
 A página pode apresentar produtos pelo catálogo de ficheiros, mas as vendas com baixa de stock e o envio de avaliações exigem os produtos no banco. As integrações existentes de pagamentos e encomendas continuam a depender das variáveis de ambiente de produção.
 
+## Carrinho e checkout próprios
+
+O FADO e os artigos de iluminação associados usam um carrinho separado, guardado em `ecom-casa-fado-cart`. O carrinho geral e o ripado mantêm o armazenamento existente. Os dados de entrega da FADO são guardados separadamente em `ecom-fado-checkout-draft`.
+
+- Oferta e carrinho: `/offers/fado` (o parâmetro `?carrinho=aberto` abre o carrinho).
+- Checkout: `/offers/fado/checkout`.
+- Estado da encomenda: `/offers/fado/checkout/sucesso`, com número e token de acesso.
+
+O alias `/offers/fado-table-lamp` conserva o próprio endereço no checkout e no regresso do pagamento. As páginas dos outros artigos de iluminação utilizam o mesmo carrinho FADO. O fluxo reutiliza os pagamentos e a validação de preços e stock existentes; a confirmação limpa apenas o carrinho associado ao checkout.
+
 ## Validação
 
 Não foram executados testes, lint, typecheck, build ou validações no navegador nesta entrega, conforme pedido. O funcionamento completo em produção ainda precisa de ser validado pelo responsável pelo deploy.

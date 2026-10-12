@@ -142,7 +142,7 @@ test('both panel offer URLs keep their incoming slug through checkout and inform
   expect(cartDrawer).toContain('panelOfferSlugFromPathname(pathname)');
   expect(cartDrawer).toContain("panelOfferPath(panelOfferSlug, '/checkout')");
   expect(runtimeWidgets).toContain('panelOfferSlugFromPathname(pathname) !== null');
-  expect(painelCheckout).toContain("panelOfferPath(offerSlug, '/checkout')");
+  expect(painelCheckout).toContain("dedicatedOfferPath(offerSlug, '/checkout')");
   expect(dynamicCheckout).toContain('isPanelOfferSlug(slug)');
   expect(dynamicCheckoutSuccess).toContain('offer: slug');
   expect(dynamicInformation).toContain('offerSlug={slug}');

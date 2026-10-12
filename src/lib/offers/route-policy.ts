@@ -7,6 +7,37 @@ export const FADO_OFFER_ALIAS = 'fado';
 export const PANEL_OFFER_SLUGS = [NURALTA_OFFER_ALIAS, NURALTA_OFFER_SLUG] as const;
 
 export type PanelOfferSlug = (typeof PANEL_OFFER_SLUGS)[number];
+export type FadoOfferSlug = typeof FADO_OFFER_SLUG | typeof FADO_OFFER_ALIAS;
+export type DedicatedOfferSlug = PanelOfferSlug | FadoOfferSlug;
+
+export function isFadoOfferSlug(value: string | null | undefined): value is FadoOfferSlug {
+  return value === FADO_OFFER_SLUG || value === FADO_OFFER_ALIAS;
+}
+
+export function fadoOfferSlugFromPathname(pathname: string): FadoOfferSlug | null {
+  const parts = pathname.split('/');
+  return parts[1] === 'offers' && isFadoOfferSlug(parts[2]) ? parts[2] : null;
+}
+
+export function dedicatedOfferSlugFromPathname(pathname: string): DedicatedOfferSlug | null {
+  return fadoOfferSlugFromPathname(pathname) ?? panelOfferSlugFromPathname(pathname);
+}
+
+export function dedicatedOfferPath(slug: DedicatedOfferSlug, suffix = ''): string {
+  return `/offers/${slug}${suffix}`;
+}
+
+export function offerInformationPath(slug: DedicatedOfferSlug, page: string): string {
+  if (!isFadoOfferSlug(slug)) return panelOfferPath(slug, `/informacao/${page}`);
+  const paths: Record<string, string> = {
+    privacidade: '/legal/privacy',
+    'trocas-e-devolucoes': '/returns',
+    contacto: '/contact',
+    envios: '/shipping',
+    'termos-e-condicoes': '/legal/terms',
+  };
+  return paths[page] ?? '/legal';
+}
 
 export function isPanelOfferSlug(value: string | null | undefined): value is PanelOfferSlug {
   return PANEL_OFFER_SLUGS.some((slug) => slug === value);

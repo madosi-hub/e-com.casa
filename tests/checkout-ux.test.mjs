@@ -56,7 +56,7 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
   };
   const component = name => props => jsx(name, props);
   const lines = [{ slug: 'fixture-panel', quantity: 1, price: 5, name: 'Painel de teste', image: '/fixture.png' }];
-  const cart = { lines, promoCode: null, subtotal: () => 5 };
+  const cart = { lines, hydrated: true, promoCode: null, subtotal: () => 5 };
   const session = {
     phase, elements: phase === 'preparing' ? null : { submit: async () => { paymentCalls.push('submit'); return {}; } }, stripe: {},
     syncOrder: async payload => { paymentCalls.push('sync'); saved.push(payload); return { ok: true }; },
@@ -69,9 +69,15 @@ function fixture({ draft, phase = 'ready', reducedMotion = false } = {}) {
     'lucide-react': Object.fromEntries(['ArrowRight', 'ArrowUp', 'CheckCircle2', 'ChevronDown', 'Lock', 'LoaderCircle', 'MessageCircle', 'RotateCcw', 'Search', 'ShieldCheck', 'ShoppingBag'].map(key => [key, component(key)])),
     '@/components/ui/input': { Input: component('input') }, '@/components/ui/label': { Label: component('label') }, '@/components/ui/separator': { Separator: component('hr') },
     '@/hooks/use-toast': { toast() {} }, '@/lib/cart-store': { useCart: () => cart },
+    '@/lib/fado-cart-store': { useFadoCart: () => cart, FADO_CHECKOUT_DRAFT_KEY: 'fado-draft' },
     '@/components/offers/nuralta/campaign': { DispatchNotice: () => null },
     '@/lib/catalog/nuralta-media': { nuraltaCartImage: (_, image) => image }, '@/lib/offers/attribution': { offerTrackingParameters: () => ({}) },
-    '@/lib/offers/analytics': { trackOfferEvent: (...event) => events.push(event) }, '@/lib/offers/route-policy': { NURALTA_OFFER_ALIAS: 'fixture-panel', panelOfferPath: (slug, suffix = '') => `/offers/${slug}${suffix}` },
+    '@/lib/offers/analytics': { trackOfferEvent: (...event) => events.push(event) }, '@/lib/offers/route-policy': {
+      NURALTA_OFFER_ALIAS: 'fixture-panel',
+      dedicatedOfferPath: (slug, suffix = '') => `/offers/${slug}${suffix}`,
+      isFadoOfferSlug: slug => slug === 'fado' || slug === 'fado-table-lamp',
+      offerInformationPath: (slug, page) => `/offers/${slug}/informacao/${page}`,
+    },
     '@/lib/i18n': { translate: (_, key) => ({ 'checkout.paymentInitializing': 'A preparar o pagamento seguro…', 'checkout.processing': 'A processar…' })[key] ?? key },
     '@/hooks/use-payment-session': { usePaymentSession: () => session }, '@/lib/format': { formatPrice: value => `€${value}`, toNumber: Number, money: Number },
     '@/lib/payments/client-payment-errors': errorModule.exports,

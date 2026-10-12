@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { CartLine } from '@/types';
 
 interface CartState {
@@ -17,7 +17,20 @@ interface CartState {
   subtotal: () => number;
 }
 
-export const useCart = create<CartState>()(
+export function createCartStore(storageKey: string) {
+  let markHydrated: (() => void) | undefined;
+  const memory = new Map<string, string>();
+  const storage = createJSONStorage<CartState>(() => {
+    try {
+      if (typeof window !== 'undefined') return window.localStorage;
+    } catch { /* Purchases remain usable when browser storage is blocked. */ }
+    return {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => { memory.set(key, value); },
+      removeItem: (key: string) => { memory.delete(key); },
+    };
+  });
+  const store = create<CartState>()(
   persist(
     (set, get) => ({
       lines: [],
@@ -50,10 +63,17 @@ export const useCart = create<CartState>()(
       subtotal: () => get().lines.reduce((acc, l) => acc + parseFloat(l.price) * l.quantity, 0),
     }),
     {
-      name: 'ecom-casa-cart',
-      onRehydrateStorage: () => (state) => {
+      name: storageKey,
+      storage,
+      onRehydrateStorage: () => (state, error) => {
         if (state) state.hydrated = true;
+        else if (error) queueMicrotask(() => markHydrated?.());
       },
     }
   )
 );
+  markHydrated = () => store.setState({ hydrated: true });
+  return store;
+}
+
+export const useCart = createCartStore('ecom-casa-cart');
